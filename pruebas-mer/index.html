@@ -269,6 +269,7 @@ table.pr{width:100%;min-width:660px;border-collapse:collapse;font-size:14.5px}
   var NO = 'Safari no deja guardar esta app para usarla sin conexión. Si estás en navegación privada, sal de ella, borra el icono y vuelve a añadirlo a la pantalla de inicio.';
   if (!('serviceWorker' in navigator)) { note(NO, '#B3261E', 12000); return; }
   var KEY = 'sin-conexion-lista:' + location.pathname;
+  try { navigator.serviceWorker.register('../sw.js', {scope: '../'}).catch(function () {}); } catch (e) { /* opcional */ }
   navigator.serviceWorker.register('./sw.js').then(function () { return navigator.serviceWorker.ready; }).then(function () {
     var seen = null;
     try { seen = localStorage.getItem(KEY); } catch (e) { seen = null; }
