@@ -1,0 +1,1302 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Registro Cuadros Lutron</title>
+<meta name="description" content="Registro de salida de cuadros Lutron y recepción de esqueletos. Funciona sin conexión.">
+<meta name="theme-color" content="#ECEFF2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1419" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Registro Lutron">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+/* Layout: libro de taller. La pestaña elige el registro (ámbar = salen cuadros, azul = entran esqueletos) y tiñe toda la interfaz; formulario a la izquierda, registro con filtros a la derecha; se apila por debajo de 980px. */
+:root{
+  --bg:#ECEFF2; --surface:#FFFFFF; --sunken:#F4F6F8; --ink:#15202A; --muted:#56636F; --line:#D2D9DF;
+  --out:#A84C08; --out-soft:#FBEADB; --in:#1C5AA6; --in-soft:#E0EBF8;
+  --on-accent:#FFFFFF; --danger:#B42318; --danger-soft:#FDE7E5; --on-danger:#FFFFFF;
+  --ok:#1E7A46; --warn:#B7791F; --shadow:rgba(10,16,22,.22);
+  --f-display:"Avenir Next Condensed","Roboto Condensed","Arial Narrow",sans-serif-condensed,system-ui,sans-serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --f-mono:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;
+  --accent:var(--out); --accent-soft:var(--out-soft);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1419; --surface:#182029; --sunken:#131A21; --ink:#E4E9EE; --muted:#95A2AE; --line:#2A3540;
+    --out:#F0913F; --out-soft:#3A2614; --in:#6EA8F0; --in-soft:#16283D;
+    --on-accent:#10161C; --danger:#F27A6E; --danger-soft:#3B1A17; --on-danger:#1A0B09;
+    --ok:#5CC48A; --warn:#E0B04A; --shadow:rgba(0,0,0,.5);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1419; --surface:#182029; --sunken:#131A21; --ink:#E4E9EE; --muted:#95A2AE; --line:#2A3540;
+  --out:#F0913F; --out-soft:#3A2614; --in:#6EA8F0; --in-soft:#16283D;
+  --on-accent:#10161C; --danger:#F27A6E; --danger-soft:#3B1A17; --on-danger:#1A0B09;
+  --ok:#5CC48A; --warn:#E0B04A; --shadow:rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+body[data-tab="recepciones"]{--accent:var(--in); --accent-soft:var(--in-soft)}
+
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}
+.sync-card{padding:18px 20px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between}
+.sync-card > div:first-child{flex:1 1 420px;min-width:0}
+.sync-card .hint{max-width:75ch}
+.sync-actions{display:flex;gap:10px;flex-wrap:wrap}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 64px;display:flex;flex-direction:column;gap:18px}
+
+/* Cabecera */
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{width:46px;height:46px;border-radius:11px;background:var(--ink);color:var(--bg);display:grid;place-items:center;flex:none}
+h1,h2{font-family:var(--f-display);font-weight:700;margin:0;line-height:1.12;text-wrap:balance}
+h1{font-size:clamp(23px,3vw,29px);letter-spacing:.005em}
+h2{font-size:21px}
+.sub{margin:3px 0 0;color:var(--muted);font-size:13.5px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--danger)}
+
+/* Pestañas */
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tab{--tc:var(--out);--tcs:var(--out-soft);appearance:none;-webkit-appearance:none;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:12px;min-height:64px;padding:10px 14px;display:flex;align-items:center;gap:12px;font-family:var(--f-display);font-weight:600;font-size:clamp(17px,2.3vw,21px);line-height:1.1;text-align:left;cursor:pointer;min-width:0}
+.tab[data-tab="recepciones"]{--tc:var(--in);--tcs:var(--in-soft)}
+.tab .ico{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;background:var(--tcs);color:var(--tc);flex:none}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);border-color:var(--tc);box-shadow:inset 0 -4px 0 var(--tc)}
+.tab:hover{color:var(--ink)}
+.tab:focus-visible{outline:3px solid var(--tc);outline-offset:2px}
+.tlabel{min-width:0}
+@media (max-width:560px){
+  .tab{padding:10px 12px;gap:8px}
+  .tab .ico{display:none}
+}
+.count{margin-left:auto;font-family:var(--f-mono);font-size:14px;font-weight:500;color:var(--tc);background:var(--tcs);padding:3px 10px;border-radius:999px;font-variant-numeric:tabular-nums;flex:none}
+
+/* Rejilla principal */
+.grid{display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:980px){
+  .grid{grid-template-columns:370px minmax(0,1fr);align-items:start}
+  .form-card{position:sticky;top:calc(16px + env(safe-area-inset-top,0px))}
+}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;min-width:0}
+
+/* Formulario */
+.form-card{padding:20px}
+.form-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.form-head .ico{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex:none}
+.pill{margin-left:auto;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:4px 10px;border-radius:999px}
+.fgrid{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:600px) and (max-width:979px){
+  .fgrid{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}
+  .fgrid .person{grid-column:1 / -1}
+}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.lbl{font-size:12.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+input,select{font:inherit;font-size:16px;color:var(--ink);background:var(--sunken);border:1px solid var(--line);border-radius:9px;height:48px;padding:0 12px;width:100%;min-width:0}
+input{-webkit-appearance:none;appearance:none}
+input[type="date"]{line-height:46px;min-height:48px}
+input::-webkit-date-and-time-value{text-align:left}
+input::placeholder{color:var(--muted);opacity:.75}
+input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);background:var(--surface)}
+input[aria-invalid="true"]{border-color:var(--danger);box-shadow:0 0 0 3px var(--danger-soft)}
+input:disabled,select:disabled{opacity:.6}
+.person{background:var(--accent-soft);border-radius:11px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.person .lbl{color:var(--accent)}
+.person input{background:var(--surface)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+@media (max-width:420px){.two{grid-template-columns:minmax(0,1fr)}}
+.sublbl{font-size:13px;font-weight:500;color:var(--ink)}
+.form-error,.ro-note{border-radius:9px;padding:10px 12px;margin:14px 0 0;font-size:14px}
+.form-error{color:var(--danger);background:var(--danger-soft)}
+.ro-note{color:var(--ink);background:var(--sunken);border:1px solid var(--line)}
+.actions{display:flex;gap:10px;margin-top:18px}
+.hint{color:var(--muted);font-size:13px;margin:10px 0 0}
+
+/* Botones */
+.btn{appearance:none;-webkit-appearance:none;font:inherit;border-radius:9px;border:1px solid transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;font-weight:600;font-size:15px;color:var(--ink);background:transparent;white-space:nowrap}
+.btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn:disabled{opacity:.55;cursor:default}
+.btn-primary{background:var(--accent);color:var(--on-accent);min-height:56px;font-family:var(--f-display);font-size:21px;letter-spacing:.02em;flex:1}
+.btn-ghost{border-color:var(--line);background:var(--surface)}
+.btn-ghost:not(:disabled):hover{background:var(--sunken)}
+.btn-danger{background:var(--danger);color:var(--on-danger)}
+.btn-del{color:var(--danger)}
+
+/* Registro */
+.list-card{padding-top:18px;overflow:hidden}
+.filters{padding:0 18px;display:flex;flex-direction:column;gap:12px}
+.search{position:relative}
+.search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.search input{padding-left:44px;height:52px;font-size:17px}
+.frow{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.frow .field{flex:1 1 150px}
+.frow .field.wide{flex:2 1 230px}
+.frow .btn{height:48px;flex:0 0 auto}
+.list-head{display:flex;align-items:baseline;justify-content:space-between;gap:6px 14px;padding:18px 18px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.list-head h2{font-size:20px}
+.result{color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
+.row{display:grid;grid-template-columns:100px minmax(0,1.25fr) minmax(0,1fr) 128px 148px;gap:14px;align-items:center;padding:11px 18px;border-bottom:1px solid var(--line)}
+.row.head{padding-block:8px;color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;background:var(--sunken)}
+.rows-body .row:last-child{border-bottom:0}
+.rows-body .row:hover{background:var(--sunken)}
+.rows-body .row.editing{background:var(--accent-soft)}
+.c-fecha{font-family:var(--f-mono);font-size:14.5px;font-variant-numeric:tabular-nums}
+.c-promo{font-weight:600;overflow-wrap:anywhere}
+.c-persona{overflow-wrap:anywhere}
+.c-reg{color:var(--muted);font-size:12.5px;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.c-actions{display:flex;gap:6px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.c-actions .btn{min-height:40px;padding:0 12px;font-size:14px}
+.ask{font-weight:600;font-size:14px;color:var(--danger)}
+.lbl-narrow{display:none}
+@media (max-width:640px){
+  .row.head{display:none}
+  .row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"fecha reg" "promo promo" "persona actions";gap:4px 12px;padding-block:12px}
+  .c-fecha{grid-area:fecha} .c-promo{grid-area:promo;font-size:16px} .c-persona{grid-area:persona}
+  .c-reg{grid-area:reg;text-align:right} .c-actions{grid-area:actions}
+  .lbl-narrow{display:inline}
+}
+.empty{padding:44px 18px 48px;color:var(--muted);display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
+.empty strong{color:var(--ink);font-size:17px;font-family:var(--f-display);font-weight:600}
+.empty p{margin:0;max-width:42ch}
+
+/* Aviso flotante */
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 10px 10px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 10px 30px var(--shadow);z-index:20;width:max-content;max-width:calc(100% - 32px);font-size:15px;font-weight:500}
+.toast span{padding-block:6px}
+.toast button{background:transparent;border:1px solid currentColor;color:inherit;border-radius:8px;min-height:40px;padding:0 14px;font:inherit;font-weight:600;cursor:pointer;flex:none}
+.toast button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M3.5 9h17M3.5 15h17M7.5 9v6M11 9v6M14.5 9v6"/></svg>
+      </div>
+      <div>
+        <h1>Registro de cuadros Lutron</h1>
+        <p class="sub"><span class="dot" id="syncDot"></span><span id="syncText">Conectando…</span></p>
+      </div>
+    </div>
+    <button type="button" class="btn btn-ghost" id="pdfBtn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+      Descargar PDF
+    </button>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Registros">
+    <button type="button" class="tab" role="tab" id="tab-salidas" data-tab="salidas" aria-controls="panel" aria-selected="true">
+      <span class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></span>
+      <span class="tlabel">Salida de cuadros</span>
+      <span class="count" id="count-salidas">–</span>
+    </button>
+    <button type="button" class="tab" role="tab" id="tab-recepciones" data-tab="recepciones" aria-controls="panel" aria-selected="false">
+      <span class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4l-9 9M11 7v6h6M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></span>
+      <span class="tlabel">Recepción de esqueletos</span>
+      <span class="count" id="count-recepciones">–</span>
+    </button>
+  </nav>
+
+  <main class="grid" id="panel" role="tabpanel">
+    <section class="card form-card" aria-labelledby="formTitle">
+      <form id="form" novalidate autocomplete="off">
+        <div class="form-head">
+          <span class="ico" id="formIco" aria-hidden="true"></span>
+          <h2 id="formTitle">Nueva salida</h2>
+          <span class="pill" id="editPill" hidden>Editando</span>
+        </div>
+        <div class="fgrid">
+          <div class="field">
+            <label class="lbl" for="f-promocion">Promoción de viviendas</label>
+            <input id="f-promocion" name="promocion" list="promos" placeholder="Nombre de la promoción" enterkeyhint="next">
+            <datalist id="promos"></datalist>
+          </div>
+          <div class="field">
+            <label class="lbl" for="f-fecha" id="fechaLabel">Fecha de entrega</label>
+            <input id="f-fecha" name="fecha" type="date">
+          </div>
+          <div class="person" role="group" aria-labelledby="personaLegend">
+            <span class="lbl" id="personaLegend">Quién se lo lleva</span>
+            <div class="two">
+              <div class="field">
+                <label class="sublbl" for="f-nombre">Nombre</label>
+                <input id="f-nombre" name="nombre" autocapitalize="words" enterkeyhint="next">
+              </div>
+              <div class="field">
+                <label class="sublbl" for="f-apellidos">Apellidos</label>
+                <input id="f-apellidos" name="apellidos" autocapitalize="words" enterkeyhint="done">
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="form-error" id="formError" role="alert" hidden></p>
+        <p class="ro-note" id="roNote" hidden>Tu acceso a esta página es de solo lectura. Pide a quien te la compartió acceso de colaborador para poder guardar.</p>
+        <div class="actions">
+          <button type="submit" class="btn btn-primary" id="saveBtn">Guardar</button>
+          <button type="button" class="btn btn-ghost" id="cancelBtn" hidden>Cancelar</button>
+        </div>
+        <p class="hint">Se guarda en esta tableta, también sin conexión, y entra en el PDF.</p>
+      </form>
+    </section>
+
+    <section class="card list-card" aria-labelledby="listTitle">
+      <div class="filters">
+        <div class="search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+          <input id="q" type="search" placeholder="Buscar promoción, nombre, apellidos o fecha" aria-label="Buscar" enterkeyhint="search">
+        </div>
+        <div class="frow">
+          <div class="field wide">
+            <label class="lbl" for="fp">Promoción</label>
+            <select id="fp"><option value="">Todas las promociones</option></select>
+          </div>
+          <div class="field">
+            <label class="lbl" for="fd">Desde</label>
+            <input id="fd" type="date">
+          </div>
+          <div class="field">
+            <label class="lbl" for="fh">Hasta</label>
+            <input id="fh" type="date">
+          </div>
+          <button type="button" class="btn btn-ghost" id="clearBtn">Limpiar filtros</button>
+        </div>
+      </div>
+      <div class="list-head">
+        <h2 id="listTitle">Salidas registradas</h2>
+        <span class="result" id="resultCount" aria-live="polite"></span>
+      </div>
+      <div id="rows" role="table" aria-labelledby="listTitle">
+        <div class="row head" role="row">
+          <span role="columnheader" id="thFecha">Fecha de entrega</span>
+          <span role="columnheader">Promoción</span>
+          <span role="columnheader" id="thPersona">Se lo lleva</span>
+          <span role="columnheader">Registrado</span>
+          <span role="columnheader" aria-label="Acciones"></span>
+        </div>
+        <div class="rows-body" id="rowsBody" role="rowgroup"></div>
+      </div>
+      <div class="empty" id="empty" hidden></div>
+    </section>
+  </main>
+
+  <section class="card sync-card" aria-labelledby="syncTitle">
+    <div>
+      <h2 id="syncTitle">Juntar los registros de las dos tabletas</h2>
+      <p class="hint">Cada tableta guarda sus registros sin conexión. Para juntarlos, pulsa «Enviar registros» en una y mándalos por AirDrop a la otra. En la otra, pulsa «Recibir registros» y elige el archivo: se suman sin duplicar y se aplican los borrados. Repítelo al revés para que las dos queden iguales. El archivo te sirve también de copia de seguridad.</p>
+      <p class="hint" id="bkNote"></p>
+    </div>
+    <div class="sync-actions">
+      <button type="button" class="btn btn-ghost" id="expBtn">Enviar registros</button>
+      <button type="button" class="btn btn-ghost" id="impBtn">Recibir registros</button>
+    </div>
+    <input type="file" id="impFile" accept=".json,application/json" hidden>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden>
+  <span id="toastMsg"></span>
+  <button type="button" id="toastAction" hidden>Descargar PDF</button>
+</div>
+
+<script>
+/* MiniPDF: genera PDF sin internet ni librerías. Usa las fuentes estándar de cualquier lector
+   (Helvetica, Helvetica-Bold y Symbol para Ω Δ ≤ ≥ …). Unidades en mm, origen arriba a la izquierda,
+   con los mismos métodos que jsPDF que usan estas apps. */
+const MiniPDF = (function(){
+  "use strict";
+  const HW=[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584,761,556,0,222,556,333,1000,556,556,333,1000,667,333,1000,0,611,0,0,222,222,333,333,350,556,1000,333,1000,500,333,944,0,500,667,278,333,556,556,556,556,260,556,333,737,370,556,584,333,737,333,400,584,333,333,333,556,537,278,333,333,365,556,834,834,834,611,667,667,667,667,667,667,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,500,556,556,556,556,278,278,278,278,556,556,556,556,556,556,556,584,611,556,556,556,556,500,556,500],HBW=[278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584,761,556,0,278,556,500,1000,556,556,333,1000,667,333,1000,0,611,0,0,278,278,500,500,350,556,1000,333,1000,556,333,944,0,500,667,278,333,556,556,556,556,280,556,333,737,370,556,584,333,737,333,400,584,333,333,333,611,556,278,333,333,365,556,834,834,834,611,722,722,722,722,722,722,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,556,556,556,556,556,278,278,278,278,611,611,611,611,611,611,611,584,611,611,611,611,611,556,611,556],SYM={"Ω":[87,768],"Δ":[68,612],"≤":[163,549],"≥":[179,549],"μ":[109,576],"→":[174,987],"←":[172,987],"↑":[173,603],"↓":[175,603],"≈":[187,549],"∞":[165,713],"√":[214,549],"π":[112,549],"Σ":[83,592],"φ":[102,521],"Φ":[70,763],"−":[45,549],"α":[97,631],"β":[98,549],"λ":[108,549],"ρ":[114,549],"θ":[113,521],"ω":[119,686],"η":[104,603],"≠":[185,549],"∆":[68,612],"µ":[109,576],"δ":[100,494],"γ":[103,411],"ε":[101,439],"σ":[115,603],"τ":[116,439],"∑":[229,713],"∙":[183,460]},CP={"€":128,"‚":130,"ƒ":131,"„":132,"…":133,"†":134,"‡":135,"ˆ":136,"‰":137,"Š":138,"‹":139,"Œ":140,"Ž":142,"‘":145,"’":146,"“":147,"”":148,"•":149,"–":150,"—":151,"˜":152,"™":153,"š":154,"›":155,"œ":156,"ž":158,"Ÿ":159};
+  SYM['Ω'] = SYM['Ω'];
+  const SYMW = {};
+  Object.keys(SYM).forEach(k => { SYMW[SYM[k][0]] = SYM[k][1]; });
+  const K = 72 / 25.4;
+  const SIZES = {a4:[595.28, 841.89], a5:[419.53, 595.28], letter:[612, 792]};
+
+  function runs(str){
+    const out = [];
+    let cur = null;
+    for (const ch of String(str == null ? '' : str)) {
+      const c = ch.codePointAt(0);
+      let sym = false, code;
+      if (c >= 32 && c < 127) code = c;
+      else if (c >= 160 && c <= 255) code = c;
+      else if (CP[ch] !== undefined) code = CP[ch];
+      else if (SYM[ch]) { sym = true; code = SYM[ch][0]; }
+      else if (c === 9) code = 32;
+      else if (c === 0x2009 || c === 0x202F || c === 0x2007) code = 32;
+      else if (c === 0x2010 || c === 0x2011 || c === 0x2012) code = 45;
+      else if (c === 0x2713 || c === 0x2714) code = 118;
+      else if (c < 32) continue;
+      else code = 63;
+      if (!cur || cur.sym !== sym) { cur = {sym, codes:[]}; out.push(cur); }
+      cur.codes.push(code);
+    }
+    return out;
+  }
+  function runWidth(r, bold){
+    let w = 0;
+    const T = bold ? HBW : HW;
+    for (const c of r.codes) w += r.sym ? (SYMW[c] || 500) : (T[c - 32] || 556);
+    return w / 1000;
+  }
+  function esc(codes){
+    let s = '';
+    for (const c of codes) {
+      if (c === 40 || c === 41 || c === 92) s += '\\' + String.fromCharCode(c);
+      else if (c < 32 || c > 126) s += '\\' + c.toString(8).padStart(3, '0');
+      else s += String.fromCharCode(c);
+    }
+    return s;
+  }
+  function pdfStr(s){
+    let o = '';
+    for (const ch of String(s)) {
+      const c = ch.codePointAt(0);
+      if (c === 40 || c === 41 || c === 92) o += '\\' + ch;
+      else if (c >= 32 && c < 127) o += ch;
+      else if (c >= 160 && c <= 255) o += '\\' + c.toString(8).padStart(3, '0');
+      else o += '?';
+    }
+    return '(' + o + ')';
+  }
+  const num = v => { const r = Math.round(v * 100) / 100; return Object.is(r, -0) ? '0' : String(r); };
+
+  function Doc(opts){
+    opts = opts || {};
+    const fmt = Array.isArray(opts.format) ? opts.format.map(v => v * K) : (SIZES[String(opts.format || 'a4').toLowerCase()] || SIZES.a4);
+    let PW = fmt[0], PH = fmt[1];
+    if (String(opts.orientation || 'p').toLowerCase().startsWith('l')) { const t = PW; PW = PH; PH = t; }
+    const pages = [], annots = [];
+    let cur = null;
+    let bold = false, size = 16, lhf = 1.15;
+    let tc = [0, 0, 0], dc = [0, 0, 0], fc = [0, 0, 0], lw = 0.2;
+    const images = [];
+    const props = {};
+    const X = x => num(x * K), Y = y => num(PH - y * K);
+    const rgb = c => c.map(v => num(Math.max(0, Math.min(255, v)) / 255)).join(' ');
+    function newPage(){ cur = []; pages.push(cur); annots.push([]); }
+    newPage();
+    function color(args){
+      if (args.length >= 3) return [+args[0], +args[1], +args[2]];
+      const a = args[0];
+      if (typeof a === 'string' && /^#?[0-9a-f]{6}$/i.test(a)) {
+        const h = a.replace('#', '');
+        return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+      }
+      if (typeof a === 'number') return [a, a, a];
+      return [0, 0, 0];
+    }
+    function width(s){
+      let w = 0;
+      for (const r of runs(s)) w += runWidth(r, bold);
+      return w * size;
+    }
+    function drawLine(s, x, y, align){
+      const rs = runs(s);
+      if (!rs.length) return;
+      let w = 0;
+      rs.forEach(r => { w += runWidth(r, bold) * size; });
+      let px = x * K;
+      if (align === 'right') px -= w;
+      else if (align === 'center') px -= w / 2;
+      const py = PH - y * K;
+      let ops = 'BT ' + rgb(tc) + ' rg';
+      rs.forEach(r => {
+        const f = r.sym ? '/F3' : (bold ? '/F2' : '/F1');
+        ops += ` ${f} ${num(size)} Tf 1 0 0 1 ${num(px)} ${num(py)} Tm (${esc(r.codes)}) Tj`;
+        px += runWidth(r, bold) * size;
+      });
+      cur.push(ops + ' ET');
+    }
+    function paint(style){
+      const s = String(style || 'S').toUpperCase();
+      if (s === 'F') return 'f';
+      if (s === 'FD' || s === 'DF' || s === 'B') return 'B';
+      return 'S';
+    }
+    function prefix(){ return `${num(lw * K)} w ${rgb(dc)} RG ${rgb(fc)} rg `; }
+    const api = {
+      internal:{ pageSize:{ getWidth:() => PW / K, getHeight:() => PH / K, width:PW / K, height:PH / K } },
+      addPage(){ newPage(); return api; },
+      setPage(n){ if (pages[n - 1]) cur = pages[n - 1]; return api; },
+      getNumberOfPages(){ return pages.length; },
+      getCurrentPageInfo(){ return {pageNumber:pages.indexOf(cur) + 1}; },
+      setFont(name, style, weight){
+        const st = String(style || '').toLowerCase();
+        bold = st.includes('bold') || weight === 700 || weight === 'bold' || /bold/i.test(String(name || '')) && !style;
+        return api;
+      },
+      setFontSize(s){ size = +s || size; return api; },
+      getFontSize(){ return size; },
+      setLineHeightFactor(f){ lhf = +f || lhf; return api; },
+      getLineHeightFactor(){ return lhf; },
+      setTextColor(){ tc = color(arguments); return api; },
+      setDrawColor(){ dc = color(arguments); return api; },
+      setFillColor(){ fc = color(arguments); return api; },
+      setLineWidth(w){ lw = +w; return api; },
+      setProperties(p){ Object.assign(props, p || {}); return api; },
+      getTextWidth(s){ return width(s) / K; },
+      getStringUnitWidth(s){ return width(s) / size; },
+      splitTextToSize(text, maxW){
+        const lines = [];
+        const fits = s => width(s) / K <= maxW;
+        const breakWord = w => {
+          const parts = [];
+          let part = '';
+          for (const ch of w) {
+            if (part && !fits(part + ch)) { parts.push(part); part = ch; }
+            else part += ch;
+          }
+          parts.push(part);
+          return parts;
+        };
+        String(text == null ? '' : text).split(/\r?\n/).forEach(par => {
+          const words = par.split(/ +/);
+          let line = '';
+          words.forEach(w => {
+            const cand = line ? line + ' ' + w : w;
+            if (fits(cand)) { line = cand; return; }
+            if (line) lines.push(line);
+            if (fits(w)) { line = w; return; }
+            const parts = breakWord(w);
+            line = parts.pop();
+            parts.forEach(p => lines.push(p));
+          });
+          lines.push(line);
+        });
+        return lines;
+      },
+      text(t, x, y, opt){
+        opt = opt || {};
+        const arr = Array.isArray(t) ? t : String(t == null ? '' : t).split(/\r?\n/);
+        const lh = size * lhf / K;
+        const asc = size * 0.76 / K;
+        let by = y;
+        if (opt.baseline === 'top' || opt.baseline === 'hanging') by = y + asc;
+        else if (opt.baseline === 'middle') by = y + asc / 2 - size * 0.1 / K;
+        else if (opt.baseline === 'bottom') by = y - size * 0.22 / K;
+        arr.forEach((ln, i) => drawLine(ln, x, by + i * lh, opt.align));
+        return api;
+      },
+      line(x1, y1, x2, y2){
+        cur.push(`${num(lw * K)} w ${rgb(dc)} RG ${X(x1)} ${Y(y1)} m ${X(x2)} ${Y(y2)} l S`);
+        return api;
+      },
+      rect(x, y, w, h, style){
+        cur.push(prefix() + `${X(x)} ${Y(y + h)} ${num(w * K)} ${num(h * K)} re ${paint(style)}`);
+        return api;
+      },
+      roundedRect(x, y, w, h, rx, ry, style){
+        rx = Math.min(rx, w / 2); ry = Math.min(ry, h / 2);
+        const c = 0.5523;
+        const p = [];
+        p.push(`${X(x + rx)} ${Y(y)} m`);
+        p.push(`${X(x + w - rx)} ${Y(y)} l`);
+        p.push(`${X(x + w - rx + rx * c)} ${Y(y)} ${X(x + w)} ${Y(y + ry - ry * c)} ${X(x + w)} ${Y(y + ry)} c`);
+        p.push(`${X(x + w)} ${Y(y + h - ry)} l`);
+        p.push(`${X(x + w)} ${Y(y + h - ry + ry * c)} ${X(x + w - rx + rx * c)} ${Y(y + h)} ${X(x + w - rx)} ${Y(y + h)} c`);
+        p.push(`${X(x + rx)} ${Y(y + h)} l`);
+        p.push(`${X(x + rx - rx * c)} ${Y(y + h)} ${X(x)} ${Y(y + h - ry + ry * c)} ${X(x)} ${Y(y + h - ry)} c`);
+        p.push(`${X(x)} ${Y(y + ry)} l`);
+        p.push(`${X(x)} ${Y(y + ry - ry * c)} ${X(x + rx - rx * c)} ${Y(y)} ${X(x + rx)} ${Y(y)} c`);
+        cur.push(prefix() + p.join(' ') + ' h ' + paint(style));
+        return api;
+      },
+      /* Enlace pulsable a una web sobre un rectángulo de la página. */
+      link(x, y, w, h, url){
+        annots[pages.indexOf(cur)].push({r:[X(x), Y(y + h), X(x + w), Y(y)], url:String(url || '')});
+        return api;
+      },
+      /* Imagen JPEG: bytes (Uint8Array) con su tamaño en píxeles. Las demás imágenes se pasan antes a JPEG con MiniPDF.toJpeg. */
+      addJpeg(bytes, pxW, pxH, x, y, w, h){
+        const name = '/Im' + (images.length + 1);
+        images.push({name, bytes, pxW, pxH});
+        cur.push(`q ${num(w * K)} 0 0 ${num(h * K)} ${X(x)} ${Y(y + h)} cm ${name} Do Q`);
+        return api;
+      },
+      output(type){
+        const parts = [];
+        let len = 0;
+        const offs = [];
+        const push = p => { parts.push(p); len += typeof p === 'string' ? p.length : p.length; };
+        const obj = (n, body) => { offs[n] = len; push(`${n} 0 obj\n`); body.forEach(push); push('\nendobj\n'); };
+        push('%PDF-1.4\n');
+        const nPages = pages.length;
+        const first = 6 + images.length;
+        const kids = pages.map((_, i) => `${first + i * 2} 0 R`).join(' ');
+        obj(1, ['<< /Type /Catalog /Pages 2 0 R >>']);
+        obj(2, [`<< /Type /Pages /Kids [${kids}] /Count ${nPages} >>`]);
+        obj(3, ['<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>']);
+        obj(4, ['<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>']);
+        obj(5, ['<< /Type /Font /Subtype /Type1 /BaseFont /Symbol >>']);
+        const xo = images.map((im, i) => `${im.name} ${6 + i} 0 R`).join(' ');
+        images.forEach((im, i) => {
+          obj(6 + i, [`<< /Type /XObject /Subtype /Image /Width ${im.pxW} /Height ${im.pxH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${im.bytes.length} >>\nstream\n`, im.bytes, '\nendstream']);
+        });
+        let an = first + nPages * 2;
+        const annotNums = annots.map(list => list.map(() => an++));
+        const infoN = an;
+        pages.forEach((ops, i) => {
+          const pn = first + i * 2, cn = pn + 1;
+          const al = annotNums[i].length ? ` /Annots [${annotNums[i].map(n => n + ' 0 R').join(' ')}]` : '';
+          obj(pn, [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${num(PW)} ${num(PH)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >>${xo ? ` /XObject << ${xo} >>` : ''} >>${al} /Contents ${cn} 0 R >>`]);
+          const content = ops.join('\n');
+          obj(cn, [`<< /Length ${content.length} >>\nstream\n`, content, '\nendstream']);
+        });
+        const d = new Date(), p2 = v => String(v).padStart(2, '0');
+        const date = `D:${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
+        annots.forEach((list, i) => list.forEach((a, j) => {
+          let u = a.url;
+          try { u = /[^\x20-\x7e]/.test(u) ? encodeURI(u) : u; } catch (e) {}
+          obj(annotNums[i][j], [`<< /Type /Annot /Subtype /Link /Rect [${a.r.join(' ')}] /Border [0 0 0] /A << /S /URI /URI ${pdfStr(u)} >> >>`]);
+        }));
+        let info = `<< /Producer (MiniPDF) /CreationDate (${date})`;
+        if (props.title) info += ` /Title ${pdfStr(props.title)}`;
+        if (props.author) info += ` /Author ${pdfStr(props.author)}`;
+        if (props.subject) info += ` /Subject ${pdfStr(props.subject)}`;
+        if (props.creator) info += ` /Creator ${pdfStr(props.creator)}`;
+        obj(infoN, [info + ' >>']);
+        const xref = len;
+        let x = `xref\n0 ${infoN + 1}\n0000000000 65535 f \n`;
+        for (let n = 1; n <= infoN; n++) x += String(offs[n]).padStart(10, '0') + ' 00000 n \n';
+        push(x + `trailer\n<< /Size ${infoN + 1} /Root 1 0 R /Info ${infoN} 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+        const blob = new Blob(parts, {type:'application/pdf'});
+        if (type === 'blob' || !type) return blob;
+        if (type === 'arraybuffer') return blob.arrayBuffer();
+        return blob;
+      }
+    };
+    return api;
+  }
+
+  /* Convierte cualquier imagen (dataURL, Blob o <img>) a JPEG para meterla en el PDF. */
+  async function toJpeg(src, maxPx, quality){
+    maxPx = maxPx || 1600;
+    const img = await new Promise((res, rej) => {
+      const el = new Image();
+      el.onload = () => res(el);
+      el.onerror = () => rej(new Error('img'));
+      if (src instanceof Blob) el.src = URL.createObjectURL(src);
+      else if (src && src.tagName === 'IMG') el.src = src.src;
+      else el.src = src;
+    });
+    let w = img.naturalWidth, h = img.naturalHeight;
+    const s = Math.min(1, maxPx / Math.max(w, h));
+    w = Math.max(1, Math.round(w * s)); h = Math.max(1, Math.round(h * s));
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const blob = await new Promise(res => cv.toBlob(res, 'image/jpeg', quality || 0.88));
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    return {bytes, width:w, height:h};
+  }
+
+  return { Doc, toJpeg, textWidth:(s, sz, b) => { let w = 0; runs(s).forEach(r => { w += runWidth(r, !!b); }); return w * sz / K; } };
+})();
+
+/* Guardar o compartir un archivo generado. En iPad abre el menú Compartir (Guardar en Archivos, AirDrop, WhatsApp…). */
+const FileOut = (function(){
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  function download(blob, name){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  /* Devuelve 'shared', 'downloaded', 'cancelled' o 'needs-tap' (el iPad pide otro toque para compartir).
+     Llamar dentro del clic, sin esperas antes. */
+  async function save(blob, name, mime){
+    if (isIOS && navigator.canShare && navigator.share) {
+      let file = null;
+      try { file = new File([blob], name, {type: mime || blob.type || 'application/octet-stream'}); } catch (e) { file = null; }
+      let ok = false;
+      try { ok = !!file && navigator.canShare({files:[file]}); } catch (e) { ok = false; }
+      if (ok) {
+        try { await navigator.share({files:[file], title:name}); return 'shared'; }
+        catch (e) {
+          if (e && e.name === 'AbortError') return 'cancelled';
+          if (e && e.name === 'NotAllowedError') return 'needs-tap';
+        }
+      }
+    }
+    download(blob, name);
+    return 'downloaded';
+  }
+  return { save, download, isIOS };
+})();
+
+window.jspdf = { jsPDF: function (o) { return MiniPDF.Doc(o); } };
+
+/* Registro guardado en la tableta, con la misma forma que usaba la versión en línea. */
+const LocalDB = (() => {
+  const KEY = 'lutron.registro.v1', COLS = ['salidas', 'recepciones'];
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { data = null; }
+  if (!data || typeof data !== 'object') data = {};
+  COLS.forEach(c => { if (!data[c] || typeof data[c] !== 'object') data[c] = {}; });
+  if (!data.borrados || typeof data.borrados !== 'object') data.borrados = {};
+  const subs = { salidas: [], recepciones: [] };
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(data)); return true; } catch (e) { return false; } }
+  function snap(c) {
+    return { docs: Object.keys(data[c]).map(id => ({ id, exists: true, data: () => data[c][id] })), metadata: { fromCache: false, hasPendingWrites: false } };
+  }
+  function notify(c) { const s = snap(c); subs[c].forEach(fn => { try { fn(s); } catch (e) { console.error(e); } }); }
+  function write(c, fn) {
+    const before = JSON.stringify(data);
+    fn();
+    if (!persist()) { data = JSON.parse(before); return Promise.reject({ code: 'quota_exceeded' }); }
+    notify(c);
+    return Promise.resolve();
+  }
+  const rid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+  const ts = r => +(r.editadoEn || r.creadoEn || 0);
+  function sanitize(r) {
+    const o = { promocion: String(r.promocion || '').slice(0, 200), fecha: String(r.fecha || '').slice(0, 10), nombre: String(r.nombre || '').slice(0, 100), apellidos: String(r.apellidos || '').slice(0, 150), creadoEn: +r.creadoEn || 0 };
+    if (+r.editadoEn) o.editadoEn = +r.editadoEn;
+    return o;
+  }
+  function collection(c) {
+    return {
+      doc(id) {
+        id = id || rid();
+        return {
+          id,
+          set(body) { return write(c, () => { data[c][id] = sanitize(body); }); },
+          update(body) {
+            if (!data[c][id]) return Promise.reject({ code: 'invalid_argument' });
+            return write(c, () => { data[c][id] = sanitize(Object.assign({}, data[c][id], body)); });
+          },
+          delete() { return write(c, () => { delete data[c][id]; data.borrados[id] = Date.now(); }); }
+        };
+      },
+      onSnapshot(cb) {
+        subs[c].push(cb);
+        setTimeout(() => cb(snap(c)), 0);
+        return () => { subs[c] = subs[c].filter(f => f !== cb); };
+      }
+    };
+  }
+  function exportAll() {
+    return { app: 'registro-lutron', version: 1, exportado: new Date().toISOString(), salidas: data.salidas, recepciones: data.recepciones, borrados: data.borrados };
+  }
+  function importAll(inc) {
+    const before = JSON.stringify(data);
+    let nuevos = 0, actualizados = 0, borrados = 0;
+    Object.keys(inc.borrados || {}).forEach(id => { const t = +inc.borrados[id] || Date.now(); if (!data.borrados[id] || data.borrados[id] < t) data.borrados[id] = t; });
+    COLS.forEach(c => {
+      const src = inc[c] && typeof inc[c] === 'object' ? inc[c] : {};
+      Object.keys(src).forEach(id => {
+        const r = src[id];
+        if (!r || typeof r !== 'object' || data.borrados[id] || id.length > 60) return;
+        const mine = data[c][id];
+        if (!mine) { data[c][id] = sanitize(r); nuevos++; }
+        else if (ts(r) > ts(mine)) { data[c][id] = sanitize(r); actualizados++; }
+      });
+      Object.keys(data[c]).forEach(id => { if (data.borrados[id]) { delete data[c][id]; borrados++; } });
+    });
+    if (!persist()) { data = JSON.parse(before); throw { code: 'quota_exceeded' }; }
+    COLS.forEach(notify);
+    return { nuevos, actualizados, borrados };
+  }
+  return { collection, exportAll, importAll };
+})();
+</script>
+<script>
+(() => {
+  'use strict';
+
+  const PDF_NAME = 'Registro_Cuadros_Lutron.pdf';
+  const ORDER = ['salidas', 'recepciones'];
+  const TABS = {
+    salidas: {
+      coll: 'salidas', nombre: 'Salida de cuadros', listTitle: 'Salidas registradas',
+      nuevo: 'Nueva salida', editar: 'Editar salida',
+      fechaLabel: 'Fecha de entrega', fechaCorta: 'F. entrega',
+      personaLabel: 'Quién se lo lleva', personaCol: 'Se lo lleva', personaPdf: 'Se lo lleva',
+      guardado: 'Salida guardada en el registro',
+      vacio: 'Todavía no hay salidas de cuadros', vacioHint: 'Rellena el formulario y pulsa Guardar para añadir la primera.'
+    },
+    recepciones: {
+      coll: 'recepciones', nombre: 'Recepción de esqueletos', listTitle: 'Esqueletos recibidos',
+      nuevo: 'Nueva recepción', editar: 'Editar recepción',
+      fechaLabel: 'Fecha de recepción', fechaCorta: 'F. recepción',
+      personaLabel: 'Quién lo trae', personaCol: 'Lo trae', personaPdf: 'Lo trae',
+      guardado: 'Recepción guardada en el registro',
+      vacio: 'Todavía no hay esqueletos recibidos', vacioHint: 'Rellena el formulario y pulsa Guardar para añadir el primero.'
+    }
+  };
+  const ICONS = {
+    salidas: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+    recepciones: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4l-9 9M11 7v6h6M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>'
+  };
+
+  const $ = id => document.getElementById(id);
+  const el = {
+    form: $('form'), formIco: $('formIco'), formTitle: $('formTitle'), editPill: $('editPill'),
+    promo: $('f-promocion'), fecha: $('f-fecha'), nombre: $('f-nombre'), apellidos: $('f-apellidos'),
+    promos: $('promos'), fechaLabel: $('fechaLabel'), personaLegend: $('personaLegend'),
+    formError: $('formError'), roNote: $('roNote'), saveBtn: $('saveBtn'), cancelBtn: $('cancelBtn'),
+    q: $('q'), fp: $('fp'), fd: $('fd'), fh: $('fh'), clearBtn: $('clearBtn'),
+    listTitle: $('listTitle'), resultCount: $('resultCount'), rows: $('rows'), rowsBody: $('rowsBody'), empty: $('empty'),
+    thFecha: $('thFecha'), thPersona: $('thPersona'),
+    syncDot: $('syncDot'), syncText: $('syncText'), pdfBtn: $('pdfBtn'),
+    toast: $('toast'), toastMsg: $('toastMsg'), toastAction: $('toastAction')
+  };
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const use = name => Promise.resolve(name === 'db' ? LocalDB : null);
+
+  const state = {
+    tab: 'salidas', started: false,
+    data: { salidas: [], recepciones: [] },
+    loaded: { salidas: false, recepciones: false },
+    cache: { salidas: true, recepciones: true },
+    filters: { salidas: { q: '', p: '', d: '', h: '' }, recepciones: { q: '', p: '', d: '', h: '' } },
+    drafts: { salidas: null, recepciones: null },
+    editing: null, confirmDel: null, saving: false, pdfBusy: false,
+    db: null, dbState: 'connecting', dbError: false, canWrite: true,
+    selSig: '', listSig: ''
+  };
+
+  /* ---------- utilidades ---------- */
+  const pad = n => String(n).padStart(2, '0');
+  const clean = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+  const norm = s => clean(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const isISO = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+  function todayISO() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+  function fmtDate(iso) { if (!isISO(iso)) return String(iso || ''); const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; }
+  function fmtStamp(ms) { if (!ms) return ''; const d = new Date(ms); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+  const fullName = r => clean(`${r.nombre || ''} ${r.apellidos || ''}`);
+  const cmpDesc = (a, b) => (String(b.fecha || '')).localeCompare(String(a.fecha || '')) || (b.creadoEn || 0) - (a.creadoEn || 0);
+  const cmpAsc = (a, b) => (String(a.fecha || '')).localeCompare(String(b.fecha || '')) || (a.creadoEn || 0) - (b.creadoEn || 0);
+
+  function toRecord(snap) {
+    const d = snap.data() || {};
+    return {
+      id: snap.id,
+      promocion: clean(d.promocion), fecha: String(d.fecha || ''),
+      nombre: clean(d.nombre), apellidos: clean(d.apellidos),
+      creadoEn: typeof d.creadoEn === 'number' ? d.creadoEn : 0
+    };
+  }
+
+  /* ---------- filtros ---------- */
+  function haystack(r) {
+    const f = fmtDate(r.fecha);
+    return norm([r.promocion, r.nombre, r.apellidos, fullName(r), f, f.replace(/\//g, '-'), r.fecha, fmtStamp(r.creadoEn)].join(' | '));
+  }
+  function effectiveFilters(t) {
+    const f = state.filters[t];
+    let d = f.d, h = f.h;
+    if (d && h && d > h) { const x = d; d = h; h = x; }
+    return { q: f.q, p: f.p, d, h };
+  }
+  const isFiltering = f => Boolean(clean(f.q) || f.p || f.d || f.h);
+  function applyFilters(list, f) {
+    const toks = norm(f.q).split(' ').filter(Boolean);
+    return list.filter(r => {
+      if (f.p && norm(r.promocion) !== f.p) return false;
+      if (f.d && (!isISO(r.fecha) || r.fecha < f.d)) return false;
+      if (f.h && (!isISO(r.fecha) || r.fecha > f.h)) return false;
+      if (toks.length) { const h = haystack(r); return toks.every(t => h.includes(t)); }
+      return true;
+    });
+  }
+
+  /* ---------- formulario ---------- */
+  const blankDraft = () => ({ promocion: '', fecha: todayISO(), nombre: '', apellidos: '' });
+  const rawForm = () => ({ promocion: el.promo.value, fecha: el.fecha.value, nombre: el.nombre.value, apellidos: el.apellidos.value });
+  const readForm = () => ({ promocion: clean(el.promo.value), fecha: el.fecha.value, nombre: clean(el.nombre.value), apellidos: clean(el.apellidos.value) });
+  function fillForm(v) {
+    el.promo.value = v.promocion || '';
+    el.fecha.value = isISO(v.fecha) ? v.fecha : todayISO();
+    el.nombre.value = v.nombre || '';
+    el.apellidos.value = v.apellidos || '';
+    clearInvalid(); hideFormError();
+  }
+  function clearInvalid() { [el.promo, el.fecha, el.nombre, el.apellidos].forEach(i => i.removeAttribute('aria-invalid')); }
+  function showFormError(msg) { el.formError.textContent = msg; el.formError.hidden = false; }
+  function hideFormError() { el.formError.hidden = true; el.formError.textContent = ''; }
+
+  function joinList(items) { return items.length < 2 ? items.join('') : items.slice(0, -1).join(', ') + ' y ' + items[items.length - 1]; }
+
+  async function withRetry(fn) {
+    try { return await fn(); }
+    catch (err) {
+      if (err && err.code === 'unavailable') {
+        await new Promise(r => setTimeout(r, 500 + Math.random() * 700));
+        return fn();
+      }
+      throw err;
+    }
+  }
+  function writeErrorMsg(err, verbo) {
+    const c = err && err.code;
+    if (c === 'quota_exceeded') return 'No queda espacio en la tableta. Envía los registros como copia y borra los más antiguos.';
+    if (c === 'invalid_argument') return 'Este registro ya no existe. Pulsa Guardar para añadirlo como nuevo.';
+    return `No se pudo ${verbo} en la tableta. Vuelve a intentarlo.`;
+  }
+
+  async function onSubmit(e) {
+    e.preventDefault();
+    if (state.saving || !state.canWrite) return;
+    hideFormError(); clearInvalid();
+    const v = readForm();
+    const missing = [];
+    if (!v.promocion) missing.push(['la promoción', el.promo]);
+    if (!isISO(v.fecha)) missing.push(['la fecha', el.fecha]);
+    if (!v.nombre) missing.push(['el nombre', el.nombre]);
+    if (!v.apellidos) missing.push(['los apellidos', el.apellidos]);
+    if (missing.length) {
+      missing.forEach(m => m[1].setAttribute('aria-invalid', 'true'));
+      showFormError('Falta ' + joinList(missing.map(m => m[0])) + '.');
+      missing[0][1].focus();
+      return;
+    }
+    if (!state.db) { showFormError('No se pudo abrir el registro de la tableta. Recarga la app.'); return; }
+
+    const t = state.tab, cfg = TABS[t];
+    const coll = state.db.collection(cfg.coll);
+    const editing = state.editing;
+    state.saving = true; renderFormChrome();
+    try {
+      if (editing) {
+        if (!state.data[t].some(r => r.id === editing.id)) {
+          state.editing = null;
+          showFormError('Este registro se ha borrado al recibir los datos de la otra tableta. Pulsa Guardar para añadirlo como nuevo.');
+          return;
+        }
+        await withRetry(() => coll.doc(editing.id).update({ ...v, editadoEn: Date.now() }));
+        state.editing = null;
+        fillForm(state.drafts[t] || blankDraft());
+        toast('Cambios guardados', true);
+      } else {
+        const ref = coll.doc();
+        const body = { ...v, creadoEn: Date.now() };
+        await withRetry(() => ref.set(body));
+        state.drafts[t] = null;
+        fillForm(blankDraft());
+        toast(cfg.guardado, true);
+      }
+    } catch (err) {
+      if (!editing && err && err.code === 'invalid_argument') state.canWrite = false;
+      showFormError(writeErrorMsg(err, 'guardar'));
+    } finally {
+      state.saving = false;
+      renderFormChrome(); renderList();
+    }
+  }
+
+  function startEdit(id) {
+    const r = state.data[state.tab].find(x => x.id === id);
+    if (!r || !state.canWrite) return;
+    if (!state.editing) state.drafts[state.tab] = rawForm();
+    state.editing = { tab: state.tab, id };
+    state.confirmDel = null;
+    fillForm(r);
+    renderFormChrome(); renderList();
+    el.form.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  }
+  function cancelEdit() {
+    state.editing = null;
+    fillForm(state.drafts[state.tab] || blankDraft());
+    renderFormChrome(); renderList();
+  }
+  async function doDelete(id) {
+    const t = state.tab;
+    if (!state.db) return;
+    try {
+      await withRetry(() => state.db.collection(TABS[t].coll).doc(id).delete());
+      state.confirmDel = null;
+      if (state.editing && state.editing.id === id) cancelEdit();
+      toast('Registro borrado');
+    } catch (err) {
+      state.confirmDel = null;
+      toast(writeErrorMsg(err, 'borrar'));
+    }
+    renderList();
+  }
+
+  /* ---------- pestañas ---------- */
+  function setTab(t) {
+    if (!TABS[t]) return;
+    if (state.started && t === state.tab) return;
+    if (state.started) {
+      if (state.editing) state.editing = null; else state.drafts[state.tab] = rawForm();
+    }
+    state.tab = t; state.started = true; state.confirmDel = null; state.selSig = '';
+    document.body.dataset.tab = t;
+    fillForm(state.drafts[t] || blankDraft());
+    const f = state.filters[t];
+    el.q.value = f.q; el.fd.value = f.d; el.fh.value = f.h;
+    renderAll();
+  }
+  function goTab(t) {
+    setTab(t);
+    try { if (location.hash.slice(1) !== t) location.hash = t; } catch (e) { /* sin hash */ }
+  }
+
+  /* ---------- render ---------- */
+  function renderAll() { renderTabs(); renderFormChrome(); renderOptions(); renderList(); renderSync(); }
+
+  function renderTabs() {
+    ORDER.forEach(t => {
+      const b = $('tab-' + t), on = t === state.tab;
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+      $('count-' + t).textContent = state.loaded[t] ? String(state.data[t].length) : '–';
+    });
+  }
+
+  function renderFormChrome() {
+    const cfg = TABS[state.tab];
+    el.formIco.innerHTML = ICONS[state.tab];
+    el.formTitle.textContent = state.editing ? cfg.editar : cfg.nuevo;
+    el.editPill.hidden = !state.editing;
+    el.fechaLabel.textContent = cfg.fechaLabel;
+    el.personaLegend.textContent = cfg.personaLabel;
+    el.saveBtn.textContent = state.saving ? 'Guardando…' : (state.editing ? 'Guardar cambios' : 'Guardar');
+    el.saveBtn.disabled = state.saving || !state.canWrite;
+    el.cancelBtn.hidden = !state.editing;
+    el.roNote.hidden = state.canWrite;
+    [el.promo, el.fecha, el.nombre, el.apellidos].forEach(i => { i.disabled = !state.canWrite; });
+    el.listTitle.textContent = cfg.listTitle;
+    el.thFecha.textContent = cfg.fechaLabel;
+    el.thPersona.textContent = cfg.personaCol;
+  }
+
+  function promoNames(list) {
+    const m = new Map();
+    list.slice().sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0)).forEach(r => {
+      const k = norm(r.promocion);
+      if (k && !m.has(k)) m.set(k, r.promocion);
+    });
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1], 'es', { sensitivity: 'base' }));
+  }
+  function renderOptions() {
+    const t = state.tab;
+    const opts = promoNames(state.data[t]);
+    const sig = t + '\n' + opts.map(o => o[0] + '=' + o[1]).join('\n');
+    const f = state.filters[t];
+    if (f.p && !opts.some(o => o[0] === f.p)) f.p = '';
+    if (sig !== state.selSig) {
+      state.selSig = sig;
+      el.fp.innerHTML = '<option value="">Todas las promociones</option>' +
+        opts.map(([k, n]) => `<option value="${esc(k)}">${esc(n)}</option>`).join('');
+    }
+    el.fp.value = f.p;
+    const all = promoNames(state.data.salidas.concat(state.data.recepciones));
+    const dsig = all.map(o => o[1]).join('\n');
+    if (dsig !== el.promos.dataset.sig) {
+      el.promos.dataset.sig = dsig;
+      el.promos.innerHTML = all.map(([, n]) => `<option value="${esc(n)}"></option>`).join('');
+    }
+  }
+
+  function rowHtml(r) {
+    const id = esc(r.id);
+    const editing = state.editing && state.editing.id === r.id;
+    const dis = state.canWrite ? '' : ' disabled';
+    const actions = state.confirmDel === r.id
+      ? `<span class="ask">¿Borrar?</span><button type="button" class="btn btn-danger" data-action="del-yes" data-id="${id}">Sí, borrar</button><button type="button" class="btn btn-ghost" data-action="del-no" data-id="${id}">No</button>`
+      : `<button type="button" class="btn btn-ghost" data-action="edit" data-id="${id}"${dis}>Editar</button><button type="button" class="btn btn-ghost btn-del" data-action="del" data-id="${id}"${dis}>Borrar</button>`;
+    return `<div class="row${editing ? ' editing' : ''}" role="row">` +
+      `<div class="c-fecha" role="cell">${esc(fmtDate(r.fecha))}</div>` +
+      `<div class="c-promo" role="cell">${esc(r.promocion)}</div>` +
+      `<div class="c-persona" role="cell">${esc(fullName(r))}</div>` +
+      `<div class="c-reg" role="cell"><span class="lbl-narrow">Reg. </span>${esc(fmtStamp(r.creadoEn))}</div>` +
+      `<div class="c-actions" role="cell">${actions}</div></div>`;
+  }
+
+  function showEmpty(title, text, withClear) {
+    el.rows.hidden = true;
+    el.empty.hidden = false;
+    el.empty.innerHTML = `<strong>${esc(title)}</strong>` + (text ? `<p>${esc(text)}</p>` : '') +
+      (withClear ? '<button type="button" class="btn btn-ghost" data-action="clear">Limpiar filtros</button>' : '');
+  }
+
+  function renderList() {
+    const t = state.tab, cfg = TABS[t];
+    if (state.dbState === 'none') {
+      el.resultCount.textContent = ''; el.clearBtn.disabled = true;
+      showEmpty('No se puede abrir el registro', 'Recarga la app. Si sigue igual, ábrela desde su icono en la pantalla de inicio.');
+      return;
+    }
+    if (!state.loaded[t]) {
+      el.resultCount.textContent = ''; el.clearBtn.disabled = true;
+      showEmpty('Cargando registros…', '');
+      return;
+    }
+    const all = state.data[t].slice().sort(cmpDesc);
+    const f = effectiveFilters(t);
+    const filtering = isFiltering(f);
+    const list = filtering ? applyFilters(all, f) : all;
+    el.clearBtn.disabled = !filtering;
+    el.resultCount.textContent = filtering
+      ? `Mostrando ${list.length} de ${all.length}`
+      : `${all.length} ${all.length === 1 ? 'registro' : 'registros'}`;
+    if (!all.length) { showEmpty(cfg.vacio, cfg.vacioHint); return; }
+    if (!list.length) { showEmpty('Ningún registro coincide con los filtros', 'Prueba con menos palabras o amplía las fechas.', true); return; }
+    el.empty.hidden = true; el.rows.hidden = false;
+    el.rowsBody.innerHTML = list.map(rowHtml).join('');
+  }
+
+  function renderSync() {
+    let cls = 'warn', txt = 'Conectando…';
+    if (state.dbState === 'none') { cls = 'bad'; txt = 'No se puede guardar en esta tableta'; }
+    else if (state.dbState === 'ok') {
+      const ready = ORDER.every(t => state.loaded[t]);
+      cls = ready ? 'ok' : 'warn';
+      txt = ready ? 'Guardado en esta tableta · funciona sin conexión' : 'Cargando…';
+    }
+    el.syncDot.className = 'dot ' + cls;
+    el.syncText.textContent = txt;
+    el.pdfBtn.disabled = state.pdfBusy || !ORDER.every(t => state.loaded[t]);
+  }
+
+  let listRaf = 0;
+  function scheduleList() { cancelAnimationFrame(listRaf); listRaf = requestAnimationFrame(renderList); }
+
+  /* ---------- aviso ---------- */
+  let toastTimer = 0;
+  function toast(msg, withPdf) {
+    el.toastMsg.textContent = msg;
+    el.toastAction.hidden = !withPdf;
+    el.toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.toast.hidden = true; }, withPdf ? 7000 : 4500);
+  }
+
+  /* ---------- PDF ---------- */
+  function buildPdf() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    doc.setProperties({ title: 'Registro de cuadros Lutron' });
+    doc.setLineHeightFactor(1.25);
+    const M = 14, PW = 210, PH = 297, CW = PW - 2 * M, BOTTOM = PH - 16;
+    const INK = [21, 32, 42], MUTED = [86, 99, 111], LINE = [210, 217, 223], ZEBRA = [244, 246, 248];
+    const COLORS = { salidas: [168, 76, 8], recepciones: [28, 90, 166] };
+    const now = new Date();
+    const n1 = state.data.salidas.length, n2 = state.data.recepciones.length;
+
+    let y = M + 6;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(...INK);
+    doc.text('Registro de cuadros Lutron', M, y);
+    y += 6.5;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...MUTED);
+    doc.text(`Actualizado el ${fmtDate(todayISO())} a las ${pad(now.getHours())}:${pad(now.getMinutes())}`, M, y);
+    doc.text(`Salidas de cuadros: ${n1}   ·   Recepciones de esqueletos: ${n2}`, PW - M, y, { align: 'right' });
+    y += 4;
+    doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.line(M, y, PW - M, y);
+    y += 10;
+
+    ORDER.forEach((t, si) => {
+      const cfg = TABS[t], color = COLORS[t];
+      const rows = state.data[t].slice().sort(cmpAsc);
+      const cols = [
+        { h: 'Nº', w: 11 }, { h: cfg.fechaCorta, w: 26 }, { h: 'Promoción', w: 62 },
+        { h: cfg.personaPdf, w: 51 }, { h: 'Registrado', w: 32 }
+      ];
+      if (si > 0) y += 8;
+      if (y + 24 > BOTTOM) { doc.addPage(); y = M + 6; }
+      doc.setFillColor(...color); doc.rect(M, y - 4, 2.6, 5.2, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...INK);
+      doc.text(cfg.nombre, M + 5, y);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...MUTED);
+      doc.text(`${rows.length} ${rows.length === 1 ? 'registro' : 'registros'}`, PW - M, y, { align: 'right' });
+      y += 4;
+
+      const header = () => {
+        doc.setFillColor(...color); doc.rect(M, y, CW, 7.5, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(255, 255, 255);
+        let x = M;
+        cols.forEach(c => { doc.text(c.h, x + 2, y + 5); x += c.w; });
+        y += 7.5;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...INK);
+      };
+      header();
+      if (!rows.length) {
+        doc.setFont('helvetica', 'italic'); doc.setTextColor(...MUTED);
+        doc.text('Sin registros.', M + 2, y + 5.5);
+        y += 9;
+        return;
+      }
+      const LH = 9 * 0.3528 * 1.25;
+      rows.forEach((r, i) => {
+        const cells = [String(i + 1), fmtDate(r.fecha), r.promocion, fullName(r), fmtStamp(r.creadoEn)];
+        const lines = cells.map((c, k) => doc.splitTextToSize(String(c || ''), cols[k].w - 4));
+        const h = Math.max(...lines.map(l => l.length)) * LH + 3.4;
+        if (y + h > BOTTOM) { doc.addPage(); y = M; header(); }
+        if (i % 2 === 1) { doc.setFillColor(...ZEBRA); doc.rect(M, y, CW, h, 'F'); }
+        let x = M;
+        lines.forEach((l, k) => {
+          doc.setTextColor(...(k === 0 || k === 4 ? MUTED : INK));
+          doc.text(l, x + 2, y + 4.6);
+          x += cols[k].w;
+        });
+        doc.setDrawColor(...LINE); doc.setLineWidth(0.2); doc.line(M, y + h, PW - M, y + h);
+        y += h;
+      });
+    });
+
+    const pages = doc.getNumberOfPages();
+    for (let p = 1; p <= pages; p++) {
+      doc.setPage(p);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTED);
+      doc.text('Registro de cuadros Lutron', M, PH - 8);
+      doc.text(`Página ${p} de ${pages}`, PW - M, PH - 8, { align: 'right' });
+    }
+    return doc.output('blob');
+  }
+
+  function downloadPdf() {
+    if (!ORDER.every(t => state.loaded[t])) { toast('Espera a que termine de cargar el registro.'); return; }
+    let blob;
+    try { blob = buildPdf(); } catch (err) { toast('No se pudo crear el PDF. Vuelve a intentarlo.'); return; }
+    FileOut.save(blob, PDF_NAME, 'application/pdf').then(r => {
+      if (r === 'downloaded') toast('PDF guardado con todos los registros');
+      else if (r === 'shared') toast('PDF listo con todos los registros');
+      else if (r === 'needs-tap') toast('Toca otra vez «Descargar PDF» para guardarlo o compartirlo.');
+    });
+  }
+
+  /* ---------- pasar registros entre tabletas ---------- */
+  function bkNote() {
+    let l = null; try { l = localStorage.getItem('lutron.ultimoEnvio'); } catch (e) { l = null; }
+    $('bkNote').textContent = l ? 'Último envío desde esta tableta: ' + fmtStamp(Date.parse(l)) : 'Todavía no has enviado los registros desde esta tableta.';
+  }
+  $('expBtn').addEventListener('click', () => {
+    const d = new Date();
+    const name = `Registros Lutron ${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+    FileOut.save(new Blob([JSON.stringify(LocalDB.exportAll())], { type: 'application/json' }), name, 'application/json').then(r => {
+      if (r === 'needs-tap') { toast('Toca otra vez «Enviar registros».'); return; }
+      if (r === 'cancelled') return;
+      try { localStorage.setItem('lutron.ultimoEnvio', new Date().toISOString()); } catch (e) { /* sin espacio */ }
+      bkNote();
+      toast(r === 'shared' ? 'Registros listos para enviar' : 'Archivo de registros guardado: ' + name);
+    });
+  });
+  $('impBtn').addEventListener('click', () => { $('impFile').value = ''; $('impFile').click(); });
+  $('impFile').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    f.text().then(txt => {
+      let inc = null;
+      try { inc = JSON.parse(txt); } catch (err) { inc = null; }
+      if (!inc || inc.app !== 'registro-lutron') { toast('Ese archivo no es de Registro Cuadros Lutron.'); return; }
+      try {
+        const r = LocalDB.importAll(inc);
+        const parts = [`${r.nuevos} ${r.nuevos === 1 ? 'nuevo' : 'nuevos'}`, `${r.actualizados} ${r.actualizados === 1 ? 'actualizado' : 'actualizados'}`];
+        if (r.borrados) parts.push(`${r.borrados} ${r.borrados === 1 ? 'borrado' : 'borrados'}`);
+        toast('Registros recibidos: ' + parts.join(', ') + '.');
+      } catch (err) { toast(writeErrorMsg(err, 'guardar')); }
+    }, () => toast('No se pudo leer el archivo.'));
+  });
+  bkNote();
+
+  /* ---------- eventos ---------- */
+  el.form.addEventListener('submit', onSubmit);
+  el.cancelBtn.addEventListener('click', cancelEdit);
+  [el.promo, el.fecha, el.nombre, el.apellidos].forEach(i => i.addEventListener('input', () => { if (i.hasAttribute('aria-invalid') && i.value) i.removeAttribute('aria-invalid'); }));
+  el.nombre.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.apellidos.focus(); } });
+  el.promo.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.fecha.focus(); } });
+
+  ORDER.forEach(t => $('tab-' + t).addEventListener('click', () => goTab(t)));
+  document.querySelector('.tabs').addEventListener('keydown', e => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const next = ORDER[(ORDER.indexOf(state.tab) + 1) % ORDER.length];
+    goTab(next); $('tab-' + next).focus();
+  });
+  window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (TABS[h]) setTab(h); });
+
+  const onQuery = () => { state.filters[state.tab].q = el.q.value; scheduleList(); };
+  el.q.addEventListener('input', onQuery);
+  el.q.addEventListener('search', onQuery);
+  el.fp.addEventListener('change', () => { state.filters[state.tab].p = el.fp.value; renderList(); });
+  const onDate = (key, input) => () => { state.filters[state.tab][key] = isISO(input.value) ? input.value : ''; renderList(); };
+  el.fd.addEventListener('change', onDate('d', el.fd)); el.fd.addEventListener('input', onDate('d', el.fd));
+  el.fh.addEventListener('change', onDate('h', el.fh)); el.fh.addEventListener('input', onDate('h', el.fh));
+  function clearFilters() {
+    state.filters[state.tab] = { q: '', p: '', d: '', h: '' };
+    el.q.value = ''; el.fd.value = ''; el.fh.value = ''; el.fp.value = '';
+    renderList();
+  }
+  el.clearBtn.addEventListener('click', clearFilters);
+  el.empty.addEventListener('click', e => { if (e.target.closest('[data-action="clear"]')) clearFilters(); });
+
+  el.rowsBody.addEventListener('click', e => {
+    const b = e.target.closest('button[data-action]');
+    if (!b) return;
+    const id = b.dataset.id, a = b.dataset.action;
+    if (a === 'edit') startEdit(id);
+    else if (a === 'del') {
+      state.confirmDel = id; renderList();
+      const no = el.rowsBody.querySelector(`[data-action="del-no"][data-id="${CSS.escape(id)}"]`); if (no) no.focus();
+    } else if (a === 'del-no') {
+      state.confirmDel = null; renderList();
+      const del = el.rowsBody.querySelector(`[data-action="del"][data-id="${CSS.escape(id)}"]`); if (del) del.focus();
+    } else if (a === 'del-yes') doDelete(id);
+  });
+
+  el.pdfBtn.addEventListener('click', downloadPdf);
+  el.toastAction.addEventListener('click', () => { el.toast.hidden = true; downloadPdf(); });
+
+  /* ---------- arranque ---------- */
+  const startHash = location.hash.slice(1);
+  setTab(TABS[startHash] ? startHash : 'salidas');
+
+  function subscribe(t) {
+    state.db.collection(TABS[t].coll).onSnapshot(snap => {
+      state.data[t] = snap.docs.filter(d => d.exists).map(toRecord);
+      state.loaded[t] = true;
+      state.cache[t] = Boolean(snap.metadata && snap.metadata.fromCache);
+      state.dbError = false;
+      if (state.editing && state.editing.tab === t && !state.data[t].some(r => r.id === state.editing.id)) {
+        state.editing = null;
+        showFormError('Este registro se ha borrado al recibir los datos de la otra tableta. Pulsa Guardar para añadirlo como nuevo.');
+      }
+      if (state.confirmDel && t === state.tab && !state.data[t].some(r => r.id === state.confirmDel)) state.confirmDel = null;
+      renderAll();
+    }, err => {
+      state.dbError = true; renderSync();
+      if (err && err.code === 'unavailable') setTimeout(() => subscribe(t), 3000);
+      else if (err && err.code === 'revoked') { state.canWrite = false; renderFormChrome(); }
+    });
+  }
+
+  (async () => {
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* opcional */ }
+    const db = await use('db');
+    if (!db) { state.dbState = 'none'; renderAll(); return; }
+    state.db = db; state.dbState = 'ok';
+    ORDER.forEach(subscribe);
+    renderSync();
+  })();
+
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+  }
+})();
+</script>
+
+</body></html>

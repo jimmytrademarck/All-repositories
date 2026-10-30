@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Calculadora electrotécnica</title>
+<meta name="description" content="Calculadora de fórmulas eléctricas. Funciona sin conexión.">
+<meta name="theme-color" content="#E2E5E1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131716" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Calculadora">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+/* Layout: cuadro eléctrico. Fondo gris de envolvente (RAL 7035), cada familia con el color de un conductor,
+   etiquetas de ley como módulos de carril y el resultado en una pantalla LCD de polímetro. */
+:root{
+  --bg:#E2E5E1; --surface:#F7F8F5; --sunk:#ECEFEA; --ink:#1A1F21; --muted:#56605B;
+  --line:#C3C9C3; --line-strong:#98A19B;
+  --accent:#F2B705; --accent-ink:#1A170A;
+  --lcd-frame:#2B302D; --lcd-bg:#B5C1A1; --lcd-ink:#172010; --lcd-dim:#4F5D3C;
+  --w-marron:#7A4A28; --w-negro:#1C1E1F; --w-gris:#8D9396; --w-azul:#2F68B3; --w-verde:#2F9A49; --w-amarillo:#EFC21A;
+  --f-display:"Avenir Next Condensed","Roboto Condensed","Arial Narrow",sans-serif-condensed,system-ui,sans-serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --f-mono:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131716; --surface:#1C2120; --sunk:#171B1A; --ink:#E4E8E4; --muted:#9BA59F;
+    --line:#2F3734; --line-strong:#4C5651;
+    --accent:#F2B705; --accent-ink:#1A170A;
+    --lcd-frame:#070908; --lcd-bg:#0F1B12; --lcd-ink:#B6EE8A; --lcd-dim:#6E9358;
+    --w-marron:#8A5631; --w-negro:#050606; --w-gris:#80878A; --w-azul:#3B78C6; --w-verde:#35A651; --w-amarillo:#EFC21A;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131716; --surface:#1C2120; --sunk:#171B1A; --ink:#E4E8E4; --muted:#9BA59F;
+  --line:#2F3734; --line-strong:#4C5651;
+  --accent:#F2B705; --accent-ink:#1A170A;
+  --lcd-frame:#070908; --lcd-bg:#0F1B12; --lcd-ink:#B6EE8A; --lcd-dim:#6E9358;
+  --w-marron:#8A5631; --w-negro:#050606; --w-gris:#80878A; --w-azul:#3B78C6; --w-verde:#35A651; --w-amarillo:#EFC21A;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:border-box}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 40px;display:grid;gap:16px}
+
+.top{display:grid;gap:6px}
+.kicker{margin:0;font-family:var(--f-display);font-weight:600;font-size:.82rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2.1rem,7.5vw,3.1rem);line-height:.95;text-wrap:balance}
+.lede{margin:6px 0 0;max-width:62ch;color:var(--muted)}
+
+.cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.cat{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;font-family:var(--f-display);font-weight:600;font-size:1.04rem;cursor:pointer}
+.cat .count{font-family:var(--f-mono);font-size:.74rem;font-weight:400;color:var(--muted)}
+.cat[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.cat[aria-pressed="true"] .count{color:inherit;opacity:.7}
+.wire{display:inline-block;flex:0 0 auto;width:22px;height:8px;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+.wire-marron{background:var(--w-marron)}
+.wire-negro{background:var(--w-negro);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.wire-gris{background:var(--w-gris)}
+.wire-azul{background:var(--w-azul)}
+.wire-tierra{background:linear-gradient(180deg,var(--w-verde) 0 30%,var(--w-amarillo) 30% 70%,var(--w-verde) 70%)}
+
+.laws{display:flex;flex-wrap:wrap;gap:6px}
+.law{padding:7px 11px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;font-family:var(--f-display);font-weight:500;font-size:1.02rem;cursor:pointer}
+.law[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding-block:20px 22px;padding-inline:clamp(16px,4vw,28px);display:grid;gap:20px;grid-template-areas:"head" "note" "calc";min-width:0}
+.p-head{grid-area:head;display:grid;gap:8px;min-width:0}
+.eyebrow{margin:0;display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-weight:600;font-size:.82rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+h2{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(1.65rem,5.6vw,2.25rem);line-height:1.02;text-wrap:balance}
+.formula{margin:4px 0 0;font-family:var(--f-display);font-weight:500;font-size:clamp(1.25rem,4.6vw,1.6rem);background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:8px 14px;overflow-x:auto;white-space:nowrap;width:fit-content;max-width:100%}
+
+.note{grid-area:note;border:1px dashed var(--line-strong);border-radius:10px;background:var(--sunk);min-width:0}
+.note summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;padding:12px 14px;font-weight:500}
+.note summary::-webkit-details-marker{display:none}
+.note summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translateY(-2px);transition:transform .15s}
+.note[open] summary::after{transform:rotate(-135deg)}
+.note-tag{font-family:var(--f-display);font-weight:700;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;background:var(--accent);color:var(--accent-ink);padding:3px 7px;border-radius:4px}
+.note-body{padding:0 16px 16px;display:grid;gap:6px;max-width:65ch}
+.note-body h3{margin:8px 0 0;font-family:var(--f-display);font-weight:600;font-size:.8rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.note-body p{margin:0;line-height:1.55}
+
+.p-calc{grid-area:calc;display:grid;gap:18px;min-width:0}
+.block{display:grid;gap:8px;min-width:0}
+.block-label{margin:0;font-family:var(--f-display);font-weight:600;font-size:.8rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{display:inline-flex;align-items:baseline;gap:6px;min-height:42px;padding:8px 12px;border:1px solid var(--line-strong);background:transparent;color:var(--ink);border-radius:8px;font:inherit;font-weight:500;cursor:pointer;text-align:left}
+.seg button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.ssym{font-family:var(--f-display);font-style:italic;font-weight:600;font-size:1.15rem}
+.sname{font-size:.92rem}
+
+.fields{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr))}
+.field{display:grid;gap:6px;min-width:0;align-content:start}
+.field-wide{grid-column:1/-1}
+.field label{font-weight:500;font-size:.95rem;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.fsym{font-family:var(--f-display);font-style:italic;font-size:1.12rem;color:var(--muted)}
+.frow{display:flex;gap:6px;min-width:0}
+input[type="text"],select{height:46px;border:1px solid var(--line-strong);border-radius:8px;background-color:var(--bg);color:var(--ink);font-size:16px}
+.frow input{flex:1 1 auto;min-width:0;width:100%;padding:0 12px;font-family:var(--f-mono);font-size:1.05rem;font-variant-numeric:tabular-nums}
+select{padding:0 30px 0 10px;font-family:var(--f-body);font-weight:500;-webkit-appearance:none;appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;cursor:pointer;max-width:100%}
+.unit{flex:0 0 auto;max-width:9.5rem}
+.field > select{width:100%}
+.ufix{display:flex;align-items:center;padding:0 10px;font-family:var(--f-mono);font-size:.95rem;color:var(--muted);border:1px solid var(--line);border-radius:8px;background:var(--sunk);white-space:nowrap}
+.pm{flex:0 0 46px;height:46px;border:1px solid var(--line-strong);border-radius:8px;background:var(--sunk);color:var(--ink);font-size:1.2rem;cursor:pointer}
+.hint{margin:0;font-size:.85rem;color:var(--muted)}
+
+.lcd{background:var(--lcd-frame);border-radius:14px;padding:8px}
+.lcd-screen{background:var(--lcd-bg);color:var(--lcd-ink);border-radius:8px;padding:12px 16px 14px;box-shadow:inset 0 2px 8px rgba(0,0,0,.28);display:grid;gap:8px;min-height:118px;overflow-wrap:anywhere}
+.lcd-cap{margin:0;font-family:var(--f-display);font-weight:600;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--lcd-dim)}
+.lcd-row{display:flex;justify-content:space-between;align-items:baseline;gap:4px 12px;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--lcd-dim)}
+.lcd-row.main{display:grid;gap:2px;border-top:0;padding-top:0}
+.lcd-label{font-family:var(--f-display);font-weight:500;font-size:1rem;color:var(--lcd-dim)}
+.lcd-sym{font-style:italic;font-weight:600;color:var(--lcd-ink)}
+.lcd-val{font-family:var(--f-mono);font-weight:600;font-size:1.08rem;font-variant-numeric:tabular-nums;display:inline-flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.main .lcd-val{font-size:clamp(1.9rem,8.5vw,2.6rem);line-height:1.1}
+.lcd-u{font-weight:400;font-size:.8em}
+.main .lcd-u{font-size:.5em}
+select.lcd-unit{height:auto;border:0;border-bottom:1px dashed var(--lcd-dim);border-radius:0;background-color:transparent;color:var(--lcd-ink);font-family:var(--f-mono);font-size:1.1rem;font-weight:600;padding:2px 22px 2px 2px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--lcd-dim) 50%),linear-gradient(135deg,var(--lcd-dim) 50%,transparent 50%);background-position:calc(100% - 10px) 55%,calc(100% - 5px) 55%}
+.lcd-txt{font-family:var(--f-display);font-weight:600;font-size:1.25rem}
+.main .lcd-txt{font-size:clamp(1.6rem,6.5vw,2.1rem);line-height:1.1}
+.lcd-msg{margin:0;font-family:var(--f-display);font-weight:500;font-size:1.15rem}
+.lcd-err{display:block;font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--lcd-dim);font-weight:600;margin-bottom:2px}
+.lcd-note{margin:2px 0 0;font-size:.92rem;line-height:1.45}
+
+.conv{display:grid;gap:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-family:var(--f-mono);font-size:.88rem;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--sunk);font-variant-numeric:tabular-nums}
+.reset{justify-self:start;background:none;border:0;padding:4px 0;color:var(--muted);font:inherit;font-size:.92rem;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+.foot{color:var(--muted);font-size:.88rem;display:grid;gap:10px;max-width:78ch;padding-top:4px}
+.foot p{margin:0}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+
+@media (min-width:900px){
+  .panel{grid-template-columns:minmax(0,1fr) minmax(0,340px);grid-template-areas:"head head" "calc note";align-items:start;column-gap:28px}
+  .note{position:sticky;top:16px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <p class="kicker">28 leyes y teoremas · cálculo y conversión de unidades</p>
+    <h1>Calculadora electrotécnica</h1>
+    <p class="lede">Elige una ley, marca qué quieres calcular y rellena los datos. El resultado se actualiza al momento y puedes verlo en otras unidades. Cada ley trae cargado un ejemplo.</p>
+  </header>
+  <nav class="cats" id="cats" aria-label="Familias de leyes"></nav>
+  <div class="laws" id="laws" role="group" aria-label="Leyes de esta familia"></div>
+  <section class="panel" id="panel" aria-labelledby="law-title"></section>
+  <footer class="foot">
+    <div class="legend" aria-label="Colores de familia">
+      <span><span class="wire wire-marron"></span>Básicas</span>
+      <span><span class="wire wire-negro"></span>Electrostática</span>
+      <span><span class="wire wire-gris"></span>Electromagnetismo</span>
+      <span><span class="wire wire-azul"></span>Circuitos</span>
+      <span><span class="wire wire-tierra"></span>Otras</span>
+    </div>
+    <p>Cada familia lleva el color de un conductor de baja tensión: marrón, negro y gris para las fases, azul para el neutro y verde-amarillo para la protección.</p>
+    <p>Los resultados son teóricos y usan las fórmulas ideales. Para dimensionar una instalación real aplica además los criterios del REBT.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- Constantes físicas ---------- */
+const K=8.9875517923e9, E0=8.8541878128e-12, MU0=1.25663706212e-6, C0=299792458, FAR=96485.33212, R3=Math.sqrt(3);
+const sinD=d=>{const s=Math.sin(d*Math.PI/180);return Math.abs(s)<1e-12?0:s;};
+const sum=a=>a.reduce((p,c)=>p+c,0);
+
+/* ---------- Unidades (factor respecto a la unidad base) ---------- */
+const U={
+  V:[['V',1],['mV',1e-3],['kV',1e3],['µV',1e-6]],
+  A:[['A',1],['mA',1e-3],['kA',1e3],['µA',1e-6]],
+  ohm:[['Ω',1],['mΩ',1e-3],['kΩ',1e3],['MΩ',1e6]],
+  W:[['W',1],['mW',1e-3],['kW',1e3],['MW',1e6],['CV',735.49875]],
+  J:[['J',1],['kJ',1e3],['MJ',1e6],['Wh',3600],['kWh',3.6e6],['cal',4.184],['kcal',4184]],
+  s:[['s',1],['ms',1e-3],['min',60],['h',3600]],
+  m:[['m',1],['cm',1e-2],['mm',1e-3],['km',1e3]],
+  m2:[['mm²',1e-6],['cm²',1e-4],['m²',1]],
+  rho:[['Ω·mm²/m',1e-6],['Ω·m',1],['µΩ·cm',1e-8]],
+  alpha:[['1/°C',1]],
+  degC:[['°C',1]],
+  N:[['N',1],['mN',1e-3],['kN',1e3],['kgf',9.80665]],
+  C:[['C',1],['mC',1e-3],['µC',1e-6],['nC',1e-9],['pC',1e-12],['A·h',3600]],
+  Wb:[['Wb',1],['mWb',1e-3],['µWb',1e-6]],
+  T:[['T',1],['mT',1e-3],['µT',1e-6],['G',1e-4]],
+  deg:[['°',1]],
+  n:[['',1]],
+  vel:[['m/s',1],['km/h',1/3.6]],
+  Vm:[['V/m',1],['kV/m',1e3],['V/cm',100]],
+  Hz:[['Hz',1],['kHz',1e3],['MHz',1e6],['GHz',1e9]],
+  phiE:[['N·m²/C',1],['kN·m²/C',1e3],['MN·m²/C',1e6]],
+  rel:[['A·v/Wb',1],['kA·v/Wb',1e3],['MA·v/Wb',1e6]],
+  g:[['g',1],['mg',1e-3],['kg',1e3]],
+  gmol:[['g/mol',1]],
+  seeb:[['µV/°C',1e-6],['mV/°C',1e-3],['V/°C',1]],
+  m3:[['cm³',1e-6],['dm³',1e-3],['m³',1]],
+  eta:[['J/m³',1]]
+};
+
+/* ---------- Formato ---------- */
+const SUP={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+function fmt(x){
+  if(!isFinite(x)) return '—';
+  if(x===0) return '0';
+  const a=Math.abs(x);
+  if(a>=1e6||a<1e-3){
+    const p=x.toExponential(3).split('e');
+    const m=String(Number(p[0])).replace('.',',');
+    const e=String(Number(p[1])).split('').map(ch=>SUP[ch]||ch).join('');
+    return m+' × 10'+e;
+  }
+  return Number(x.toPrecision(5)).toLocaleString('es-ES',{maximumFractionDigits:10});
+}
+function bestUnit(x,u,def){
+  const us=U[u]; if(us.length<2) return 0;
+  const a=Math.abs(x); if(a===0||!isFinite(a)) return def||0;
+  for(let i=0;i<us.length;i++){
+    const f=us[i][1], lg=Math.log10(f), r=Math.round(lg);
+    if(Math.abs(lg-r)>1e-9||r%3!==0) continue;
+    const q=a/f; if(q>=1&&q<1000) return i;
+  }
+  return def||0;
+}
+function fmtU(x,u){const i=bestUnit(x,u,0);return fmt(x/U[u][i][1])+' '+U[u][i][0];}
+function toInputText(x){return String(Number(x.toPrecision(6))).replace('.',',');}
+function parseNum(t){
+  if(t==null) return NaN;
+  const s=String(t).replace(/\s+/g,'').replace(/,/g,'.');
+  if(s===''||s==='-'||s==='+'||s==='.') return NaN;
+  return Number(s);
+}
+function parseList(t,name){
+  const toks=String(t||'').split(/[;\n]+|\s+/).map(s=>s.trim()).filter(s=>s&&s!=='+');
+  return toks.map(tok=>{const n=parseNum(tok); if(!isFinite(n)) throw new Error('«'+tok+'» no es un número válido en «'+name+'».'); return n;});
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+/* ---------- Ayudas para definir leyes ---------- */
+const v=(k,sym,name,u,def,o)=>Object.assign({k:k,sym:sym,name:name,u:u,def:def,du:0},o||{});
+const L=(k,name,u,def,o)=>Object.assign({k:k,name:name,u:u,def:def,du:0,kind:'list'},o||{});
+const SEL=(k,name,options,def)=>({k:k,name:name,kind:'select',options:options,def:def});
+const COS=d=>v('c','cos <i>φ</i>','Factor de potencia','n',d,{hint:'Entre 0 y 1. Cargas resistivas: 1. Motores: de 0,8 a 0,9.'});
+function chkCos(c){if(c>1+1e-9) throw new Error('El factor de potencia saldría mayor que 1. Revisa los datos: la potencia activa no puede superar a V · I.'); return c;}
+
+const DIRS=[['r','Derecha',[1,0,0]],['l','Izquierda',[-1,0,0]],['u','Arriba',[0,1,0]],['d','Abajo',[0,-1,0]],['o','Hacia ti (sale de la pantalla)',[0,0,1]],['i','Hacia dentro (entra en la pantalla)',[0,0,-1]]];
+const DOPT=DIRS.map(d=>[d[0],d[1]]);
+const dvec=k=>DIRS.find(d=>d[0]===k)[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const dname=vec=>{const d=DIRS.find(d=>d[2].every((c,i)=>c===vec[i]));return d?d[1]:null;};
+
+const CATS=[
+  {id:'basicas',short:'Básicas',name:'Leyes básicas',wire:'marron'},
+  {id:'electrostatica',short:'Electrostática',name:'Electrostática',wire:'negro'},
+  {id:'electromagnetismo',short:'Electromagnetismo',name:'Electromagnetismo',wire:'gris'},
+  {id:'circuitos',short:'Circuitos',name:'Teoremas de circuitos',wire:'azul'},
+  {id:'otras',short:'Otras',name:'Otras leyes',wire:'tierra'}
+];
+
+/* ---------- Leyes ---------- */
+const LAWS=[
+/* ===== BÁSICAS ===== */
+{id:'ohm',cat:'basicas',short:'Ohm',name:'Ley de Ohm',
+ what:'Calcula la tensión, la corriente o la resistencia de un circuito cuando conoces las otras dos.',
+ note:'La corriente que circula por un conductor es proporcional a la tensión aplicada e inversamente proporcional a su resistencia. Si subes la tensión, sube la corriente; si subes la resistencia, baja. Es la base de casi todos los cálculos: la corriente que pide un receptor, la caída de tensión en un cable o la comprobación de una resistencia con el polímetro.',
+ variants:[{type:'solve',formula:'<i>V</i> = <i>I</i> · <i>R</i>',target:'I',
+  vars:[v('V','V','Tensión','V',230),v('I','I','Corriente','A',10),v('R','R','Resistencia','ohm',23)],
+  solve:{V:x=>x.I*x.R,I:x=>x.V/x.R,R:x=>x.V/x.I}}]},
+
+{id:'watt',cat:'basicas',short:'Watt',name:'Ley de Watt',
+ what:'Calcula la potencia de un receptor a partir de su tensión y su corriente, o despeja cualquiera de los datos. Incluye alterna monofásica y trifásica.',
+ note:'La potencia es la energía que consume o entrega un aparato cada segundo. En corriente continua y con cargas resistivas (estufas, termos, resistencias) basta con multiplicar tensión por corriente. En alterna, con motores, transformadores o fluorescentes, parte de la corriente no produce trabajo útil y hay que multiplicar además por el factor de potencia (cos φ). En trifásica se usa la tensión entre fases y el factor √3.',
+ variants:[
+  {label:'Continua o resistiva',type:'solve',formula:'<i>P</i> = <i>V</i> · <i>I</i>',target:'P',
+   vars:[v('P','P','Potencia','W',2300),v('V','V','Tensión','V',230),v('I','I','Corriente','A',10)],
+   solve:{P:x=>x.V*x.I,V:x=>x.P/x.I,I:x=>x.P/x.V}},
+  {label:'Alterna monofásica',type:'solve',formula:'<i>P</i> = <i>V</i> · <i>I</i> · cos <i>φ</i>',target:'P',
+   vars:[v('P','P','Potencia activa','W',2070),v('V','V','Tensión','V',230),v('I','I','Corriente','A',10),COS(0.9)],
+   solve:{P:x=>x.V*x.I*x.c,V:x=>x.P/(x.I*x.c),I:x=>x.P/(x.V*x.c),c:x=>chkCos(x.P/(x.V*x.I))},
+   post:x=>'Potencia aparente: S = V · I = '+fmt(x.V*x.I/1000)+' kVA.'},
+  {label:'Alterna trifásica',type:'solve',formula:'<i>P</i> = √3 · <i>V</i> · <i>I</i> · cos <i>φ</i>',target:'I',
+   vars:[v('P','P','Potencia activa','W',9.5,{du:2}),v('V','V','Tensión entre fases','V',400),v('I','I','Corriente de línea','A',16),COS(0.85)],
+   solve:{P:x=>R3*x.V*x.I*x.c,V:x=>x.P/(R3*x.I*x.c),I:x=>x.P/(R3*x.V*x.c),c:x=>chkCos(x.P/(R3*x.V*x.I))},
+   post:x=>'Potencia aparente: S = √3 · V · I = '+fmt(R3*x.V*x.I/1000)+' kVA.'}
+ ]},
+
+{id:'joule',cat:'basicas',short:'Joule',name:'Ley de Joule',
+ what:'Calcula el calor que desprende un cable o una resistencia cuando pasa corriente durante un tiempo, y la potencia que se pierde en forma de calor.',
+ note:'Todo conductor con resistencia se calienta al circular corriente, y ese calor crece con el cuadrado de la corriente: con el doble de corriente se desprende cuatro veces más calor. Por eso un cable demasiado fino o un empalme flojo se calientan. Es también el principio de estufas, termos y fusibles, y del disparo térmico de los magnetotérmicos.',
+ variants:[
+  {label:'Energía (calor)',type:'solve',formula:'<i>Q</i> = <i>I</i>² · <i>R</i> · <i>t</i>',target:'Q',
+   vars:[v('Q','Q','Calor desprendido','J',180,{du:1}),v('I','I','Corriente','A',10),v('R','R','Resistencia','ohm',0.5),v('t','t','Tiempo','s',1,{du:3})],
+   solve:{Q:x=>x.I*x.I*x.R*x.t,I:x=>Math.sqrt(x.Q/(x.R*x.t)),R:x=>x.Q/(x.I*x.I*x.t),t:x=>x.Q/(x.I*x.I*x.R)}},
+  {label:'Potencia disipada',type:'solve',formula:'<i>P</i> = <i>I</i>² · <i>R</i>',target:'P',
+   vars:[v('P','P','Potencia perdida en calor','W',50),v('I','I','Corriente','A',10),v('R','R','Resistencia','ohm',0.5)],
+   solve:{P:x=>x.I*x.I*x.R,I:x=>Math.sqrt(x.P/x.R),R:x=>x.P/(x.I*x.I)}}
+ ]},
+
+{id:'kirchhoff-nudos',cat:'basicas',short:'Kirchhoff · nudos',name:'1ª ley de Kirchhoff (nudos)',
+ what:'Calcula la corriente que falta en un nudo (un punto donde se unen varios conductores) a partir de las demás.',
+ note:'La corriente no se acumula ni desaparece en un punto de unión: toda la que entra tiene que salir. Si a una caja de derivación llegan 16 A y por dos ramales salen 10 A y 2,5 A, por el tercero salen 3,5 A. También explica cómo funciona un diferencial: compara la corriente que va por la fase con la que vuelve por el neutro, y si no coinciden es que hay una fuga.',
+ variants:[{type:'calc',formula:'Σ <i>I</i><sub>entran</sub> = Σ <i>I</i><sub>salen</sub>',
+  inputs:[L('in','Corrientes que entran al nudo','A','16'),L('out','Corrientes que salen (las conocidas)','A','10; 2,5',{optional:true})],
+  compute:x=>{
+    const a=sum(x.in),b=sum(x.out),d=a-b,eq=Math.abs(d)<=1e-9*Math.max(1,Math.abs(a),Math.abs(b));
+    const t=eq?'El nudo está equilibrado: entra la misma corriente que sale.':(d>0?'Esa corriente sale del nudo por el conductor que falta.':'Esa corriente entra al nudo por el conductor que falta.');
+    return {rows:[{label:'Corriente que falta',value:eq?0:Math.abs(d),u:'A'},{label:'Total que entra',value:a,u:'A'},{label:'Total que sale',value:b,u:'A'}],text:t};
+  }}]},
+
+{id:'kirchhoff-mallas',cat:'basicas',short:'Kirchhoff · mallas',name:'2ª ley de Kirchhoff (mallas)',
+ what:'Calcula la tensión que le corresponde a un elemento de un circuito cerrado (malla), o reparte la tensión entre resistencias en serie.',
+ note:'Si recorres un circuito cerrado y vuelves al punto de partida, la tensión que aportan los generadores se reparte entera entre los receptores. En una línea a 230 V con una caída de 2 V en el cable de ida y 2 V en el de vuelta, al receptor le llegan 226 V. Sirve para calcular caídas de tensión en líneas largas y para repartir la tensión entre cargas en serie.',
+ variants:[
+  {label:'Caída que falta',type:'calc',formula:'Σ <i>E</i> = Σ <i>V</i><sub>caídas</sub>',
+   inputs:[L('E','Tensiones de los generadores','V','230'),L('c','Caídas de tensión conocidas','V','2; 2')],
+   compute:x=>{const e=sum(x.E),c=sum(x.c),d=e-c;
+     return {rows:[{label:'Tensión en el elemento que falta',value:d,u:'V'},{label:'Tensión de los generadores',value:e,u:'V'},{label:'Caídas conocidas',value:c,u:'V'}],
+       text:d<0?'Las caídas superan a la tensión de los generadores: revisa los valores o falta algún generador.':'Es la tensión que le queda al elemento que falta, por ejemplo el receptor.'};}},
+  {label:'Resistencias en serie',type:'calc',formula:'<i>I</i> = <i>E</i> / Σ<i>R</i> &nbsp;·&nbsp; <i>V</i><sub>k</sub> = <i>I</i> · <i>R</i><sub>k</sub>',
+   inputs:[v('E','E','Tensión de la fuente','V',230),L('R','Resistencias en serie','ohm','0,2; 22,6; 0,2',{hint:'Por ejemplo: cable de ida, receptor y cable de vuelta.'})],
+   compute:x=>{const Rt=sum(x.R); if(Rt===0) throw new Error('La suma de resistencias no puede ser 0.');
+     const I=x.E/Rt, rows=[{label:'Corriente del circuito',value:I,u:'A'},{label:'Resistencia total',value:Rt,u:'ohm'}];
+     x.R.forEach((r,i)=>rows.push({label:'Caída en R<sub>'+(i+1)+'</sub>',value:I*r,u:'V'}));
+     return {rows:rows,text:'La suma de todas las caídas es igual a la tensión de la fuente.'};}}
+ ]},
+
+{id:'pouillet',cat:'basicas',short:'Pouillet',name:'Ley de Pouillet',
+ what:'Calcula la resistencia de un cable según su material, longitud y sección, o la longitud o sección que corresponden a una resistencia.',
+ note:'La resistencia de un conductor aumenta con la longitud y disminuye con la sección: un cable el doble de largo tiene el doble de resistencia, y uno con el doble de sección, la mitad. La resistividad ρ depende del material y de la temperatura: el cobre conduce mejor que el aluminio y ambos empeoran al calentarse. Ojo: en una línea monofásica la corriente va y vuelve, así que la longitud es el doble de la distancia.',
+ variants:[{type:'solve',formula:'<i>R</i> = <i>ρ</i> · <i>L</i> / <i>S</i>',target:'R',
+  vars:[v('R','R','Resistencia del conductor','ohm',0.344),v('rho','<i>ρ</i>','Resistividad','rho',0.0172),
+        v('L','L','Longitud total del conductor','m',50,{hint:'En monofásica cuenta ida y vuelta: 2 × la distancia.'}),v('S','S','Sección','m2',2.5)],
+  presets:[{label:'Material y temperatura del conductor',options:[
+    ['Cobre a 20 °C (0,0172)',{rho:0.0172e-6}],['Cobre a 70 °C, cable PVC (0,0208)',{rho:1e-6/48}],['Cobre a 90 °C, cable XLPE o EPR (0,0227)',{rho:1e-6/44}],
+    ['Aluminio a 20 °C (0,0282)',{rho:0.0282e-6}],['Aluminio a 70 °C, cable PVC (0,0333)',{rho:1e-6/30}],['Aluminio a 90 °C, cable XLPE o EPR (0,0357)',{rho:1e-6/28}],
+    ['Plata a 20 °C (0,0159)',{rho:0.0159e-6}],['Hierro a 20 °C (0,0971)',{rho:0.0971e-6}]]}],
+  solve:{R:x=>x.rho*x.L/x.S,L:x=>x.R*x.S/x.rho,S:x=>x.rho*x.L/x.R,rho:x=>x.R*x.S/x.L},
+  post:(x,t)=>t==='R'?'Cada amperio que circule provoca una caída de '+fmt(x.R)+' V en este conductor.':''}]},
+
+{id:'temperatura',cat:'basicas',short:'R y temperatura',name:'Resistencia y temperatura',
+ what:'Calcula cómo cambia la resistencia de un conductor al calentarse o enfriarse.',
+ note:'En los metales, la resistencia aumenta con la temperatura. El coeficiente α indica cuánto sube por cada grado: en el cobre es 0,00393 1/°C, casi un 0,4 % por grado. Un cable de cobre a 70 °C tiene alrededor de un 20 % más de resistencia que a 20 °C. Se usa para corregir medidas y en sondas de temperatura como la Pt100.',
+ variants:[{type:'solve',formula:'<i>R</i> = <i>R</i><sub>0</sub> · [1 + <i>α</i> · (<i>T</i> − <i>T</i><sub>0</sub>)]',target:'R',
+  vars:[v('R','R','Resistencia a la temperatura final','ohm',0.4116),v('R0','R<sub>0</sub>','Resistencia a la temperatura de referencia','ohm',0.344),
+        v('a','<i>α</i>','Coeficiente de temperatura','alpha',0.00393),v('T','T','Temperatura final','degC',70,{signed:true}),
+        v('T0','T<sub>0</sub>','Temperatura de referencia','degC',20,{signed:true})],
+  presets:[{label:'Material',options:[['Cobre (0,00393)',{a:0.00393}],['Aluminio (0,00403)',{a:0.00403}],['Platino, sonda Pt100 (0,00385)',{a:0.00385}],['Wolframio, filamento (0,0045)',{a:0.0045}]]}],
+  solve:{R:x=>x.R0*(1+x.a*(x.T-x.T0)),R0:x=>x.R/(1+x.a*(x.T-x.T0)),T:x=>x.T0+(x.R/x.R0-1)/x.a,a:x=>(x.R/x.R0-1)/(x.T-x.T0)},
+  post:x=>'La resistencia cambia un '+fmt((x.R/x.R0-1)*100)+' % respecto a la de referencia.'}]},
+
+/* ===== ELECTROSTÁTICA ===== */
+{id:'coulomb',cat:'electrostatica',short:'Coulomb',name:'Ley de Coulomb',
+ what:'Calcula la fuerza de atracción o repulsión entre dos cargas eléctricas separadas una distancia.',
+ note:'Las cargas del mismo signo se repelen y las de signo contrario se atraen. La fuerza crece con el valor de las cargas y cae con el cuadrado de la distancia: al doble de distancia, la cuarta parte de fuerza. La constante k vale 8,99 × 10⁹ N·m²/C² en el vacío o el aire.',
+ variants:[{type:'solve',formula:'<i>F</i> = <i>k</i> · <i>q</i><sub>1</sub> · <i>q</i><sub>2</sub> / <i>r</i>²',target:'F',
+  vars:[v('F','F','Fuerza','N',5.39,{hint:'Valor de la fuerza, sin signo.'}),v('q1','q<sub>1</sub>','Carga 1','C',2,{du:2,signed:true}),
+        v('q2','q<sub>2</sub>','Carga 2','C',-3,{du:2,signed:true}),v('r','r','Distancia entre las cargas','m',10,{du:1})],
+  solve:{F:x=>K*Math.abs(x.q1*x.q2)/(x.r*x.r),r:x=>Math.sqrt(K*Math.abs(x.q1*x.q2)/x.F),q1:x=>x.F*x.r*x.r/(K*Math.abs(x.q2))},
+  post:(x,t)=>{if(t==='q1') return 'Es el valor absoluto de la carga: su signo depende de si la fuerza es de atracción o de repulsión.';
+    const p=x.q1*x.q2; return p<0?'Atracción: las cargas tienen signo contrario.':(p>0?'Repulsión: las cargas tienen el mismo signo.':'');}}]},
+
+{id:'gauss',cat:'electrostatica',short:'Gauss',name:'Ley de Gauss',
+ what:'Calcula el flujo eléctrico que atraviesa una superficie cerrada a partir de la carga que encierra, y el campo que crea una carga a cierta distancia.',
+ note:'Si imaginas una superficie cerrada (una esfera, una caja) alrededor de unas cargas, el flujo del campo eléctrico que sale por ella solo depende de la carga neta que hay dentro, no de la forma ni del tamaño de la superficie. ε₀ = 8,854 × 10⁻¹² F/m es la permitividad del vacío. De ella se deduce el campo de una carga puntual, y se usa para calcular campos en cables coaxiales y condensadores.',
+ variants:[
+  {label:'Flujo eléctrico',type:'solve',formula:'<i>Φ</i><sub>E</sub> = <i>Q</i> / <i>ε</i><sub>0</sub>',target:'P',
+   vars:[v('P','<i>Φ</i><sub>E</sub>','Flujo eléctrico','phiE',112.94,{du:1}),v('Q','Q','Carga encerrada','C',1,{du:2,signed:true})],
+   solve:{P:x=>x.Q/E0,Q:x=>x.P*E0}},
+  {label:'Campo de una carga',type:'solve',formula:'<i>E</i> = <i>k</i> · <i>Q</i> / <i>r</i>²',target:'E',
+   vars:[v('E','E','Campo eléctrico','Vm',8.99,{du:1}),v('Q','Q','Carga','C',1,{du:2}),v('r','r','Distancia a la carga','m',1)],
+   solve:{E:x=>K*Math.abs(x.Q)/(x.r*x.r),r:x=>Math.sqrt(K*Math.abs(x.Q)/x.E),Q:x=>x.E*x.r*x.r/K},
+   post:()=>'El campo apunta hacia fuera de la carga si es positiva y hacia ella si es negativa.'}
+ ]},
+
+/* ===== ELECTROMAGNETISMO ===== */
+{id:'faraday',cat:'electromagnetismo',short:'Faraday',name:'Ley de Faraday (inducción)',
+ what:'Calcula la tensión que se induce en una bobina cuando cambia el flujo magnético que la atraviesa.',
+ note:'Cuando el flujo magnético que atraviesa una bobina cambia, aparece una tensión entre sus extremos. Cuantas más espiras y más rápido sea el cambio, mayor es la tensión. Es el principio de alternadores, transformadores y pinzas amperimétricas. La fórmula completa lleva un signo menos (−N · ΔΦ/Δt) que indica el sentido y que explica la ley de Lenz; aquí se calcula el valor.',
+ variants:[{type:'solve',formula:'<i>ε</i> = <i>N</i> · Δ<i>Φ</i> / Δ<i>t</i>',target:'e',
+  vars:[v('e','<i>ε</i>','Tensión inducida','V',100),v('N','N','Número de espiras','n',200),v('dP','Δ<i>Φ</i>','Variación del flujo','Wb',5,{du:1}),v('dt','Δ<i>t</i>','Tiempo que tarda el cambio','s',10,{du:1})],
+  solve:{e:x=>x.N*x.dP/x.dt,N:x=>x.e*x.dt/x.dP,dP:x=>x.e*x.dt/x.N,dt:x=>x.N*x.dP/x.e},
+  post:()=>'Es la tensión media durante el cambio. Su sentido lo da la ley de Lenz.'}]},
+
+{id:'lenz',cat:'electromagnetismo',short:'Lenz',name:'Ley de Lenz',
+ what:'Indica el sentido del campo y de la corriente que se inducen en una espira según cómo cambie el campo magnético que la atraviesa.',
+ note:'La corriente inducida siempre se opone a la causa que la produce. Si el flujo que atraviesa una espira aumenta, la corriente inducida crea un campo que lo contrarresta; si disminuye, crea un campo que intenta mantenerlo. Por eso cuesta más mover un generador cuando tiene carga, y es la base de los frenos por corrientes de Foucault.',
+ variants:[{type:'calc',formula:'<i>ε</i> = −<i>N</i> · Δ<i>Φ</i> / Δ<i>t</i>',
+  inputs:[SEL('campo','Sentido del campo magnético que atraviesa la espira',[['in','Entra en la espira (se aleja de ti)'],['out','Sale de la espira (viene hacia ti)']],'in'),
+          SEL('flujo','¿Cómo cambia el flujo?',[['up','Aumenta (el imán se acerca o la corriente crece)'],['down','Disminuye (el imán se aleja o la corriente baja)']],'up')],
+  compute:x=>{const out=x.flujo==='up'?x.campo==='in':x.campo==='out';
+    return {rows:[{label:'Corriente inducida',text:out?'Sentido antihorario':'Sentido horario'},{label:'Campo inducido',text:out?'Hacia ti':'Hacia dentro'}],
+      text:(x.flujo==='up'?'El flujo aumenta, así que el campo inducido va en contra del exterior para frenar ese aumento.':'El flujo disminuye, así que el campo inducido va en el mismo sentido que el exterior para intentar mantenerlo.')+' Giro visto mirando la espira de frente, desde tu lado.'};}}]},
+
+{id:'ampere',cat:'electromagnetismo',short:'Ampère',name:'Ley de Ampère',
+ what:'Calcula el campo magnético que crea una corriente alrededor de un cable recto o dentro de una bobina larga (solenoide).',
+ note:'Toda corriente crea un campo magnético a su alrededor. Junto a un cable recto el campo forma círculos y se debilita al alejarse; dentro de un solenoide largo es casi uniforme y depende de las espiras por metro. μ₀ = 4π × 10⁻⁷ T·m/A. Explica electroimanes, relés y contactores, y también por qué fase y neutro deben ir juntos: sus campos se anulan.',
+ variants:[
+  {label:'Cable recto',type:'solve',formula:'<i>B</i> = <i>μ</i><sub>0</sub> · <i>I</i> / (2π · <i>r</i>)',target:'B',
+   vars:[v('B','B','Campo magnético','T',320,{du:2}),v('I','I','Corriente','A',16),v('r','r','Distancia al cable','m',1,{du:1})],
+   solve:{B:x=>MU0*x.I/(2*Math.PI*x.r),I:x=>x.B*2*Math.PI*x.r/MU0,r:x=>MU0*x.I/(2*Math.PI*x.B)},
+   post:()=>'Como referencia, el campo magnético terrestre ronda los 50 µT.'},
+  {label:'Bobina larga (solenoide)',type:'solve',formula:'<i>B</i> = <i>μ</i><sub>0</sub> · <i>N</i> · <i>I</i> / <i>L</i>',target:'B',
+   vars:[v('B','B','Campo en el interior','T',6.28,{du:1}),v('N','N','Número de espiras','n',500),v('I','I','Corriente','A',1),v('L','L','Longitud de la bobina','m',10,{du:1})],
+   solve:{B:x=>MU0*x.N*x.I/x.L,N:x=>x.B*x.L/(MU0*x.I),I:x=>x.B*x.L/(MU0*x.N),L:x=>MU0*x.N*x.I/x.B},
+   post:()=>'Valor para una bobina con núcleo de aire. Con núcleo de hierro se multiplica por su permeabilidad relativa.'}
+ ]},
+
+{id:'biot-savart',cat:'electromagnetismo',short:'Biot-Savart',name:'Ley de Biot-Savart',
+ what:'Calcula el campo magnético en el centro de una espira o de una bobina circular plana.',
+ note:'La ley de Biot-Savart suma la aportación de cada trocito de conductor al campo magnético en un punto, sea cual sea la forma del cable. Su aplicación más directa es el centro de una espira circular: el campo crece con la corriente y con el número de espiras y disminuye con el radio. La ley de Ampère es más cómoda en geometrías simétricas; Biot-Savart sirve para cualquier forma.',
+ variants:[{type:'solve',formula:'<i>B</i> = <i>μ</i><sub>0</sub> · <i>N</i> · <i>I</i> / (2 · <i>R</i>)',target:'B',
+  vars:[v('B','B','Campo en el centro','T',251,{du:2}),v('N','N','Número de espiras','n',10),v('I','I','Corriente','A',2),v('R','R','Radio de la espira','m',5,{du:1})],
+  solve:{B:x=>MU0*x.N*x.I/(2*x.R),N:x=>2*x.R*x.B/(MU0*x.I),I:x=>2*x.R*x.B/(MU0*x.N),R:x=>MU0*x.N*x.I/(2*x.B)}}]},
+
+{id:'laplace',cat:'electromagnetismo',short:'Laplace',name:'Ley de Laplace',
+ what:'Calcula la fuerza que sufre un conductor con corriente colocado dentro de un campo magnético.',
+ note:'Un conductor por el que circula corriente, dentro de un campo magnético, es empujado por una fuerza. Es máxima cuando el cable es perpendicular al campo (θ = 90°) y nula cuando es paralelo. Es el principio de funcionamiento de todos los motores eléctricos. El sentido de la fuerza lo da la regla de la mano izquierda.',
+ variants:[{type:'solve',formula:'<i>F</i> = <i>B</i> · <i>I</i> · <i>L</i> · sen <i>θ</i>',target:'F',
+  vars:[v('F','F','Fuerza','N',1.6),v('B','B','Campo magnético','T',0.8),v('I','I','Corriente','A',10),v('L','L','Longitud del conductor dentro del campo','m',20,{du:1}),
+        v('th','<i>θ</i>','Ángulo entre el conductor y el campo','deg',90,{hint:'90° si el cable es perpendicular al campo.'})],
+  solve:{F:x=>x.B*x.I*x.L*sinD(x.th),B:x=>x.F/(x.I*x.L*sinD(x.th)),I:x=>x.F/(x.B*x.L*sinD(x.th)),L:x=>x.F/(x.B*x.I*sinD(x.th))},
+  post:()=>'Para el sentido de la fuerza usa la regla de la mano izquierda (en Reglas de Fleming).'}]},
+
+{id:'lorentz',cat:'electromagnetismo',short:'Lorentz',name:'Fuerza de Lorentz',
+ what:'Calcula la fuerza que actúa sobre una carga eléctrica por estar dentro de un campo eléctrico o por moverse dentro de un campo magnético.',
+ note:'La fórmula completa es F = q · (E + v × B). Una carga dentro de un campo eléctrico se ve empujada en la dirección del campo (F = q · E). Si además se mueve dentro de un campo magnético, aparece otra fuerza perpendicular a su velocidad y al campo (F = q · v · B · sen θ) que curva su trayectoria. La ley de Laplace es esta misma fuerza sumada sobre todos los electrones de un cable.',
+ variants:[
+  {label:'Parte magnética',type:'solve',formula:'<i>F</i> = <i>q</i> · <i>v</i> · <i>B</i> · sen <i>θ</i>',target:'F',
+   vars:[v('F','F','Fuerza','N',1,{du:1}),v('q','q','Carga (valor absoluto)','C',2,{du:2}),v('v','v','Velocidad de la carga','vel',1000),v('B','B','Campo magnético','T',0.5),
+         v('th','<i>θ</i>','Ángulo entre la velocidad y el campo','deg',90)],
+   solve:{F:x=>x.q*x.v*x.B*sinD(x.th),q:x=>x.F/(x.v*x.B*sinD(x.th)),v:x=>x.F/(x.q*x.B*sinD(x.th)),B:x=>x.F/(x.q*x.v*sinD(x.th))},
+   post:()=>'Esta fuerza es perpendicular a la velocidad: curva la trayectoria pero no cambia la rapidez de la carga.'},
+  {label:'Parte eléctrica',type:'solve',formula:'<i>F</i> = <i>q</i> · <i>E</i>',target:'F',
+   vars:[v('F','F','Fuerza','N',20,{du:1}),v('q','q','Carga (valor absoluto)','C',2,{du:2}),v('E','E','Campo eléctrico','Vm',10,{du:1})],
+   solve:{F:x=>x.q*x.E,q:x=>x.F/x.E,E:x=>x.F/x.q}}
+ ]},
+
+{id:'hopkinson',cat:'electromagnetismo',short:'Hopkinson',name:'Ley de Hopkinson',
+ what:'Calcula el flujo magnético en el núcleo de un transformador, relé o electroimán, y la reluctancia de ese núcleo.',
+ note:'Es la «ley de Ohm» de los circuitos magnéticos: la fuerza magnetomotriz (N · I, en amperios-vuelta) hace de tensión, el flujo Φ hace de corriente y la reluctancia ℜ hace de resistencia. Un núcleo de hierro tiene muy poca reluctancia y el aire mucha, por eso un pequeño entrehierro reduce mucho el flujo.',
+ variants:[
+  {label:'Flujo magnético',type:'solve',formula:'<i>Φ</i> = <i>N</i> · <i>I</i> / ℜ',target:'P',
+   vars:[v('P','<i>Φ</i>','Flujo magnético','Wb',0.5,{du:1}),v('N','N','Número de espiras','n',500),v('I','I','Corriente','A',2),v('R','ℜ','Reluctancia del núcleo','rel',2,{du:2})],
+   solve:{P:x=>x.N*x.I/x.R,N:x=>x.P*x.R/x.I,I:x=>x.P*x.R/x.N,R:x=>x.N*x.I/x.P},
+   post:x=>'Fuerza magnetomotriz: N · I = '+fmt(x.N*x.I)+' A·v.'},
+  {label:'Reluctancia del núcleo',type:'solve',formula:'ℜ = <i>l</i> / (<i>μ</i><sub>0</sub> · <i>μ</i><sub>r</sub> · <i>S</i>)',target:'R',
+   vars:[v('R','ℜ','Reluctancia','rel',298,{du:1}),v('l','l','Longitud media del circuito magnético','m',30,{du:1}),
+         v('mu','<i>μ</i><sub>r</sub>','Permeabilidad relativa','n',2000,{hint:'Hierro y chapa magnética: de 1000 a 5000. Aire: 1.'}),v('S','S','Sección del núcleo','m2',4,{du:1})],
+   solve:{R:x=>x.l/(MU0*x.mu*x.S),l:x=>x.R*MU0*x.mu*x.S,mu:x=>x.l/(MU0*x.R*x.S),S:x=>x.l/(MU0*x.mu*x.R)}}
+ ]},
+
+{id:'maxwell',cat:'electromagnetismo',short:'Maxwell',name:'Ecuaciones de Maxwell',
+ what:'Las cuatro ecuaciones resumen todo el electromagnetismo. Esta calculadora usa su consecuencia más práctica: relaciona la frecuencia y la longitud de onda de una onda electromagnética.',
+ note:'Las cuatro ecuaciones son: Gauss para el campo eléctrico (las cargas crean campo eléctrico), Gauss para el magnetismo (no existen polos magnéticos sueltos), Faraday (un campo magnético variable crea un campo eléctrico) y Ampère-Maxwell (las corrientes y los campos eléctricos variables crean campo magnético). De ellas se deduce que la luz, la radio o el wifi son ondas electromagnéticas que viajan a unos 300 000 km/s en el vacío, y más despacio en un aislante, según su permitividad relativa εr.',
+ variants:[{type:'solve',formula:'<i>λ</i> = <i>c</i> / (<i>f</i> · √<i>ε</i><sub>r</sub>)',target:'lam',
+  vars:[v('lam','<i>λ</i>','Longitud de onda','m',5996,{du:3}),v('f','f','Frecuencia','Hz',50),v('er','<i>ε</i><sub>r</sub>','Permitividad relativa del medio','n',1,{hint:'Vacío o aire: 1. Polietileno: 2,3. Agua: 80.'})],
+  solve:{lam:x=>C0/(x.f*Math.sqrt(x.er)),f:x=>C0/(x.lam*Math.sqrt(x.er)),er:x=>Math.pow(C0/(x.lam*x.f),2)},
+  post:x=>'Velocidad de la onda en ese medio: '+fmt(C0/Math.sqrt(x.er)/1000)+' km/s.'}]},
+
+{id:'fleming',cat:'electromagnetismo',short:'Fleming',name:'Reglas de Fleming',
+ what:'Indica el sentido de la fuerza en un motor o de la corriente inducida en un generador a partir de las otras dos direcciones.',
+ note:'Coloca el pulgar, el índice y el corazón en ángulo recto: el índice señala el campo (de norte a sur), el corazón la corriente y el pulgar el movimiento. Con la mano izquierda obtienes la fuerza sobre el conductor de un motor; con la mano derecha, la corriente que se induce en un generador al mover el conductor.',
+ variants:[
+  {label:'Motor (mano izquierda)',type:'calc',formula:'<i>F</i> = <i>I</i> · <i>L</i> × <i>B</i>',
+   inputs:[SEL('I','Sentido de la corriente (dedo corazón)',DOPT,'r'),SEL('B','Sentido del campo, de norte a sur (dedo índice)',DOPT,'i')],
+   compute:x=>{const n=dname(cross(dvec(x.I),dvec(x.B)));
+     if(!n) return {rows:[{label:'Fuerza sobre el conductor (pulgar)',text:'Sin fuerza'}],text:'La corriente y el campo son paralelos, así que no hay fuerza. Tienen que cruzarse; la fuerza es máxima a 90°.'};
+     return {rows:[{label:'Fuerza sobre el conductor (pulgar)',text:n}],text:'Mano izquierda: índice = campo, corazón = corriente, pulgar = fuerza.'};}},
+  {label:'Generador (mano derecha)',type:'calc',formula:'<i>I</i> en el sentido de <i>v</i> × <i>B</i>',
+   inputs:[SEL('v','Movimiento del conductor (pulgar)',DOPT,'r'),SEL('B','Sentido del campo, de norte a sur (dedo índice)',DOPT,'i')],
+   compute:x=>{const n=dname(cross(dvec(x.v),dvec(x.B)));
+     if(!n) return {rows:[{label:'Corriente inducida (dedo corazón)',text:'No se induce'}],text:'El conductor se mueve paralelo al campo y no corta líneas de campo, así que no se induce corriente.'};
+     return {rows:[{label:'Corriente inducida (dedo corazón)',text:n}],text:'Mano derecha: pulgar = movimiento, índice = campo, corazón = corriente.'};}}
+ ]},
+
+/* ===== CIRCUITOS ===== */
+{id:'thevenin',cat:'circuitos',short:'Thévenin',name:'Teorema de Thévenin',
+ what:'Calcula la corriente, la tensión y la potencia en una carga conectada a un circuito que has reducido a su equivalente de Thévenin.',
+ note:'Cualquier circuito lineal, visto desde dos bornes, se comporta como una única fuente de tensión V_th en serie con una resistencia R_th. V_th es la tensión que mides en vacío entre los bornes, y R_th la resistencia que ves desde ellos con las fuentes anuladas. Así puedes probar distintas cargas sin recalcular todo el circuito.',
+ variants:[{type:'calc',formula:'<i>I</i><sub>L</sub> = <i>V</i><sub>th</sub> / (<i>R</i><sub>th</sub> + <i>R</i><sub>L</sub>)',
+  inputs:[v('Vth','V<sub>th</sub>','Tensión de Thévenin (en vacío)','V',12),v('Rth','R<sub>th</sub>','Resistencia de Thévenin','ohm',2),v('RL','R<sub>L</sub>','Resistencia de la carga','ohm',10)],
+  compute:x=>{const Rt=x.Rth+x.RL; if(Rt===0) throw new Error('R_th + R_L no puede valer 0.'); const I=x.Vth/Rt, V=I*x.RL;
+    return {rows:[{label:'Corriente en la carga',value:I,u:'A'},{label:'Tensión en la carga',value:V,u:'V'},{label:'Potencia en la carga',value:V*I,u:'W'}]};}}]},
+
+{id:'norton',cat:'circuitos',short:'Norton',name:'Teorema de Norton',
+ what:'Calcula la corriente en una carga con el equivalente de Norton y convierte entre Norton y Thévenin.',
+ note:'Es el gemelo de Thévenin: el circuito se sustituye por una fuente de corriente I_N (la corriente que circularía si cortocircuitas los bornes) en paralelo con una resistencia R_N, que es la misma que R_th. Se pasa de uno a otro con V_th = I_N · R_N.',
+ variants:[
+  {label:'Corriente en la carga',type:'calc',formula:'<i>I</i><sub>L</sub> = <i>I</i><sub>N</sub> · <i>R</i><sub>N</sub> / (<i>R</i><sub>N</sub> + <i>R</i><sub>L</sub>)',
+   inputs:[v('In','I<sub>N</sub>','Corriente de Norton (en cortocircuito)','A',6),v('Rn','R<sub>N</sub>','Resistencia de Norton','ohm',2),v('RL','R<sub>L</sub>','Resistencia de la carga','ohm',10)],
+   compute:x=>{const Rt=x.Rn+x.RL; if(Rt===0) throw new Error('R_N + R_L no puede valer 0.'); const I=x.In*x.Rn/Rt, V=I*x.RL;
+     return {rows:[{label:'Corriente en la carga',value:I,u:'A'},{label:'Tensión en la carga',value:V,u:'V'},{label:'Potencia en la carga',value:V*I,u:'W'}]};}},
+  {label:'Norton ⇄ Thévenin',type:'solve',formula:'<i>V</i><sub>th</sub> = <i>I</i><sub>N</sub> · <i>R</i><sub>N</sub>',target:'Vth',
+   vars:[v('Vth','V<sub>th</sub>','Tensión de Thévenin','V',12),v('In','I<sub>N</sub>','Corriente de Norton','A',6),v('Rn','R<sub>N</sub> = R<sub>th</sub>','Resistencia equivalente','ohm',2)],
+   solve:{Vth:x=>x.In*x.Rn,In:x=>x.Vth/x.Rn,Rn:x=>x.Vth/x.In},
+   post:()=>'La resistencia es la misma en los dos equivalentes: R_N = R_th.'}
+ ]},
+
+{id:'superposicion',cat:'circuitos',short:'Superposición',name:'Teorema de superposición',
+ what:'Suma las contribuciones de cada fuente para obtener la corriente o la tensión total en un elemento.',
+ note:'En un circuito lineal con varias fuentes puedes calcular el efecto de cada una por separado, anulando las demás (las fuentes de tensión se sustituyen por un cortocircuito y las de corriente por un circuito abierto), y después sumar los resultados con su signo. Introduce con signo negativo las contribuciones que van en sentido contrario.',
+ variants:[
+  {label:'Corrientes',type:'calc',formula:'<i>I</i> = <i>I</i><sub>1</sub> + <i>I</i><sub>2</sub> + … + <i>I</i><sub>n</sub>',
+   inputs:[L('p','Corriente que aporta cada fuente por separado','A','2; -0,5; 1,2')],
+   compute:x=>({rows:[{label:'Corriente total',value:sum(x.p),u:'A'}],text:'Suma de '+x.p.length+' contribuciones, cada una con su signo.'})},
+  {label:'Tensiones',type:'calc',formula:'<i>V</i> = <i>V</i><sub>1</sub> + <i>V</i><sub>2</sub> + … + <i>V</i><sub>n</sub>',
+   inputs:[L('p','Tensión que aporta cada fuente por separado','V','6; 3,5; -1,5')],
+   compute:x=>({rows:[{label:'Tensión total',value:sum(x.p),u:'V'}],text:'Suma de '+x.p.length+' contribuciones, cada una con su signo.'})}
+ ]},
+
+{id:'millman',cat:'circuitos',short:'Millman',name:'Teorema de Millman',
+ what:'Calcula la tensión común de varias ramas conectadas en paralelo, cada una con su fuente y su resistencia, y la corriente de cada rama.',
+ note:'Cuando varias ramas, cada una con un generador y una resistencia en serie, se conectan en paralelo entre dos puntos, la tensión entre esos puntos es la media de las tensiones de las fuentes ponderada por la conductancia (1/R) de cada rama. Es útil con baterías o fuentes en paralelo y para hallar el desplazamiento del neutro en cargas desequilibradas. Una rama sin fuente se introduce con E = 0.',
+ variants:[{type:'calc',formula:'<i>V</i> = Σ(<i>E</i><sub>k</sub> / <i>R</i><sub>k</sub>) / Σ(1 / <i>R</i><sub>k</sub>)',
+  inputs:[L('E','Tensión de la fuente de cada rama','V','12; 12,6; 0',{hint:'Rama sin fuente: 0.'}),L('R','Resistencia de cada rama, en el mismo orden','ohm','0,1; 0,2; 10')],
+  compute:x=>{
+    if(x.E.length!==x.R.length) throw new Error('Hay '+x.E.length+' tensiones y '+x.R.length+' resistencias: tiene que haber una de cada por rama.');
+    if(x.R.some(r=>r===0)) throw new Error('Ninguna resistencia de rama puede valer 0.');
+    let num=0,den=0; x.E.forEach((e,i)=>{num+=e/x.R[i];den+=1/x.R[i];});
+    if(den===0) throw new Error('La suma de conductancias es 0: revisa las resistencias.');
+    const V=num/den, rows=[{label:'Tensión común entre los dos nudos',value:V,u:'V'}];
+    x.E.forEach((e,i)=>rows.push({label:'Corriente de la rama '+(i+1),value:(e-V)/x.R[i],u:'A'}));
+    return {rows:rows,text:'Corriente positiva: la rama entrega corriente. Negativa: la recibe, como una carga o una batería que se está cargando.'};}}]},
+
+{id:'maxima-potencia',cat:'circuitos',short:'Máx. potencia',name:'Máxima transferencia de potencia',
+ what:'Calcula la máxima potencia que una fuente puede entregar a una carga y qué resistencia de carga hace falta para conseguirla.',
+ note:'Una fuente con resistencia interna entrega la máxima potencia posible cuando la resistencia de la carga es igual a su resistencia interna (R_L = R_th). En ese punto el rendimiento es solo del 50 %: la mitad de la energía se pierde en la propia fuente. Por eso se busca en audio y telecomunicaciones, pero no en la red eléctrica, donde lo que importa es el rendimiento.',
+ variants:[{type:'solve',formula:'<i>P</i><sub>máx</sub> = <i>V</i><sub>th</sub>² / (4 · <i>R</i><sub>th</sub>)',target:'P',
+  vars:[v('P','P<sub>máx</sub>','Potencia máxima en la carga','W',18),v('Vth','V<sub>th</sub>','Tensión de la fuente (en vacío)','V',12),v('Rth','R<sub>th</sub>','Resistencia interna','ohm',2)],
+  solve:{P:x=>x.Vth*x.Vth/(4*x.Rth),Vth:x=>Math.sqrt(4*x.P*x.Rth),Rth:x=>x.Vth*x.Vth/(4*x.P)},
+  post:x=>'Carga óptima: R_L = R_th = '+fmtU(x.Rth,'ohm')+'. Corriente: '+fmtU(x.Vth/(2*x.Rth),'A')+'. Rendimiento: 50 %.'}]},
+
+{id:'kennelly',cat:'circuitos',short:'Kennelly · Y ⇄ Δ',name:'Teorema de Kennelly (estrella ⇄ triángulo)',
+ what:'Convierte tres resistencias conectadas en triángulo en su equivalente en estrella, y al revés.',
+ note:'Un triángulo (Δ) y una estrella (Y) de resistencias pueden ser equivalentes vistos desde sus tres terminales A, B y C. Convertir uno en otro permite simplificar redes que no son ni serie ni paralelo, como un puente. Si las tres resistencias son iguales la regla es sencilla: R_Y = R_Δ / 3.',
+ variants:[
+  {label:'Triángulo → Estrella',type:'calc',formula:'<i>R</i><sub>A</sub> = <i>R</i><sub>AB</sub> · <i>R</i><sub>CA</sub> / (<i>R</i><sub>AB</sub> + <i>R</i><sub>BC</sub> + <i>R</i><sub>CA</sub>)',
+   inputs:[v('ab','R<sub>AB</sub>','Resistencia entre A y B','ohm',10),v('bc','R<sub>BC</sub>','Resistencia entre B y C','ohm',20),v('ca','R<sub>CA</sub>','Resistencia entre C y A','ohm',30)],
+   compute:x=>{const S=x.ab+x.bc+x.ca; if(S===0) throw new Error('La suma de las tres resistencias no puede ser 0.');
+     return {rows:[{label:'R<sub>A</sub> (de A al centro)',value:x.ab*x.ca/S,u:'ohm'},{label:'R<sub>B</sub> (de B al centro)',value:x.ab*x.bc/S,u:'ohm'},{label:'R<sub>C</sub> (de C al centro)',value:x.bc*x.ca/S,u:'ohm'}]};}},
+  {label:'Estrella → Triángulo',type:'calc',formula:'<i>R</i><sub>AB</sub> = (<i>R</i><sub>A</sub><i>R</i><sub>B</sub> + <i>R</i><sub>B</sub><i>R</i><sub>C</sub> + <i>R</i><sub>C</sub><i>R</i><sub>A</sub>) / <i>R</i><sub>C</sub>',
+   inputs:[v('a','R<sub>A</sub>','Resistencia de A al centro','ohm',5),v('b','R<sub>B</sub>','Resistencia de B al centro','ohm',10),v('c','R<sub>C</sub>','Resistencia de C al centro','ohm',15)],
+   compute:x=>{if(x.a===0||x.b===0||x.c===0) throw new Error('Ninguna resistencia de la estrella puede valer 0.');
+     const P=x.a*x.b+x.b*x.c+x.c*x.a;
+     return {rows:[{label:'R<sub>AB</sub> (entre A y B)',value:P/x.c,u:'ohm'},{label:'R<sub>BC</sub> (entre B y C)',value:P/x.a,u:'ohm'},{label:'R<sub>CA</sub> (entre C y A)',value:P/x.b,u:'ohm'}]};}}
+ ]},
+
+{id:'tellegen',cat:'circuitos',short:'Tellegen',name:'Teorema de Tellegen',
+ what:'Comprueba el balance de potencias de un circuito: la potencia que entregan los generadores tiene que ser igual a la que consumen los receptores.',
+ note:'En cualquier circuito que cumpla las leyes de Kirchhoff, la suma de los productos tensión × corriente de todas las ramas es cero. Dicho de forma práctica: toda la potencia generada se consume. Introduce cada rama con su tensión y su corriente en el mismo orden, y pon signo negativo a la corriente de las ramas que generan.',
+ variants:[{type:'calc',formula:'Σ <i>V</i><sub>k</sub> · <i>I</i><sub>k</sub> = 0',
+  inputs:[L('V','Tensión de cada rama','V','12; 10; 2'),L('I','Corriente de cada rama, en el mismo orden','A','-1; 1; 1',{hint:'Negativa en las ramas que generan.'})],
+  compute:x=>{
+    if(x.V.length!==x.I.length) throw new Error('Hay '+x.V.length+' tensiones y '+x.I.length+' corrientes: tiene que haber una de cada por rama.');
+    let gen=0,con=0; x.V.forEach((vv,i)=>{const p=vv*x.I[i]; if(p<0) gen-=p; else con+=p;});
+    const tot=con-gen, ok=Math.abs(tot)<=1e-9*Math.max(1,gen,con);
+    return {rows:[{label:'Σ V · I (tiene que dar 0)',value:ok?0:tot,u:'W'},{label:'Potencia generada',value:gen,u:'W'},{label:'Potencia consumida',value:con,u:'W'}],
+      text:ok?'Balance correcto: toda la potencia generada se consume.':'No cuadra: '+(tot>0?'se consume':'se genera')+' '+fmtU(Math.abs(tot),'W')+' de más. Revisa los signos o si falta alguna rama.'};}}]},
+
+/* ===== OTRAS ===== */
+{id:'electrolisis',cat:'otras',short:'Electrólisis',name:'Leyes de Faraday de la electrólisis',
+ what:'Calcula la masa de metal que se deposita (o se disuelve) en una electrólisis según la corriente y el tiempo.',
+ note:'La cantidad de sustancia que se deposita en un electrodo es proporcional a la carga que circula (corriente × tiempo). Con la misma carga, cada metal deposita una masa distinta según su masa molar M y la valencia n de su ion. F = 96 485 C/mol es la constante de Faraday. Se aplica en galvanizado, cromado, refinado de cobre y también explica la corrosión de picas de tierra y tuberías por corrientes vagabundas.',
+ variants:[{type:'solve',formula:'<i>m</i> = <i>M</i> · <i>I</i> · <i>t</i> / (<i>n</i> · <i>F</i>)',target:'m',
+  vars:[v('m','m','Masa depositada','g',5.93),v('M','M','Masa molar del metal','gmol',63.55),v('I','I','Corriente','A',5),v('t','t','Tiempo','s',1,{du:3}),
+        v('n','n','Valencia del ion','n',2,{hint:'Carga del ion: Cu²⁺ → 2, Ag⁺ → 1.'})],
+  presets:[{label:'Metal',options:[['Cobre (Cu²⁺)',{M:63.55,n:2}],['Plata (Ag⁺)',{M:107.87,n:1}],['Níquel (Ni²⁺)',{M:58.69,n:2}],['Cinc (Zn²⁺)',{M:65.38,n:2}],['Cromo (Cr³⁺)',{M:52.00,n:3}],['Oro (Au⁺)',{M:196.97,n:1}]]}],
+  solve:{m:x=>x.M*x.I*x.t/(x.n*FAR),I:x=>x.m*x.n*FAR/(x.M*x.t),t:x=>x.m*x.n*FAR/(x.M*x.I)},
+  post:x=>'Carga que ha circulado: '+fmtU(x.I*x.t,'C')+' ('+fmt(x.I*x.t/3600)+' A·h).'}]},
+
+{id:'seebeck-peltier',cat:'otras',short:'Seebeck · Peltier',name:'Efectos Seebeck y Peltier',
+ what:'Calcula la tensión que genera un termopar por diferencia de temperatura (Seebeck) o el calor que bombea una célula Peltier (Peltier).',
+ note:'Al unir dos metales distintos y calentar una de las uniones aparece una pequeña tensión proporcional a la diferencia de temperatura: así miden los termopares de hornos y calderas. El efecto Peltier es el inverso: al hacer pasar corriente por la unión, una cara se enfría y la otra se calienta, como en las neveras portátiles. S es el coeficiente Seebeck del termopar y Π el coeficiente Peltier de cada par.',
+ variants:[
+  {label:'Seebeck (termopar)',type:'solve',formula:'<i>V</i> = <i>S</i> · Δ<i>T</i>',target:'V',
+   vars:[v('V','V','Tensión del termopar','V',4.1,{du:1}),v('S','S','Coeficiente Seebeck','seeb',41),v('dT','Δ<i>T</i>','Diferencia de temperatura entre las uniones','degC',100,{signed:true})],
+   presets:[{label:'Tipo de termopar',options:[['Tipo K (≈ 41 µV/°C)',{S:41e-6}],['Tipo J (≈ 52 µV/°C)',{S:52e-6}],['Tipo T (≈ 43 µV/°C)',{S:43e-6}],['Tipo E (≈ 68 µV/°C)',{S:68e-6}]]}],
+   solve:{V:x=>x.S*x.dT,S:x=>x.V/x.dT,dT:x=>x.V/x.S},
+   post:()=>'Valor aproximado: los termopares no son del todo lineales. Para medidas precisas se usan las tablas de cada tipo.'},
+  {label:'Peltier (célula)',type:'solve',formula:'<i>Q</i> = <i>N</i> · <i>Π</i> · <i>I</i>',target:'Q',
+   vars:[v('Q','Q','Calor bombeado por segundo','W',45.7),v('N','N','Número de pares de la célula','n',127),
+         v('Pi','<i>Π</i>','Coeficiente Peltier de cada par','V',0.12,{hint:'Un par de telururo de bismuto ronda 0,1 V a temperatura ambiente.'}),v('I','I','Corriente','A',3)],
+   solve:{Q:x=>x.N*x.Pi*x.I,N:x=>x.Q/(x.Pi*x.I),Pi:x=>x.Q/(x.N*x.I),I:x=>x.Q/(x.N*x.Pi)},
+   post:()=>'Cálculo ideal: no descuenta el calor por efecto Joule ni el que vuelve por conducción, así que el valor real es menor.'}
+ ]},
+
+{id:'steinmetz',cat:'otras',short:'Steinmetz',name:'Ley de Steinmetz',
+ what:'Calcula las pérdidas por histéresis en el núcleo de hierro de un transformador, motor o bobina.',
+ note:'Cada vez que el campo magnético de un núcleo cambia de sentido, el hierro pierde algo de energía que se convierte en calor: son las pérdidas por histéresis. Crecen con la frecuencia, con el volumen de hierro y, más que proporcionalmente, con la inducción máxima. η es el coeficiente de Steinmetz del material: cuanto mejor es la chapa magnética, menor es. Junto con las corrientes de Foucault forman las pérdidas en el hierro de un transformador.',
+ variants:[{type:'solve',formula:'<i>P</i> = <i>η</i> · <i>f</i> · <i>B</i><sub>máx</sub><sup><i>n</i></sup> · <i>V</i>',target:'P',
+  vars:[v('P','P','Pérdidas por histéresis','W',19.1),v('eta','<i>η</i>','Coeficiente de Steinmetz del material','eta',100,{hint:'100 J/m³ es un valor de ejemplo: consulta el dato de tu chapa.'}),
+        v('f','f','Frecuencia','Hz',50),v('B','B<sub>máx</sub>','Inducción máxima en el núcleo','T',1.5),v('Vol','V','Volumen de hierro','m3',2,{du:1}),
+        v('ex','n','Exponente de Steinmetz','n',1.6,{hint:'El valor clásico es 1,6.'})],
+  solve:{P:x=>x.eta*x.f*Math.pow(x.B,x.ex)*x.Vol,eta:x=>x.P/(x.f*Math.pow(x.B,x.ex)*x.Vol),f:x=>x.P/(x.eta*Math.pow(x.B,x.ex)*x.Vol),
+         B:x=>Math.pow(x.P/(x.eta*x.f*x.Vol),1/x.ex),Vol:x=>x.P/(x.eta*x.f*Math.pow(x.B,x.ex))},
+  post:x=>'Energía perdida en cada ciclo: '+fmtU(x.P/x.f,'J')+'.'}]}
+];
+
+/* ---------- Motor de cálculo ---------- */
+function initState(V){
+  const s={text:{},unit:{},target:V.target||null,outUnit:{},preset:{}};
+  (V.type==='solve'?V.vars:V.inputs).forEach(f=>{
+    s.text[f.k]=(f.kind==='select'||f.kind==='list')?f.def:toInputText(f.def);
+    s.unit[f.k]=f.du||0;
+  });
+  (V.presets||[]).forEach((p,i)=>{s.preset[i]=0;});
+  return s;
+}
+function check(r){
+  if(typeof r!=='number'||isNaN(r)) throw new Error('Con estos datos no hay una solución real. Revisa que los valores sean coherentes entre sí.');
+  if(!isFinite(r)) throw new Error('Algún dato por el que se divide vale 0. Cámbialo para poder calcular.');
+}
+function evaluate(V,s){
+  try{
+    const x={},missing=[];
+    if(V.type==='solve'){
+      V.vars.forEach(f=>{if(f.k===s.target) return; const n=parseNum(s.text[f.k]); if(!isFinite(n)) missing.push(f.name); else x[f.k]=n*U[f.u][s.unit[f.k]][1];});
+      if(missing.length) return {missing:missing};
+      const r=V.solve[s.target](x); check(r);
+      const tv=V.vars.find(f=>f.k===s.target), full=Object.assign({},x); full[s.target]=r;
+      return {rows:[{label:tv.name,sym:tv.sym,value:r,u:tv.u,du:tv.du,sel:true}],text:V.post?V.post(full,s.target):''};
+    }
+    V.inputs.forEach(f=>{
+      if(f.kind==='select'){x[f.k]=s.text[f.k];return;}
+      const fac=U[f.u][s.unit[f.k]][1];
+      if(f.kind==='list'){const arr=parseList(s.text[f.k],f.name); if(!arr.length&&!f.optional) missing.push(f.name); x[f.k]=arr.map(n=>n*fac); return;}
+      const n=parseNum(s.text[f.k]); if(!isFinite(n)) missing.push(f.name); else x[f.k]=n*fac;
+    });
+    if(missing.length) return {missing:missing};
+    const res=V.compute(x);
+    res.rows.forEach(r=>{if(r.text===undefined) check(r.value);});
+    return res;
+  }catch(e){return {error:e.message};}
+}
+
+if(typeof document==='undefined'){globalThis.__calc={LAWS:LAWS,U:U,evaluate:evaluate,initState:initState,fmt:fmt,bestUnit:bestUnit};return;}
+
+/* ---------- Interfaz ---------- */
+const $=q=>document.querySelector(q);
+const catsEl=$('#cats'), lawsEl=$('#laws'), panel=$('#panel');
+const S={law:null,cat:null,vi:0}, lawVi={}, store={};
+let noteOpen=true; try{noteOpen=localStorage.getItem('calc-nota')!=='0';}catch(e){}
+const key=()=>S.law.id+':'+S.vi;
+const variant=()=>S.law.variants[S.vi];
+function st(){const k=key(); if(!store[k]) store[k]=initState(variant()); return store[k];}
+
+function renderCats(){
+  catsEl.innerHTML=CATS.map(c=>{const n=LAWS.filter(l=>l.cat===c.id).length;
+    return '<button type="button" class="cat" data-cat="'+c.id+'" aria-pressed="'+(c.id===S.cat)+'"><span class="wire wire-'+c.wire+'" aria-hidden="true"></span>'+c.short+'<span class="count">'+n+'</span></button>';}).join('');
+}
+function renderLaws(){
+  lawsEl.innerHTML=LAWS.filter(l=>l.cat===S.cat).map(l=>'<button type="button" class="law" data-law="'+l.id+'" aria-pressed="'+(l===S.law)+'">'+l.short+'</button>').join('');
+}
+function unitOptions(u,sel){return U[u].map((x,i)=>'<option value="'+i+'"'+(i===sel?' selected':'')+'>'+x[0]+'</option>').join('');}
+
+function fieldHTML(f,s){
+  const id='in-'+f.k;
+  if(f.kind==='select'){
+    return '<div class="field field-wide"><label for="'+id+'">'+f.name+'</label><select id="'+id+'" data-sel="'+f.k+'">'+
+      f.options.map(o=>'<option value="'+o[0]+'"'+(s.text[f.k]===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></div>';
+  }
+  const us=U[f.u], isList=f.kind==='list';
+  const unitCtl=us.length>1?'<select id="u-'+f.k+'" class="unit" data-u="'+f.k+'" aria-label="Unidad de '+esc(f.name)+'">'+unitOptions(f.u,s.unit[f.k])+'</select>'
+    :(us[0][0]?'<span class="ufix">'+us[0][0]+'</span>':'');
+  const hint=isList?((f.hint?f.hint+' ':'')+'Separa los valores con punto y coma (;) y usa coma para los decimales.'):(f.hint||'');
+  return '<div class="field'+(isList?' field-wide':'')+'">'+
+    '<label for="'+id+'"><span class="fname">'+f.name+'</span>'+(f.sym?' <span class="fsym">'+f.sym+'</span>':'')+'</label>'+
+    '<div class="frow">'+
+      (f.signed?'<button type="button" class="pm" data-pm="'+f.k+'" aria-label="Cambiar el signo de '+esc(f.name)+'">±</button>':'')+
+      '<input id="'+id+'" data-k="'+f.k+'" type="text" inputmode="'+(isList?'text':'decimal')+'" autocomplete="off" spellcheck="false" value="'+esc(s.text[f.k])+'"'+(isList?' placeholder="Ej.: 10; 5,5; 3"':'')+'>'+
+      unitCtl+
+    '</div>'+(hint?'<p class="hint">'+hint+'</p>':'')+'</div>';
+}
+
+function renderPanel(){
+  const law=S.law, V=variant(), s=st(), cat=CATS.find(c=>c.id===law.cat);
+  let h='<div class="p-head"><p class="eyebrow"><span class="wire wire-'+cat.wire+'" aria-hidden="true"></span>'+cat.name+'</p>'+
+    '<h2 id="law-title">'+law.name+'</h2><p class="formula">'+V.formula+'</p></div>';
+  h+='<details class="note" id="note"'+(noteOpen?' open':'')+'><summary><span class="note-tag">Nota</span><span>Qué calcula y explicación</span></summary>'+
+    '<div class="note-body"><h3>Qué calcula</h3><p>'+law.what+'</p><h3>Explicación</h3><p>'+law.note+'</p></div></details>';
+  h+='<div class="p-calc">';
+  if(law.variants.length>1){
+    h+='<div class="block"><p class="block-label" id="lbl-var">Caso</p><div class="seg" role="group" aria-labelledby="lbl-var">'+
+      law.variants.map((vv,i)=>'<button type="button" data-variant="'+i+'" aria-pressed="'+(i===S.vi)+'">'+vv.label+'</button>').join('')+'</div></div>';
+  }
+  let fields='';
+  if(V.type==='solve'){
+    const solvable=V.vars.filter(f=>V.solve[f.k]);
+    h+='<div class="block"><p class="block-label" id="lbl-target">¿Qué quieres calcular?</p><div class="seg" role="group" aria-labelledby="lbl-target">'+
+      solvable.map(f=>'<button type="button" data-target="'+f.k+'" aria-pressed="'+(f.k===s.target)+'"><span class="ssym">'+f.sym+'</span><span class="sname">'+f.name+'</span></button>').join('')+'</div></div>';
+    (V.presets||[]).forEach((p,pi)=>{
+      const keys=Object.keys(p.options[0][1]); if(keys.indexOf(s.target)>=0) return;
+      fields+='<div class="field field-wide"><label for="pre-'+pi+'">'+p.label+'</label><select id="pre-'+pi+'" data-preset="'+pi+'">'+
+        p.options.map((o,i)=>'<option value="'+i+'"'+(String(s.preset[pi])===String(i)?' selected':'')+'>'+o[0]+'</option>').join('')+
+        '<option value="custom"'+(s.preset[pi]==='custom'?' selected':'')+'>Otro valor (el que escribas)</option></select></div>';
+    });
+    V.vars.forEach(f=>{if(f.k!==s.target) fields+=fieldHTML(f,s);});
+  } else {
+    V.inputs.forEach(f=>{fields+=fieldHTML(f,s);});
+  }
+  h+='<div class="block"><p class="block-label">Datos</p><div class="fields">'+fields+'</div></div>';
+  h+='<div class="lcd" id="lcd" aria-live="polite"></div><div class="conv" id="conv"></div>';
+  h+='<button type="button" class="reset">Volver a los valores de ejemplo</button></div>';
+  panel.innerHTML=h;
+  $('#note').addEventListener('toggle',e=>{noteOpen=e.target.open; try{localStorage.setItem('calc-nota',noteOpen?'1':'0');}catch(err){}});
+  compute();
+}
+
+function compute(){
+  const V=variant(), s=st(), res=evaluate(V,s);
+  const lcd=$('#lcd'), conv=$('#conv');
+  let h='<p class="lcd-cap">Resultado</p>', ch='';
+  if(res.missing){h+='<p class="lcd-msg">Introduce: '+res.missing.map(esc).join(', ')+'</p>';}
+  else if(res.error){h+='<p class="lcd-msg"><span class="lcd-err">Revisa los datos</span>'+esc(res.error)+'</p>';}
+  else{
+    res.rows.forEach((r,i)=>{
+      const cls='lcd-row'+(i===0?' main':'');
+      if(r.text!==undefined){h+='<div class="'+cls+'"><span class="lcd-label">'+r.label+'</span><span class="lcd-txt">'+r.text+'</span></div>';return;}
+      const us=U[r.u]; let ui;
+      if(r.sel){ui=s.outUnit[s.target]; if(ui==null) ui=bestUnit(r.value,r.u,r.du||0);}
+      else ui=bestUnit(r.value,r.u,r.du||0);
+      const unitH=(r.sel&&us.length>1)?'<select id="outunit" class="lcd-unit" aria-label="Unidad del resultado">'+unitOptions(r.u,ui)+'</select>':'<span class="lcd-u">'+us[ui][0]+'</span>';
+      h+='<div class="'+cls+'"><span class="lcd-label">'+(r.sym?'<span class="lcd-sym">'+r.sym+'</span> · ':'')+r.label+'</span>'+
+         '<span class="lcd-val"><span class="lcd-num">'+fmt(r.value/us[ui][1])+'</span>'+unitH+'</span></div>';
+      if(i===0&&us.length>1) ch=us.map((u,j)=>j===ui?'':'<span class="chip">'+fmt(r.value/u[1])+' '+u[0]+'</span>').join('');
+    });
+    if(res.text) h+='<p class="lcd-note">'+res.text+'</p>';
+  }
+  lcd.innerHTML='<div class="lcd-screen">'+h+'</div>';
+  conv.innerHTML=ch?'<p class="block-label">Equivalencias</p><div class="chips">'+ch+'</div>':'';
+  conv.hidden=!ch;
+}
+
+function markCustom(k){
+  const V=variant(), s=st();
+  (V.presets||[]).forEach((p,pi)=>{if(k in p.options[0][1]){s.preset[pi]='custom'; const el=panel.querySelector('[data-preset="'+pi+'"]'); if(el) el.value='custom';}});
+}
+function applyPreset(pi,val){
+  const V=variant(), s=st(), p=V.presets[pi];
+  s.preset[pi]=val==='custom'?'custom':+val;
+  if(val==='custom') return;
+  const vals=p.options[+val][1];
+  Object.keys(vals).forEach(k=>{
+    const f=V.vars.find(f=>f.k===k), fac=U[f.u][s.unit[k]][1];
+    s.text[k]=toInputText(vals[k]/fac);
+    const el=panel.querySelector('#in-'+k); if(el) el.value=s.text[k];
+  });
+  compute();
+}
+
+panel.addEventListener('input',e=>{
+  const k=e.target.dataset&&e.target.dataset.k; if(!k) return;
+  st().text[k]=e.target.value; markCustom(k); compute();
+});
+panel.addEventListener('change',e=>{
+  const t=e.target, d=t.dataset||{}, s=st();
+  if(d.u!==undefined){s.unit[d.u]=+t.value; markCustom(d.u); compute();}
+  else if(d.sel!==undefined){s.text[d.sel]=t.value; compute();}
+  else if(d.preset!==undefined){applyPreset(+d.preset,t.value);}
+  else if(t.id==='outunit'){s.outUnit[s.target]=+t.value; compute(); const o=$('#outunit'); if(o) o.focus();}
+});
+panel.addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return; const d=b.dataset;
+  if(d.target){st().target=d.target; renderPanel(); const f=panel.querySelector('[data-target="'+d.target+'"]'); if(f) f.focus();}
+  else if(d.variant!==undefined){S.vi=+d.variant; lawVi[S.law.id]=S.vi; renderPanel(); const f=panel.querySelector('[data-variant="'+d.variant+'"]'); if(f) f.focus();}
+  else if(d.pm){const s=st(); let t=String(s.text[d.pm]||'').trim(); t=t.charAt(0)==='-'?t.slice(1):'-'+t; s.text[d.pm]=t; const el=panel.querySelector('#in-'+d.pm); if(el) el.value=t; compute();}
+  else if(b.classList.contains('reset')){delete store[key()]; renderPanel();}
+});
+
+function open(law){S.law=law; S.cat=law.cat; S.vi=lawVi[law.id]||0; renderCats(); renderLaws(); renderPanel();}
+function go(law){open(law); try{if(location.hash.slice(1)!==law.id) location.hash=law.id;}catch(e){}}
+catsEl.addEventListener('click',e=>{const b=e.target.closest('[data-cat]'); if(!b) return; const first=LAWS.find(l=>l.cat===b.dataset.cat); if(first) go(first);});
+lawsEl.addEventListener('click',e=>{const b=e.target.closest('[data-law]'); if(!b) return; const l=LAWS.find(l=>l.id===b.dataset.law); if(l&&l!==S.law) go(l);});
+window.addEventListener('hashchange',()=>{const l=LAWS.find(l=>l.id===decodeURIComponent(location.hash.slice(1))); if(l&&l!==S.law) open(l);});
+
+open(LAWS.find(l=>l.id===decodeURIComponent(location.hash.slice(1)))||LAWS[0]);
+})();
+
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+}
+</script>
+
+</body></html>

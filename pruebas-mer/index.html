@@ -1,0 +1,1776 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pruebas MER</title>
+<meta name="description" content="Pruebas eléctricas reglamentarias con resultado pasa o no pasa e informe en PDF. Funciona sin conexión.">
+<meta name="theme-color" content="#F5F6F3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1A201D" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pruebas MER">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+/* Layout: panel de comprobador — selector de pruebas a la izquierda, pantalla de medida y veredicto a la derecha; en móvil, tira de pruebas desplazable arriba. Informes: lista de viviendas + ficha con datos y pruebas */
+:root{
+  --bg:#E2E5E1; --surface:#F5F6F3; --surface-2:#ECEEEA; --ink:#1B211F; --muted:#56605B; --line:#C4CAC5;
+  --accent:#E9A21C; --accent-ink:#7A4D00; --accent-soft:#F7E6C1; --on-accent:#1E1600;
+  --lcd:#18201C; --lcd-ink:#DCEFE1; --lcd-dim:#7C9185;
+  --pass:#17703F; --pass-bg:#DBEEE1; --fail:#B3261E; --fail-bg:#F7DDD9; --on-fail:#FFFFFF; --wait-bg:#E8EBE7; --focus:#1D5FC2;
+  --f-display:"Avenir Next Condensed","Roboto Condensed","Arial Narrow",sans-serif-condensed,system-ui,sans-serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --f-mono:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono","DejaVu Sans Mono",monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121614; --surface:#1A201D; --surface-2:#212824; --ink:#E3E8E4; --muted:#99A49E; --line:#323B36;
+    --accent:#F0AE2E; --accent-ink:#F4BE58; --accent-soft:#3A2C0E; --on-accent:#1E1600;
+    --lcd:#0A0E0C; --lcd-ink:#D3F0DC; --lcd-dim:#6A8072;
+    --pass:#55C987; --pass-bg:#14301F; --fail:#FF7A6E; --fail-bg:#3B1714; --on-fail:#2A0907; --wait-bg:#1D2320; --focus:#86B4FF;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121614; --surface:#1A201D; --surface-2:#212824; --ink:#E3E8E4; --muted:#99A49E; --line:#323B36;
+  --accent:#F0AE2E; --accent-ink:#F4BE58; --accent-soft:#3A2C0E; --on-accent:#1E1600;
+  --lcd:#0A0E0C; --lcd-ink:#D3F0DC; --lcd-dim:#6A8072;
+  --pass:#55C987; --pass-bg:#14301F; --fail:#FF7A6E; --fail-bg:#3B1714; --on-fail:#2A0907; --wait-bg:#1D2320; --focus:#86B4FF;
+  color-scheme:dark;
+}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45}
+img{max-width:100%}
+[hidden]{display:none!important}
+button,select,input,textarea{touch-action:manipulation}
+.warn{background:var(--fail-bg);color:var(--ink);border:1px solid var(--fail);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:15px}
+.bk{display:flex;flex-direction:column;gap:6px;border-top:1px dashed var(--line);padding-top:12px;margin-top:6px}
+.bk-btns{display:flex;gap:8px;flex-wrap:wrap}
+.bk-btns .btn{flex:1 1 auto}
+*{box-sizing:border-box}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.wrap{max-width:1140px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top{background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:12px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand svg{width:32px;height:32px;color:var(--accent-ink);flex:none}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:25px;letter-spacing:.05em;text-transform:uppercase;margin:0;line-height:1}
+.brand small{display:block;font-family:var(--f-body);font-size:12.5px;color:var(--muted);font-weight:500;letter-spacing:.01em;text-transform:none;margin-top:3px}
+.tabs{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px;max-width:100%}
+.tabs a{font-family:var(--f-display);font-weight:600;font-size:16px;letter-spacing:.07em;text-transform:uppercase;text-decoration:none;color:var(--muted);padding:6px 14px;border-radius:6px;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.tabs a[aria-current="page"]{background:var(--ink);color:var(--surface)}
+.badge{font-family:var(--f-mono);font-size:12px;background:var(--accent);color:var(--on-accent);border-radius:999px;padding:1px 7px;letter-spacing:0;line-height:1.3}
+main.wrap{padding-block:20px 36px}
+
+.btn{font:inherit;font-weight:600;font-size:15px;min-height:40px;padding:6px 15px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.btn.ghost{background:transparent}
+.btn.danger{background:var(--fail);color:var(--on-fail);border-color:var(--fail)}
+.btn.small{min-height:36px;font-size:14px;padding:4px 12px}
+.lab{font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.ref{margin:3px 0 0;font-size:13px;color:var(--muted);letter-spacing:.02em}
+.empty{color:var(--muted);margin:0;padding:10px 0;list-style:none}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-family:var(--f-mono);font-size:12.5px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.chip.ok{color:var(--pass);border-color:var(--pass);background:var(--pass-bg)}
+.chip.ko{color:var(--fail);border-color:var(--fail);background:var(--fail-bg)}
+
+/* Probar */
+.actbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:16px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.actbar select{flex:1 1 240px;min-width:0}
+.act-count{font-family:var(--f-mono);font-size:14px;color:var(--muted)}
+.probar{display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px;align-items:start}
+.dial{display:flex;flex-direction:column;gap:18px;min-width:0}
+.dial-group h3{font-family:var(--f-display);font-size:13px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin:0 0 6px 10px}
+.dial-group ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+.dial-btn{display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:1px solid transparent;border-radius:8px;padding:7px 10px;color:var(--ink);font:inherit;font-size:15px;font-weight:500;cursor:pointer}
+.dial-btn:hover{background:var(--surface)}
+.dial-btn .code{font-family:var(--f-mono);font-size:13px;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:2px 4px;text-align:center;white-space:nowrap;color:var(--muted)}
+.dial-btn[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.dial-btn[aria-pressed="true"] .code{background:var(--on-accent);color:var(--accent);border-color:var(--on-accent)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.p-head{display:flex;gap:14px;align-items:center;min-width:0}
+.plate{font-family:var(--f-mono);font-size:18px;background:var(--lcd);color:var(--accent);padding:8px 12px;border-radius:6px;white-space:nowrap;letter-spacing:.04em;flex:none}
+.p-title{min-width:0}
+.p-title h2{font-family:var(--f-display);font-weight:700;font-size:clamp(23px,3.2vw,31px);line-height:1.08;margin:0;text-wrap:balance}
+
+.ctx{display:flex;flex-wrap:wrap;gap:16px 24px}
+.field{display:flex;flex-direction:column;gap:7px;min-width:0;max-width:100%}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.opt{position:relative;display:inline-flex}
+.opt input{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none}
+.opt span{display:inline-flex;align-items:center;min-height:40px;padding:6px 13px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font-size:15px;font-weight:500;cursor:pointer;user-select:none;transition:background-color .12s,border-color .12s}
+.opt input:checked+span{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.opt input:focus-visible+span{outline:2px solid var(--focus);outline-offset:2px}
+select{font:inherit;font-size:16px;min-height:40px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);max-width:100%}
+.numwrap{display:inline-flex;align-items:center;gap:7px}
+.numwrap input{font-family:var(--f-mono);font-size:17px;width:7.5ch;min-height:40px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);text-align:right}
+.unit{font-family:var(--f-mono);font-size:14px;color:var(--muted);white-space:nowrap}
+.hint{font-size:13px;color:var(--muted);max-width:42ch}
+.txt{font:inherit;font-size:16px;min-height:42px;padding:8px 12px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);width:100%}
+
+.limit{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding-top:16px;border-top:1px dashed var(--line)}
+.limit .val{font-family:var(--f-mono);font-size:23px;color:var(--ink)}
+.tag{font-size:12.5px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft);border-radius:999px;padding:2px 9px}
+
+.meas{display:grid;gap:12px}
+.meas.two{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
+.lcd{display:flex;flex-direction:column;gap:4px;background:var(--lcd);border-radius:var(--r);padding:12px 16px 10px;box-shadow:inset 0 2px 8px rgba(0,0,0,.4);cursor:text;min-width:0}
+.lcd:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.lcd-lab{font-family:var(--f-display);font-size:13px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--lcd-dim)}
+.lcd-row{display:flex;align-items:baseline;gap:10px;min-width:0}
+.lcd-in{flex:1;min-width:0;width:100%;background:transparent;border:0;outline:0;color:var(--lcd-ink);font-family:var(--f-mono);font-size:clamp(38px,7vw,56px);line-height:1.1;padding:0;caret-color:var(--accent)}
+.lcd-in::placeholder{color:var(--lcd-dim);opacity:.55}
+.lcd-unit{font-family:var(--f-mono);font-size:22px;color:var(--lcd-dim);white-space:nowrap}
+
+.yn{display:flex;flex-direction:column;gap:8px}
+.yn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.yn .opt{display:flex}
+.yn .opt span{flex:1;justify-content:center;text-align:center;min-height:60px;font-size:17px;font-weight:600}
+.yn .yes input:checked+span{background:var(--pass-bg);color:var(--pass);border-color:var(--pass)}
+.yn .no input:checked+span{background:var(--fail-bg);color:var(--fail);border-color:var(--fail)}
+
+.verdict{border-radius:var(--r);padding:14px 18px;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:14px;align-items:center;border:1px solid transparent;transition:background-color .15s,border-color .15s}
+.v-icon{grid-row:span 2;width:46px;height:46px}
+.v-word{font-family:var(--f-display);font-weight:700;font-size:clamp(36px,6vw,48px);line-height:1;letter-spacing:.03em;text-transform:uppercase}
+.v-line{font-family:var(--f-mono);font-size:15.5px;margin-top:5px;overflow-wrap:anywhere}
+.v-wait,.v-invalid{background:var(--wait-bg);border-color:var(--line);grid-template-columns:minmax(0,1fr)}
+.v-wait .v-word,.v-invalid .v-word{font-size:21px;letter-spacing:.08em;color:var(--muted)}
+.v-wait .v-line,.v-invalid .v-line{font-family:var(--f-body);color:var(--muted)}
+.v-pass{background:var(--pass-bg);border-color:var(--pass);color:var(--pass)}
+.v-fail{background:var(--fail-bg);border-color:var(--fail);color:var(--fail)}
+.v-info{background:var(--surface-2);border-color:var(--line);color:var(--ink)}
+.v-info .v-word{font-size:clamp(28px,4.6vw,36px)}
+.v-pass .v-line,.v-fail .v-line{color:var(--ink)}
+.saverow{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 12px}
+.saverow .field{flex:1 1 230px}
+.saverow .btn{min-height:42px}
+.savehint{margin:-8px 0 0;font-size:13.5px;color:var(--muted)}
+.info{margin:0;font-size:14.5px;color:var(--muted);max-width:68ch}
+
+/* Informes */
+.inf{display:grid;grid-template-columns:300px minmax(0,1fr);gap:24px;align-items:start}
+.inf-list{display:flex;flex-direction:column;gap:10px;min-width:0}
+.inf-list .btn{width:100%}
+.store-note{margin:0;font-size:13px;color:var(--muted)}
+#viv-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.viv{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;font:inherit;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--ink)}
+.viv:hover{border-color:var(--muted)}
+.viv[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.viv-t{font-weight:600;line-height:1.25}
+.viv-s{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.viv .chips{margin-top:5px}
+.inf-ed{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.ed-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px 20px;align-items:flex-start}
+.ed-title{min-width:0;flex:1 1 260px}
+.ed-head h2,.ed-empty h2{font-family:var(--f-display);font-size:clamp(23px,3vw,30px);margin:0;line-height:1.1;text-wrap:balance}
+.ed-empty{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.ed-empty p{margin:0;color:var(--muted);max-width:60ch}
+.eyebrow{font-family:var(--f-display);font-size:13px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.ed-actions{display:flex;flex-wrap:wrap;gap:8px}
+.pdf-msg{margin:0;font-size:14.5px;color:var(--muted)}
+.pdf-msg.err{color:var(--fail)}
+.datos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.datos .full{grid-column:1/-1}
+.datos label{display:flex;flex-direction:column;gap:5px;min-width:0}
+.datos input,.datos textarea{font:inherit;font-size:16px;min-height:42px;padding:8px 12px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);width:100%}
+.datos textarea{min-height:80px;resize:vertical}
+.pr-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px 16px;border-top:1px dashed var(--line);padding-top:16px}
+.pr-head h3{font-family:var(--f-display);font-size:22px;margin:0}
+.pr-wrap{overflow-x:auto}
+table.pr{width:100%;min-width:660px;border-collapse:collapse;font-size:14.5px}
+.pr th{font-family:var(--f-display);font-weight:600;font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.pr td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.pr .num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.pr .cond{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+.res{font-family:var(--f-display);font-weight:700;font-size:16px;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.res.pass{color:var(--pass)}
+.res.fail{color:var(--fail)}
+.res.info{color:var(--muted)}
+.pers{color:var(--accent-ink);font-weight:700}
+.rm{font:inherit;font-size:13px;background:none;border:0;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:2px;padding:4px}
+.foot-note{margin:6px 0 0;font-size:13px;color:var(--muted)}
+
+/* Límites */
+.lim-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px 24px;margin-bottom:16px}
+.lim-head h2{font-family:var(--f-display);font-size:30px;font-weight:700;margin:0;line-height:1.1}
+.lim-head p{margin:4px 0 0;color:var(--muted);max-width:62ch}
+.lim-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.status{font-size:14px;display:flex;align-items:center;gap:8px;color:var(--muted)}
+.status::before{content:"";flex:none;width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.status[data-s="cloud"]::before,.status[data-s="saved"]::before{background:var(--pass)}
+.status[data-s="pending"]::before{background:var(--accent)}
+.status[data-s="readonly"]::before,.status[data-s="error"]::before{background:var(--fail)}
+.confirm{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;background:var(--fail-bg);border:1px solid var(--fail);border-radius:9px;padding:10px 14px}
+.confirm span{flex:1 1 220px}
+#confirm{margin-bottom:16px}
+.lim-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:16px;align-items:start}
+.lg{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;min-width:0}
+.lg h3{font-family:var(--f-display);font-size:21px;font-weight:700;margin:0;line-height:1.15}
+.lg .ref{margin:2px 0 8px}
+.lg .note{font-size:13.5px;color:var(--muted);margin:0 0 8px}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px 10px;align-items:center;padding-block:9px;border-top:1px solid var(--line)}
+.pl{display:flex;flex-direction:column;min-width:0}
+.pn{font-size:15px;line-height:1.3}
+.pd{font-size:12.5px;color:var(--muted)}
+.prow.mod .pd{color:var(--accent-ink);font-weight:600}
+.prow.mod .numwrap input{border-color:var(--accent)}
+.prow .numwrap input.bad{border-color:var(--fail);color:var(--fail)}
+.reset{font:inherit;font-size:13px;font-weight:600;background:none;border:0;color:var(--accent-ink);cursor:pointer;padding:6px 2px;text-decoration:underline;text-underline-offset:2px}
+.prow:not(.mod) .reset{visibility:hidden}
+.foot{margin-top:28px;font-size:13px;color:var(--muted);max-width:78ch}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 32px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px));width:max-content;background:var(--ink);color:var(--surface);border-radius:10px;padding:10px 16px;display:flex;gap:16px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,.28);z-index:20;font-size:15px}
+.toast button{font:inherit;font-weight:700;background:none;border:0;color:var(--accent);cursor:pointer;padding:4px;white-space:nowrap}
+
+@media (max-width:820px){
+  .probar,.inf{grid-template-columns:minmax(0,1fr);gap:14px}
+  .dial{flex-direction:row;overflow-x:auto;gap:8px;padding-bottom:6px;scroll-snap-type:x proximity}
+  .dial-group,.dial-group ul,.dial-group li{display:contents}
+  .dial-group h3{display:none}
+  .dial-btn{display:flex;width:auto;flex:0 0 auto;gap:8px;border-color:var(--line);background:var(--surface);scroll-snap-align:start;white-space:nowrap}
+  .panel,.inf-ed{padding:16px}
+}
+@media (max-width:600px){ .datos{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:440px){
+  .prow{grid-template-columns:minmax(0,1fr) auto}
+  .prow .reset{grid-column:1/-1;justify-self:start;padding:0}
+  .prow:not(.mod) .reset{display:none}
+  .plate{font-size:15px;padding:6px 9px}
+  .tabs a{padding:6px 10px;font-size:15px}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-in">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M6.5 16h2.6M16 6.5v2.6M25.5 16h-2.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 16l6.6-6.6" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><circle cx="16" cy="16" r="2.7" fill="currentColor"/></svg>
+      <div><h1>Pruebas MER</h1><small>Mete la medida y te dice si pasa</small></div>
+    </div>
+    <nav class="tabs" aria-label="Secciones">
+      <a href="#probar" id="tab-probar">Probar</a>
+      <a href="#informes" id="tab-informes">Informes</a>
+      <a href="#limites" id="tab-limites">Límites <span class="badge" id="nmod" hidden></span></a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="warn" id="nostore" hidden>Este navegador no deja guardar datos, así que lo que hagas se perderá al cerrar. Instala la app en la pantalla de inicio desde Safari (Compartir → Añadir a pantalla de inicio) y ábrela siempre desde su icono.</div>
+  <section id="view-probar">
+    <div class="actbar">
+      <label class="lab" for="act-sel">Vivienda</label>
+      <select id="act-sel"></select>
+      <span class="act-count" id="act-count"></span>
+      <a class="btn small" href="#informes">Ver informe</a>
+    </div>
+    <div class="probar">
+      <nav class="dial" id="dial" aria-label="Pruebas"></nav>
+      <article class="panel" id="panel"></article>
+    </div>
+  </section>
+
+  <section id="view-informes" hidden>
+    <div class="inf">
+      <aside class="inf-list">
+        <button type="button" class="btn primary" id="new-viv">Nueva vivienda</button>
+        <input type="search" class="txt" id="q" placeholder="Buscar promoción, vivienda o titular" aria-label="Buscar viviendas" autocomplete="off">
+        <p class="store-note" id="store-note"></p>
+        <ul id="viv-list"></ul>
+        <div class="bk">
+          <span class="lab">Copia de seguridad</span>
+          <p class="store-note" id="bk-note"></p>
+          <div class="bk-btns"><button type="button" class="btn small" id="bk-export">Exportar copia</button><button type="button" class="btn small" id="bk-import">Importar copia</button></div>
+          <input type="file" id="bk-file" accept=".json,application/json" hidden>
+          <p class="store-note">Si borras la app de la tableta se borran sus datos. Exporta una copia de vez en cuando y guárdala en Archivos.</p>
+        </div>
+      </aside>
+      <article class="inf-ed" id="inf-ed"></article>
+    </div>
+  </section>
+
+  <section id="view-limites" hidden>
+    <div class="lim-head">
+      <div>
+        <h2>Límites</h2>
+        <p>Los valores por defecto salen del REBT y de las normas UNE a las que remite. Cambia los que necesites: en Probar verás un aviso cuando un límite no sea el de por defecto.</p>
+      </div>
+      <div class="lim-actions">
+        <span class="status" id="status" data-s="local">Guardado solo en este dispositivo</span>
+        <button type="button" class="btn" id="reset-all">Restaurar todos</button>
+      </div>
+    </div>
+    <div class="confirm" id="confirm" hidden>
+      <span id="confirm-txt"></span>
+      <button type="button" class="btn danger" id="confirm-yes">Restaurar</button>
+      <button type="button" class="btn" id="confirm-no">Cancelar</button>
+    </div>
+    <div class="lim-grid" id="lim-grid"></div>
+  </section>
+
+  <p class="foot">Límites por defecto según el REBT (RD 842/2002), sus ITC y las normas UNE de producto a las que remite. Comprueba siempre la versión vigente y las instrucciones de tu equipo de medida.</p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+/* MiniPDF: genera PDF sin internet ni librerías. Usa las fuentes estándar de cualquier lector
+   (Helvetica, Helvetica-Bold y Symbol para Ω Δ ≤ ≥ …). Unidades en mm, origen arriba a la izquierda,
+   con los mismos métodos que jsPDF que usan estas apps. */
+const MiniPDF = (function(){
+  "use strict";
+  const HW=[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584,761,556,0,222,556,333,1000,556,556,333,1000,667,333,1000,0,611,0,0,222,222,333,333,350,556,1000,333,1000,500,333,944,0,500,667,278,333,556,556,556,556,260,556,333,737,370,556,584,333,737,333,400,584,333,333,333,556,537,278,333,333,365,556,834,834,834,611,667,667,667,667,667,667,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,500,556,556,556,556,278,278,278,278,556,556,556,556,556,556,556,584,611,556,556,556,556,500,556,500],HBW=[278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584,761,556,0,278,556,500,1000,556,556,333,1000,667,333,1000,0,611,0,0,278,278,500,500,350,556,1000,333,1000,556,333,944,0,500,667,278,333,556,556,556,556,280,556,333,737,370,556,584,333,737,333,400,584,333,333,333,611,556,278,333,333,365,556,834,834,834,611,722,722,722,722,722,722,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,556,556,556,556,556,278,278,278,278,611,611,611,611,611,611,611,584,611,611,611,611,611,556,611,556],SYM={"Ω":[87,768],"Δ":[68,612],"≤":[163,549],"≥":[179,549],"μ":[109,576],"→":[174,987],"←":[172,987],"↑":[173,603],"↓":[175,603],"≈":[187,549],"∞":[165,713],"√":[214,549],"π":[112,549],"Σ":[83,592],"φ":[102,521],"Φ":[70,763],"−":[45,549],"α":[97,631],"β":[98,549],"λ":[108,549],"ρ":[114,549],"θ":[113,521],"ω":[119,686],"η":[104,603],"≠":[185,549],"∆":[68,612],"µ":[109,576],"δ":[100,494],"γ":[103,411],"ε":[101,439],"σ":[115,603],"τ":[116,439],"∑":[229,713],"∙":[183,460]},CP={"€":128,"‚":130,"ƒ":131,"„":132,"…":133,"†":134,"‡":135,"ˆ":136,"‰":137,"Š":138,"‹":139,"Œ":140,"Ž":142,"‘":145,"’":146,"“":147,"”":148,"•":149,"–":150,"—":151,"˜":152,"™":153,"š":154,"›":155,"œ":156,"ž":158,"Ÿ":159};
+  SYM['Ω'] = SYM['Ω'];
+  const SYMW = {};
+  Object.keys(SYM).forEach(k => { SYMW[SYM[k][0]] = SYM[k][1]; });
+  const K = 72 / 25.4;
+  const SIZES = {a4:[595.28, 841.89], a5:[419.53, 595.28], letter:[612, 792]};
+
+  function runs(str){
+    const out = [];
+    let cur = null;
+    for (const ch of String(str == null ? '' : str)) {
+      const c = ch.codePointAt(0);
+      let sym = false, code;
+      if (c >= 32 && c < 127) code = c;
+      else if (c >= 160 && c <= 255) code = c;
+      else if (CP[ch] !== undefined) code = CP[ch];
+      else if (SYM[ch]) { sym = true; code = SYM[ch][0]; }
+      else if (c === 9) code = 32;
+      else if (c === 0x2009 || c === 0x202F || c === 0x2007) code = 32;
+      else if (c === 0x2010 || c === 0x2011 || c === 0x2012) code = 45;
+      else if (c === 0x2713 || c === 0x2714) code = 118;
+      else if (c < 32) continue;
+      else code = 63;
+      if (!cur || cur.sym !== sym) { cur = {sym, codes:[]}; out.push(cur); }
+      cur.codes.push(code);
+    }
+    return out;
+  }
+  function runWidth(r, bold){
+    let w = 0;
+    const T = bold ? HBW : HW;
+    for (const c of r.codes) w += r.sym ? (SYMW[c] || 500) : (T[c - 32] || 556);
+    return w / 1000;
+  }
+  function esc(codes){
+    let s = '';
+    for (const c of codes) {
+      if (c === 40 || c === 41 || c === 92) s += '\\' + String.fromCharCode(c);
+      else if (c < 32 || c > 126) s += '\\' + c.toString(8).padStart(3, '0');
+      else s += String.fromCharCode(c);
+    }
+    return s;
+  }
+  function pdfStr(s){
+    let o = '';
+    for (const ch of String(s)) {
+      const c = ch.codePointAt(0);
+      if (c === 40 || c === 41 || c === 92) o += '\\' + ch;
+      else if (c >= 32 && c < 127) o += ch;
+      else if (c >= 160 && c <= 255) o += '\\' + c.toString(8).padStart(3, '0');
+      else o += '?';
+    }
+    return '(' + o + ')';
+  }
+  const num = v => { const r = Math.round(v * 100) / 100; return Object.is(r, -0) ? '0' : String(r); };
+
+  function Doc(opts){
+    opts = opts || {};
+    const fmt = Array.isArray(opts.format) ? opts.format.map(v => v * K) : (SIZES[String(opts.format || 'a4').toLowerCase()] || SIZES.a4);
+    let PW = fmt[0], PH = fmt[1];
+    if (String(opts.orientation || 'p').toLowerCase().startsWith('l')) { const t = PW; PW = PH; PH = t; }
+    const pages = [], annots = [];
+    let cur = null;
+    let bold = false, size = 16, lhf = 1.15;
+    let tc = [0, 0, 0], dc = [0, 0, 0], fc = [0, 0, 0], lw = 0.2;
+    const images = [];
+    const props = {};
+    const X = x => num(x * K), Y = y => num(PH - y * K);
+    const rgb = c => c.map(v => num(Math.max(0, Math.min(255, v)) / 255)).join(' ');
+    function newPage(){ cur = []; pages.push(cur); annots.push([]); }
+    newPage();
+    function color(args){
+      if (args.length >= 3) return [+args[0], +args[1], +args[2]];
+      const a = args[0];
+      if (typeof a === 'string' && /^#?[0-9a-f]{6}$/i.test(a)) {
+        const h = a.replace('#', '');
+        return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+      }
+      if (typeof a === 'number') return [a, a, a];
+      return [0, 0, 0];
+    }
+    function width(s){
+      let w = 0;
+      for (const r of runs(s)) w += runWidth(r, bold);
+      return w * size;
+    }
+    function drawLine(s, x, y, align){
+      const rs = runs(s);
+      if (!rs.length) return;
+      let w = 0;
+      rs.forEach(r => { w += runWidth(r, bold) * size; });
+      let px = x * K;
+      if (align === 'right') px -= w;
+      else if (align === 'center') px -= w / 2;
+      const py = PH - y * K;
+      let ops = 'BT ' + rgb(tc) + ' rg';
+      rs.forEach(r => {
+        const f = r.sym ? '/F3' : (bold ? '/F2' : '/F1');
+        ops += ` ${f} ${num(size)} Tf 1 0 0 1 ${num(px)} ${num(py)} Tm (${esc(r.codes)}) Tj`;
+        px += runWidth(r, bold) * size;
+      });
+      cur.push(ops + ' ET');
+    }
+    function paint(style){
+      const s = String(style || 'S').toUpperCase();
+      if (s === 'F') return 'f';
+      if (s === 'FD' || s === 'DF' || s === 'B') return 'B';
+      return 'S';
+    }
+    function prefix(){ return `${num(lw * K)} w ${rgb(dc)} RG ${rgb(fc)} rg `; }
+    const api = {
+      internal:{ pageSize:{ getWidth:() => PW / K, getHeight:() => PH / K, width:PW / K, height:PH / K } },
+      addPage(){ newPage(); return api; },
+      setPage(n){ if (pages[n - 1]) cur = pages[n - 1]; return api; },
+      getNumberOfPages(){ return pages.length; },
+      getCurrentPageInfo(){ return {pageNumber:pages.indexOf(cur) + 1}; },
+      setFont(name, style, weight){
+        const st = String(style || '').toLowerCase();
+        bold = st.includes('bold') || weight === 700 || weight === 'bold' || /bold/i.test(String(name || '')) && !style;
+        return api;
+      },
+      setFontSize(s){ size = +s || size; return api; },
+      getFontSize(){ return size; },
+      setLineHeightFactor(f){ lhf = +f || lhf; return api; },
+      getLineHeightFactor(){ return lhf; },
+      setTextColor(){ tc = color(arguments); return api; },
+      setDrawColor(){ dc = color(arguments); return api; },
+      setFillColor(){ fc = color(arguments); return api; },
+      setLineWidth(w){ lw = +w; return api; },
+      setProperties(p){ Object.assign(props, p || {}); return api; },
+      getTextWidth(s){ return width(s) / K; },
+      getStringUnitWidth(s){ return width(s) / size; },
+      splitTextToSize(text, maxW){
+        const lines = [];
+        const fits = s => width(s) / K <= maxW;
+        const breakWord = w => {
+          const parts = [];
+          let part = '';
+          for (const ch of w) {
+            if (part && !fits(part + ch)) { parts.push(part); part = ch; }
+            else part += ch;
+          }
+          parts.push(part);
+          return parts;
+        };
+        String(text == null ? '' : text).split(/\r?\n/).forEach(par => {
+          const words = par.split(/ +/);
+          let line = '';
+          words.forEach(w => {
+            const cand = line ? line + ' ' + w : w;
+            if (fits(cand)) { line = cand; return; }
+            if (line) lines.push(line);
+            if (fits(w)) { line = w; return; }
+            const parts = breakWord(w);
+            line = parts.pop();
+            parts.forEach(p => lines.push(p));
+          });
+          lines.push(line);
+        });
+        return lines;
+      },
+      text(t, x, y, opt){
+        opt = opt || {};
+        const arr = Array.isArray(t) ? t : String(t == null ? '' : t).split(/\r?\n/);
+        const lh = size * lhf / K;
+        const asc = size * 0.76 / K;
+        let by = y;
+        if (opt.baseline === 'top' || opt.baseline === 'hanging') by = y + asc;
+        else if (opt.baseline === 'middle') by = y + asc / 2 - size * 0.1 / K;
+        else if (opt.baseline === 'bottom') by = y - size * 0.22 / K;
+        arr.forEach((ln, i) => drawLine(ln, x, by + i * lh, opt.align));
+        return api;
+      },
+      line(x1, y1, x2, y2){
+        cur.push(`${num(lw * K)} w ${rgb(dc)} RG ${X(x1)} ${Y(y1)} m ${X(x2)} ${Y(y2)} l S`);
+        return api;
+      },
+      rect(x, y, w, h, style){
+        cur.push(prefix() + `${X(x)} ${Y(y + h)} ${num(w * K)} ${num(h * K)} re ${paint(style)}`);
+        return api;
+      },
+      roundedRect(x, y, w, h, rx, ry, style){
+        rx = Math.min(rx, w / 2); ry = Math.min(ry, h / 2);
+        const c = 0.5523;
+        const p = [];
+        p.push(`${X(x + rx)} ${Y(y)} m`);
+        p.push(`${X(x + w - rx)} ${Y(y)} l`);
+        p.push(`${X(x + w - rx + rx * c)} ${Y(y)} ${X(x + w)} ${Y(y + ry - ry * c)} ${X(x + w)} ${Y(y + ry)} c`);
+        p.push(`${X(x + w)} ${Y(y + h - ry)} l`);
+        p.push(`${X(x + w)} ${Y(y + h - ry + ry * c)} ${X(x + w - rx + rx * c)} ${Y(y + h)} ${X(x + w - rx)} ${Y(y + h)} c`);
+        p.push(`${X(x + rx)} ${Y(y + h)} l`);
+        p.push(`${X(x + rx - rx * c)} ${Y(y + h)} ${X(x)} ${Y(y + h - ry + ry * c)} ${X(x)} ${Y(y + h - ry)} c`);
+        p.push(`${X(x)} ${Y(y + ry)} l`);
+        p.push(`${X(x)} ${Y(y + ry - ry * c)} ${X(x + rx - rx * c)} ${Y(y)} ${X(x + rx)} ${Y(y)} c`);
+        cur.push(prefix() + p.join(' ') + ' h ' + paint(style));
+        return api;
+      },
+      /* Enlace pulsable a una web sobre un rectángulo de la página. */
+      link(x, y, w, h, url){
+        annots[pages.indexOf(cur)].push({r:[X(x), Y(y + h), X(x + w), Y(y)], url:String(url || '')});
+        return api;
+      },
+      /* Imagen JPEG: bytes (Uint8Array) con su tamaño en píxeles. Las demás imágenes se pasan antes a JPEG con MiniPDF.toJpeg. */
+      addJpeg(bytes, pxW, pxH, x, y, w, h){
+        const name = '/Im' + (images.length + 1);
+        images.push({name, bytes, pxW, pxH});
+        cur.push(`q ${num(w * K)} 0 0 ${num(h * K)} ${X(x)} ${Y(y + h)} cm ${name} Do Q`);
+        return api;
+      },
+      output(type){
+        const parts = [];
+        let len = 0;
+        const offs = [];
+        const push = p => { parts.push(p); len += typeof p === 'string' ? p.length : p.length; };
+        const obj = (n, body) => { offs[n] = len; push(`${n} 0 obj\n`); body.forEach(push); push('\nendobj\n'); };
+        push('%PDF-1.4\n');
+        const nPages = pages.length;
+        const first = 6 + images.length;
+        const kids = pages.map((_, i) => `${first + i * 2} 0 R`).join(' ');
+        obj(1, ['<< /Type /Catalog /Pages 2 0 R >>']);
+        obj(2, [`<< /Type /Pages /Kids [${kids}] /Count ${nPages} >>`]);
+        obj(3, ['<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>']);
+        obj(4, ['<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>']);
+        obj(5, ['<< /Type /Font /Subtype /Type1 /BaseFont /Symbol >>']);
+        const xo = images.map((im, i) => `${im.name} ${6 + i} 0 R`).join(' ');
+        images.forEach((im, i) => {
+          obj(6 + i, [`<< /Type /XObject /Subtype /Image /Width ${im.pxW} /Height ${im.pxH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${im.bytes.length} >>\nstream\n`, im.bytes, '\nendstream']);
+        });
+        let an = first + nPages * 2;
+        const annotNums = annots.map(list => list.map(() => an++));
+        const infoN = an;
+        pages.forEach((ops, i) => {
+          const pn = first + i * 2, cn = pn + 1;
+          const al = annotNums[i].length ? ` /Annots [${annotNums[i].map(n => n + ' 0 R').join(' ')}]` : '';
+          obj(pn, [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${num(PW)} ${num(PH)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >>${xo ? ` /XObject << ${xo} >>` : ''} >>${al} /Contents ${cn} 0 R >>`]);
+          const content = ops.join('\n');
+          obj(cn, [`<< /Length ${content.length} >>\nstream\n`, content, '\nendstream']);
+        });
+        const d = new Date(), p2 = v => String(v).padStart(2, '0');
+        const date = `D:${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
+        annots.forEach((list, i) => list.forEach((a, j) => {
+          let u = a.url;
+          try { u = /[^\x20-\x7e]/.test(u) ? encodeURI(u) : u; } catch (e) {}
+          obj(annotNums[i][j], [`<< /Type /Annot /Subtype /Link /Rect [${a.r.join(' ')}] /Border [0 0 0] /A << /S /URI /URI ${pdfStr(u)} >> >>`]);
+        }));
+        let info = `<< /Producer (MiniPDF) /CreationDate (${date})`;
+        if (props.title) info += ` /Title ${pdfStr(props.title)}`;
+        if (props.author) info += ` /Author ${pdfStr(props.author)}`;
+        if (props.subject) info += ` /Subject ${pdfStr(props.subject)}`;
+        if (props.creator) info += ` /Creator ${pdfStr(props.creator)}`;
+        obj(infoN, [info + ' >>']);
+        const xref = len;
+        let x = `xref\n0 ${infoN + 1}\n0000000000 65535 f \n`;
+        for (let n = 1; n <= infoN; n++) x += String(offs[n]).padStart(10, '0') + ' 00000 n \n';
+        push(x + `trailer\n<< /Size ${infoN + 1} /Root 1 0 R /Info ${infoN} 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+        const blob = new Blob(parts, {type:'application/pdf'});
+        if (type === 'blob' || !type) return blob;
+        if (type === 'arraybuffer') return blob.arrayBuffer();
+        return blob;
+      }
+    };
+    return api;
+  }
+
+  /* Convierte cualquier imagen (dataURL, Blob o <img>) a JPEG para meterla en el PDF. */
+  async function toJpeg(src, maxPx, quality){
+    maxPx = maxPx || 1600;
+    const img = await new Promise((res, rej) => {
+      const el = new Image();
+      el.onload = () => res(el);
+      el.onerror = () => rej(new Error('img'));
+      if (src instanceof Blob) el.src = URL.createObjectURL(src);
+      else if (src && src.tagName === 'IMG') el.src = src.src;
+      else el.src = src;
+    });
+    let w = img.naturalWidth, h = img.naturalHeight;
+    const s = Math.min(1, maxPx / Math.max(w, h));
+    w = Math.max(1, Math.round(w * s)); h = Math.max(1, Math.round(h * s));
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const blob = await new Promise(res => cv.toBlob(res, 'image/jpeg', quality || 0.88));
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    return {bytes, width:w, height:h};
+  }
+
+  return { Doc, toJpeg, textWidth:(s, sz, b) => { let w = 0; runs(s).forEach(r => { w += runWidth(r, !!b); }); return w * sz / K; } };
+})();
+
+/* Guardar o compartir un archivo generado. En iPad abre el menú Compartir (Guardar en Archivos, AirDrop, WhatsApp…). */
+const FileOut = (function(){
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  function download(blob, name){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  /* Devuelve 'shared', 'downloaded', 'cancelled' o 'needs-tap' (el iPad pide otro toque para compartir).
+     Llamar dentro del clic, sin esperas antes. */
+  async function save(blob, name, mime){
+    if (isIOS && navigator.canShare && navigator.share) {
+      let file = null;
+      try { file = new File([blob], name, {type: mime || blob.type || 'application/octet-stream'}); } catch (e) { file = null; }
+      let ok = false;
+      try { ok = !!file && navigator.canShare({files:[file]}); } catch (e) { ok = false; }
+      if (ok) {
+        try { await navigator.share({files:[file], title:name}); return 'shared'; }
+        catch (e) {
+          if (e && e.name === 'AbortError') return 'cancelled';
+          if (e && e.name === 'NotAllowedError') return 'needs-tap';
+        }
+      }
+    }
+    download(blob, name);
+    return 'downloaded';
+  }
+  return { save, download, isIOS };
+})();
+
+</script>
+<script>
+(function(){
+"use strict";
+
+/* ---------- Parámetros configurables (valores por defecto) ---------- */
+const PARAMS = [
+  {k:'cont_max', g:'cont', l:'Resistencia máxima del conductor de protección', u:'Ω', d:2},
+  {k:'iso_mbts', g:'iso', l:'Mínimo en MBTS y MBTP', u:'MΩ', d:0.25},
+  {k:'iso_v_mbts', g:'iso', l:'Tensión de ensayo en MBTS y MBTP', u:'V c.c.', d:250},
+  {k:'iso_le500', g:'iso', l:'Mínimo hasta 500 V', u:'MΩ', d:0.5},
+  {k:'iso_v_le500', g:'iso', l:'Tensión de ensayo hasta 500 V', u:'V c.c.', d:500},
+  {k:'iso_gt500', g:'iso', l:'Mínimo por encima de 500 V', u:'MΩ', d:1},
+  {k:'iso_v_gt500', g:'iso', l:'Tensión de ensayo por encima de 500 V', u:'V c.c.', d:1000},
+  {k:'iso_len_ref', g:'iso', l:'Longitud de canalizaciones de referencia', u:'m', d:100},
+  {k:'diel_add', g:'diel', l:'Sumando de la fórmula 2·U + …', u:'V', d:1000},
+  {k:'diel_min', g:'diel', l:'Tensión de ensayo mínima', u:'V', d:1500},
+  {k:'diel_dur', g:'diel', l:'Duración del ensayo', u:'s', d:60},
+  {k:'fuga_pct', g:'fuga', l:'Fuga máxima respecto a la sensibilidad IΔn', u:'%', d:100},
+  {k:'ul_seco', g:'tierra', l:'Tensión de contacto límite, demás casos', u:'V', d:50},
+  {k:'ul_cond', g:'tierra', l:'Tensión de contacto límite, local conductor', u:'V', d:24},
+  {k:'re_guia_sin', g:'tierra', l:'Guía técnica: edificio sin pararrayos', u:'Ω', d:37},
+  {k:'re_guia_con', g:'tierra', l:'Guía técnica: edificio con pararrayos', u:'Ω', d:15},
+  {k:'rcd_g_x1', g:'rcd', l:'General: máximo a 1·IΔn', u:'ms', d:300},
+  {k:'rcd_g_x2', g:'rcd', l:'General: máximo a 2·IΔn', u:'ms', d:150},
+  {k:'rcd_g_x5', g:'rcd', l:'General: máximo a 5·IΔn', u:'ms', d:40},
+  {k:'rcd_s_x1_min', g:'rcd', l:'Selectivo S: mínimo a 1·IΔn', u:'ms', d:130},
+  {k:'rcd_s_x1_max', g:'rcd', l:'Selectivo S: máximo a 1·IΔn', u:'ms', d:500},
+  {k:'rcd_s_x2_min', g:'rcd', l:'Selectivo S: mínimo a 2·IΔn', u:'ms', d:60},
+  {k:'rcd_s_x2_max', g:'rcd', l:'Selectivo S: máximo a 2·IΔn', u:'ms', d:200},
+  {k:'rcd_s_x5_min', g:'rcd', l:'Selectivo S: mínimo a 5·IΔn', u:'ms', d:50},
+  {k:'rcd_s_x5_max', g:'rcd', l:'Selectivo S: máximo a 5·IΔn', u:'ms', d:150},
+  {k:'rcd_ramp_min', g:'rcd', l:'Disparo en rampa: no antes de', u:'% IΔn', d:50},
+  {k:'rcd_ramp_max', g:'rcd', l:'Disparo en rampa: como muy tarde', u:'% IΔn', d:100},
+  {k:'zs_u0', g:'zs', l:'Tensión fase-tierra y fase-neutro U0', u:'V', d:230},
+  {k:'zl_ull', g:'zs', l:'Tensión entre fases', u:'V', d:400},
+  {k:'zs_k_b', g:'zs', l:'Disparo instantáneo, curva B', u:'× In', d:5},
+  {k:'zs_k_c', g:'zs', l:'Disparo instantáneo, curva C', u:'× In', d:10},
+  {k:'zs_k_d', g:'zs', l:'Disparo instantáneo, curva D', u:'× In', d:20},
+  {k:'du_viv', g:'du', l:'Circuitos interiores de vivienda', u:'%', d:3},
+  {k:'du_alum', g:'du', l:'Otras instalaciones: alumbrado', u:'%', d:3},
+  {k:'du_otros', g:'du', l:'Otras instalaciones: demás usos', u:'%', d:5},
+  {k:'du_ct_alum', g:'du', l:'Con centro de transformación propio: alumbrado', u:'%', d:4.5},
+  {k:'du_ct_otros', g:'du', l:'Con centro de transformación propio: demás usos', u:'%', d:6.5},
+  {k:'du_lga_total', g:'du', l:'LGA con contadores totalmente centralizados', u:'%', d:0.5},
+  {k:'du_lga_parcial', g:'du', l:'LGA con centralizaciones parciales', u:'%', d:1},
+  {k:'du_di_varios', g:'du', l:'Derivación individual, contadores en más de un lugar', u:'%', d:0.5},
+  {k:'du_di_total', g:'du', l:'Derivación individual, contadores totalmente concentrados', u:'%', d:1},
+  {k:'du_di_unico', g:'du', l:'Derivación individual, usuario único sin LGA', u:'%', d:1.5},
+  {k:'emer_aut', g:'emer', l:'Autonomía mínima', u:'min', d:60},
+  {k:'emer_evac', g:'emer', l:'Rutas de evacuación (suelo, eje del paso)', u:'lux', d:1},
+  {k:'emer_cuadro', g:'emer', l:'Junto a cuadros y equipos contra incendios', u:'lux', d:5},
+  {k:'emer_amb', g:'emer', l:'Alumbrado ambiente o antipánico', u:'lux', d:0.5}
+];
+const PGROUPS = [
+  {g:'cont', t:'Continuidad del conductor de protección', ref:'UNE-HD 60364-6', note:'El REBT no fija un valor para esta medida. El de por defecto es orientativo.'},
+  {g:'iso', t:'Resistencia de aislamiento', ref:'ITC-BT-19 · 2.9 · Tabla 3'},
+  {g:'diel', t:'Rigidez dieléctrica', ref:'ITC-BT-19 · 2.9'},
+  {g:'fuga', t:'Corriente de fuga', ref:'ITC-BT-19 · 2.9'},
+  {g:'tierra', t:'Tierra y tensión de contacto', ref:'ITC-BT-18 · ITC-BT-24 · Guía técnica', note:'Los valores de la Guía técnica son recomendaciones, no obligación del REBT.'},
+  {g:'rcd', t:'Diferenciales', ref:'UNE-EN 61008-1 · UNE-EN 61009-1'},
+  {g:'zs', t:'Impedancia de línea', ref:'ITC-BT-22 · UNE-EN 60898', note:'Los multiplicadores son el límite superior de disparo instantáneo de cada curva. La impedancia de bucle no tiene límite; U0 solo se usa para calcular su Icc de defecto.'},
+  {g:'du', t:'Caída de tensión', ref:'ITC-BT-14 · ITC-BT-15 · ITC-BT-19'},
+  {g:'emer', t:'Alumbrado de emergencia', ref:'ITC-BT-28 · 3.3'}
+];
+const DEFAULTS = Object.fromEntries(PARAMS.map(p => [p.k, p.d]));
+const PMAP = Object.fromEntries(PARAMS.map(p => [p.k, p]));
+
+/* ---------- Utilidades ---------- */
+const LS = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k, v){ try { localStorage.setItem(k, v); return true; } catch(e){ return false; } }
+};
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function parseNum(s){
+  if (s == null) return null;
+  let t = String(s).trim().replace(/^[>≥<≤]\s*/, '').replace(/\s/g, '');
+  if (t === '') return null;
+  if (t.includes(',') && t.includes('.')) t = t.replace(/\./g, '').replace(',', '.');
+  else t = t.replace(',', '.');
+  const n = Number(t);
+  return Number.isFinite(n) ? n : NaN;
+}
+const isNum = x => typeof x === 'number' && Number.isFinite(x);
+function fmt(n){
+  if (!isNum(n)) return '–';
+  const a = Math.abs(n);
+  const d = a === 0 ? 0 : a < 1 ? 3 : a < 10 ? 2 : a < 10000 ? 1 : 0;
+  return new Intl.NumberFormat('es-ES', {maximumFractionDigits: d}).format(n);
+}
+const yn = s => s === 'y' ? true : s === 'n' ? false : null;
+const resolve = (x, arg) => typeof x === 'function' ? x(arg) : x;
+const pad2 = n => String(n).padStart(2, '0');
+function today(){ const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+function fechaFmt(s){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? `${m[3]}/${m[2]}/${m[1]}` : (s || ''); }
+const nowIso = () => new Date().toISOString();
+const rid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+/* ---------- Estado de parámetros ---------- */
+function clean(o){
+  const r = {};
+  if (o && typeof o === 'object') for (const p of PARAMS) {
+    const x = o[p.k];
+    if (isNum(x) && x >= 0 && x !== p.d) r[p.k] = x;
+  }
+  return r;
+}
+let overrides = {};
+try { overrides = clean(JSON.parse(LS.get('rebt.overrides') || '{}')); } catch(e){ overrides = {}; }
+let P = {};
+function recomputeP(){ P = Object.assign({}, DEFAULTS, overrides); }
+recomputeP();
+const isCustom = k => Object.prototype.hasOwnProperty.call(overrides, k);
+function saveLocal(){ return LS.set('rebt.overrides', JSON.stringify(overrides)); }
+
+/* ---------- Definición de pruebas ---------- */
+const IDN = [10, 30, 100, 300, 500, 1000];
+const idnOpts = () => IDN.map(x => ({v: String(x), l: x >= 1000 ? (x/1000) + ' A' : x + ' mA'}));
+const localOpts = Pp => [
+  {v:'seco', l:`Demás casos · ${fmt(Pp.ul_seco)} V`},
+  {v:'cond', l:`Local conductor · ${fmt(Pp.ul_cond)} V`}
+];
+const IN_OPTS = () => [6, 10, 16, 20, 25, 32, 40, 50, 63].map(x => ({v:String(x), l:x + ' A'}));
+const amps = x => !isNum(x) ? '–' : x >= 1000 ? fmt(x / 1000) + ' kA' : Math.round(x) + ' A';
+const localCond = val => val === 'cond' ? `UL ${fmt(P.ul_cond)} V (local conductor)` : `UL ${fmt(P.ul_seco)} V`;
+const DU_OPTS = [
+  ['du_viv', 'Interior de vivienda', 'ITC-BT-19 · 2.2.2'],
+  ['du_alum', 'Otras instalaciones · alumbrado', 'ITC-BT-19 · 2.2.2'],
+  ['du_otros', 'Otras instalaciones · demás usos', 'ITC-BT-19 · 2.2.2'],
+  ['du_ct_alum', 'CT propio · alumbrado', 'ITC-BT-19 · 2.2.2'],
+  ['du_ct_otros', 'CT propio · demás usos', 'ITC-BT-19 · 2.2.2'],
+  ['du_lga_total', 'LGA · contadores totalmente centralizados', 'ITC-BT-14'],
+  ['du_lga_parcial', 'LGA · centralizaciones parciales', 'ITC-BT-14'],
+  ['du_di_varios', 'Derivación individual · contadores en más de un lugar', 'ITC-BT-15'],
+  ['du_di_total', 'Derivación individual · contadores totalmente concentrados', 'ITC-BT-15'],
+  ['du_di_unico', 'Derivación individual · usuario único sin LGA', 'ITC-BT-15']
+];
+
+const TESTS = [
+  { id:'cont', code:'R PE', short:'Continuidad PE', name:'Continuidad del conductor de protección', group:'Aislamiento y continuidad', ref:'UNE-HD 60364-6 · sin valor fijo en el REBT',
+    fields:[ {id:'r', type:'num', meas:true, label:'Resistencia medida', unit:'Ω'} ],
+    calc:(v, Pp) => ({ rule:{kind:'max', value:Pp.cont_max, unit:'Ω'}, used:['cont_max'], measured:parseNum(v.r),
+      info:'Mide entre el borne principal de tierra y cada masa o contacto de tierra de las tomas, con una corriente de al menos 200 mA. El límite es orientativo: ajústalo en Límites si trabajas con otro criterio.' }) },
+
+  { id:'iso', code:'R ISO', short:'Aislamiento', name:'Resistencia de aislamiento', group:'Aislamiento y continuidad', ref:'ITC-BT-19 · 2.9 · Tabla 3',
+    fields:[
+      {id:'tipo', type:'seg', label:'Tensión nominal de la instalación', def:'le500', options:() => [{v:'mbts', l:'MBTS / MBTP'}, {v:'le500', l:'Hasta 500 V'}, {v:'gt500', l:'Más de 500 V'}],
+        condLabel:val => val === 'mbts' ? `MBTS/MBTP, ensayo ${fmt(P.iso_v_mbts)} V c.c.` : val === 'gt500' ? `Más de 500 V, ensayo ${fmt(P.iso_v_gt500)} V c.c.` : `Hasta 500 V, ensayo ${fmt(P.iso_v_le500)} V c.c.`},
+      {id:'len', type:'num', label:'Longitud total de canalizaciones', sl:'Longitud', unit:'m', placeholder:'100', hint:'Rellénalo solo si pasa de 100 m y no puedes fraccionar la instalación.'},
+      {id:'r', type:'num', meas:true, label:'Resistencia de aislamiento medida', unit:'MΩ'} ],
+    calc:(v, Pp) => {
+      const t = v.tipo, base = Pp['iso_' + t], V = Pp['iso_v_' + t], L = parseNum(v.len);
+      const used = ['iso_' + t, 'iso_v_' + t];
+      let lim = base, extra = '';
+      if (isNum(L) && L > Pp.iso_len_ref) {
+        lim = base * Pp.iso_len_ref / L; used.push('iso_len_ref');
+        extra = ` Mínimo reducido por longitud: ${fmt(base)} MΩ × ${fmt(Pp.iso_len_ref)} / ${fmt(L)} m.`;
+      }
+      return { rule:{kind:'min', value:lim, unit:'MΩ'}, used, measured:parseNum(v.r),
+        info:`Ensayo a ${fmt(V)} V en corriente continua, con relación a tierra y entre conductores. Si el equipo marca «>999», escribe 999.` + extra };
+    } },
+
+  { id:'diel', code:'HV', short:'Rigidez dieléctrica', name:'Rigidez dieléctrica', group:'Aislamiento y continuidad', ref:'ITC-BT-19 · 2.9',
+    fields:[
+      {id:'u', type:'num', label:'Tensión máxima de servicio U', sl:'U', unit:'V', def:'230'},
+      {id:'res', type:'yn', meas:true, label:'Resultado del ensayo', yes:'Resistió', no:'Perforó o hubo descarga'} ],
+    calc:(v, Pp) => {
+      const U = parseNum(v.u);
+      const Vt = isNum(U) ? Math.max(2 * U + Pp.diel_add, Pp.diel_min) : Pp.diel_min;
+      return { rule:{kind:'yes', text:`Resistir ${fmt(Vt)} V durante ${fmt(Pp.diel_dur)} s`, ok:`Resistió ${fmt(Vt)} V durante ${fmt(Pp.diel_dur)} s`, ko:'No resistió el ensayo'},
+        used:['diel_add', 'diel_min', 'diel_dur'], measured:yn(v.res),
+        info:`Tensión de ensayo: 2·U + ${fmt(Pp.diel_add)} V a 50 Hz, con un mínimo de ${fmt(Pp.diel_min)} V. Desconecta los receptores. No se hace en locales con riesgo de incendio o explosión.` };
+    } },
+
+  { id:'fuga', code:'I FUGA', short:'Corriente de fuga', name:'Corriente de fuga', group:'Aislamiento y continuidad', ref:'ITC-BT-19 · 2.9',
+    fields:[
+      {id:'idn', type:'seg', label:'Sensibilidad del diferencial IΔn', sl:'IΔn', def:'30', options:idnOpts},
+      {id:'i', type:'num', meas:true, label:'Corriente de fuga medida', unit:'mA'} ],
+    calc:(v, Pp) => ({ rule:{kind:'max', value:(+v.idn) * Pp.fuga_pct / 100, unit:'mA'}, used:['fuga_pct'], measured:parseNum(v.i),
+      info:'La fuga de toda la instalación, o de cada circuito que protege un diferencial, no puede superar la sensibilidad de ese diferencial.' }) },
+
+  { id:'re', code:'R E', short:'Resistencia de tierra', name:'Resistencia de puesta a tierra', group:'Tierra', ref:'ITC-BT-18 · ITC-BT-24',
+    fields:[
+      {id:'crit', type:'seg', label:'Criterio', def:'rebt', options:() => [{v:'rebt', l:'REBT · UL / IΔn'}, {v:'sin', l:'Guía · sin pararrayos'}, {v:'con', l:'Guía · con pararrayos'}],
+        condLabel:val => val === 'sin' ? 'Guía técnica, edificio sin pararrayos' : val === 'con' ? 'Guía técnica, edificio con pararrayos' : 'Criterio REBT'},
+      {id:'local', type:'seg', label:'Tensión de contacto límite', def:'seco', options:localOpts, show:v => v.crit === 'rebt', condLabel:localCond},
+      {id:'idn', type:'seg', label:'Sensibilidad del diferencial IΔn', sl:'IΔn', def:'30', options:idnOpts, show:v => v.crit === 'rebt'},
+      {id:'r', type:'num', meas:true, label:'Resistencia de tierra medida', unit:'Ω'} ],
+    calc:(v, Pp) => {
+      const m = parseNum(v.r);
+      if (v.crit === 'rebt') {
+        const UL = Pp['ul_' + v.local], idn = +v.idn;
+        return { rule:{kind:'max', value:UL / (idn / 1000), unit:'Ω'}, used:['ul_' + v.local], measured:m,
+          info:`R ≤ UL / IΔn = ${fmt(UL)} V / ${fmt(idn)} mA. Es el máximo reglamentario; conviene quedar muy por debajo para que el diferencial actúe con margen.` };
+      }
+      const k = v.crit === 'sin' ? 're_guia_sin' : 're_guia_con';
+      return { rule:{kind:'max', value:Pp[k], unit:'Ω'}, used:[k], measured:m, ref:'Guía técnica de aplicación del REBT',
+        info:'Valor recomendado por la Guía técnica del Ministerio para tomas de tierra de edificios. Es una recomendación, no una obligación del REBT.' };
+    } },
+
+  { id:'uc', code:'U C', short:'Tensión de contacto', name:'Tensión de contacto', group:'Tierra', ref:'ITC-BT-18 · ITC-BT-24',
+    fields:[
+      {id:'local', type:'seg', label:'Tipo de local', def:'seco', options:localOpts, condLabel:localCond},
+      {id:'u', type:'num', meas:true, label:'Tensión de contacto medida', unit:'V'} ],
+    calc:(v, Pp) => ({ rule:{kind:'max', value:Pp['ul_' + v.local], unit:'V'}, used:['ul_' + v.local], measured:parseNum(v.u),
+      info:`${fmt(Pp.ul_cond)} V en locales o emplazamientos conductores (mojados, recintos metálicos); ${fmt(Pp.ul_seco)} V en los demás casos.` }) },
+
+  { id:'rcd05', code:'½ IΔn', short:'No disparo a ½·IΔn', name:'Diferencial: no disparo a ½·IΔn', group:'Diferenciales', ref:'UNE-EN 61008-1 · UNE-EN 61009-1',
+    fields:[ {id:'res', type:'yn', meas:true, label:'Al inyectar la mitad de IΔn', yes:'No disparó', no:'Disparó'} ],
+    calc:v => ({ rule:{kind:'yes', text:'No debe disparar', ok:'No disparó a ½·IΔn', ko:'Disparó a ½·IΔn'}, used:[], measured:yn(v.res),
+      info:'Si dispara a la mitad de su sensibilidad, el diferencial es demasiado sensible o hay fugas en la instalación. Repite con los circuitos de aguas abajo desconectados.' }) },
+
+  { id:'rcdt', code:'t Δ', short:'Tiempo de disparo', name:'Diferencial: tiempo de disparo', group:'Diferenciales', ref:'UNE-EN 61008-1 · UNE-EN 61009-1',
+    fields:[
+      {id:'tipo', type:'seg', label:'Tipo de diferencial', def:'g', options:() => [{v:'g', l:'General'}, {v:'s', l:'Selectivo (S)'}], condLabel:val => val === 's' ? 'Tipo S' : 'Tipo general'},
+      {id:'x', type:'seg', label:'Corriente de prueba', def:'1', options:() => [{v:'1', l:'1 × IΔn'}, {v:'2', l:'2 × IΔn'}, {v:'5', l:'5 × IΔn'}]},
+      {id:'t', type:'num', meas:true, label:'Tiempo de disparo medido', unit:'ms'} ],
+    calc:(v, Pp) => {
+      const m = parseNum(v.t);
+      if (v.tipo === 'g') {
+        const k = 'rcd_g_x' + v.x;
+        return { rule:{kind:'max', value:Pp[k], unit:'ms'}, used:[k], measured:m,
+          info:'Diferencial instantáneo de uso general. Prueba en semiciclo positivo y negativo y anota el tiempo más largo.' };
+      }
+      const a = 'rcd_s_x' + v.x + '_min', b = 'rcd_s_x' + v.x + '_max';
+      return { rule:{kind:'range', min:Pp[a], max:Pp[b], unit:'ms'}, used:[a, b], measured:m,
+        info:'El selectivo lleva un retardo mínimo para no disparar antes que los diferenciales que tiene aguas abajo.' };
+    } },
+
+  { id:'rcdi', code:'I Δ', short:'Corriente de disparo', name:'Diferencial: corriente de disparo', group:'Diferenciales', ref:'UNE-EN 61008-1 · UNE-EN 61009-1',
+    fields:[
+      {id:'idn', type:'seg', label:'Sensibilidad IΔn', sl:'IΔn', def:'30', options:idnOpts},
+      {id:'i', type:'num', meas:true, label:'Corriente a la que disparó', unit:'mA'} ],
+    calc:(v, Pp) => {
+      const i = parseNum(v.i), idn = +v.idn;
+      const m = isNum(i) ? i / idn * 100 : i;
+      return { rule:{kind:'range', min:Pp.rcd_ramp_min, max:Pp.rcd_ramp_max, unit:'% IΔn'}, used:['rcd_ramp_min', 'rcd_ramp_max'], measured:m,
+        mText: isNum(i) ? `${fmt(i)} mA (${fmt(m)} %)` : null,
+        info:`Con IΔn = ${fmt(idn)} mA debe disparar entre ${fmt(idn * Pp.rcd_ramp_min / 100)} y ${fmt(idn * Pp.rcd_ramp_max / 100)} mA. Valores para corriente alterna senoidal.` };
+    } },
+
+  { id:'zs', code:'Z S', short:'Bucle Zs', name:'Impedancia de bucle Zs', group:'Bucle y línea', ref:'Medida sin límite en el REBT',
+    fields:[ {id:'z', type:'num', meas:true, label:'Impedancia de bucle Zs medida', unit:'Ω'} ],
+    calc:(v, Pp) => {
+      const z = parseNum(v.z);
+      return { rule:{kind:'info', unit:'Ω'}, used:[], measured:z, cond:`Icc con U0 ${fmt(Pp.zs_u0)} V`,
+        mText: isNum(z) && z > 0 ? `${fmt(z)} Ω · Icc de defecto ${amps(Pp.zs_u0 / z)}` : null,
+        info:`La impedancia de bucle no tiene límite en el REBT ni va asociada a una protección: se registra el valor medido. La corriente de defecto a tierra se calcula como U0 / Zs, con U0 = ${fmt(Pp.zs_u0)} V.` };
+    } },
+
+  { id:'zl', code:'Z L', short:'Línea Zl', name:'Impedancia de línea Zl', group:'Bucle y línea', ref:'ITC-BT-22 · UNE-EN 60898',
+    fields:[
+      {id:'tipo', type:'seg', label:'Medida entre', def:'ln', options:Pp => [{v:'ln', l:`Fase y neutro · ${fmt(Pp.zs_u0)} V`}, {v:'ll', l:`Dos fases · ${fmt(Pp.zl_ull)} V`}],
+        condLabel:val => val === 'll' ? `Fase-fase ${fmt(P.zl_ull)} V` : `Fase-neutro ${fmt(P.zs_u0)} V`},
+      {id:'dev', type:'seg', label:'Protección del circuito', def:'C', options:() => [{v:'B', l:'Curva B'}, {v:'C', l:'Curva C'}, {v:'D', l:'Curva D'}]},
+      {id:'in', type:'select', label:'Calibre In', sl:'In', def:'16', options:IN_OPTS},
+      {id:'z', type:'num', meas:true, label:'Impedancia de línea Zl medida', unit:'Ω'} ],
+    calc:(v, Pp) => {
+      const uk = v.tipo === 'll' ? 'zl_ull' : 'zs_u0', U = Pp[uk];
+      const k = 'zs_k_' + v.dev.toLowerCase(), Ia = Pp[k] * (+v.in);
+      const z = parseNum(v.z);
+      return { rule:{kind:'max', value:U / Ia, unit:'Ω'}, used:[uk, k], measured:z,
+        mText: isNum(z) && z > 0 ? `${fmt(z)} Ω (Icc ${amps(U / z)})` : null,
+        info:`Zl × Ia ≤ U, con U = ${fmt(U)} V e Ia = ${fmt(Pp[k])} × ${v.in} A = ${fmt(Ia)} A: con la corriente de cortocircuito el magnetotérmico tiene que disparar en su zona instantánea. La Icc presunta es U / Zl; compárala con el poder de corte del aparato en la prueba «Poder de corte».` };
+    } },
+
+  { id:'icc', code:'I CC', short:'Poder de corte', name:'Poder de corte frente a la Icc', group:'Bucle y línea', ref:'ITC-BT-22',
+    fields:[
+      {id:'pdc', type:'select', label:'Poder de corte del aparato', sl:'PdC', def:'6', options:() => [3, 4.5, 6, 10, 15, 25, 36, 50].map(x => ({v:String(x), l:fmt(x) + ' kA'}))},
+      {id:'un', type:'seg', label:'Unidad que muestra el equipo', def:'A', nocond:true, options:() => [{v:'A', l:'Amperios'}, {v:'kA', l:'Kiloamperios'}]},
+      {id:'i', type:'num', meas:true, label:'Corriente de cortocircuito presunta', unit:v => v.un} ],
+    calc:v => {
+      const i = parseNum(v.i);
+      const m = isNum(i) && v.un === 'A' ? i / 1000 : i;
+      return { rule:{kind:'max', value:+v.pdc, unit:'kA'}, used:[], measured:m,
+        mText: isNum(i) ? (v.un === 'A' ? `${fmt(i)} A (${fmt(m)} kA)` : `${fmt(i)} kA`) : null,
+        info:'El poder de corte del magnetotérmico o del fusible tiene que ser igual o mayor que la Icc presunta en el punto donde está instalado.' };
+    } },
+
+  { id:'du', code:'Δ U', short:'Caída de tensión', name:'Caída de tensión', group:'Línea', ref:'ITC-BT-19 · 2.2.2',
+    fields:[
+      {id:'tipo', type:'select', label:'Tramo de la instalación', def:'du_viv', options:Pp => DU_OPTS.map(([k, l]) => ({v:k, l:`${l} (${fmt(Pp[k])} %)`})),
+        condLabel:val => (DU_OPTS.find(o => o[0] === val) || DU_OPTS[0])[1]},
+      {id:'un', type:'seg', label:'Tensión nominal', sl:'Un', def:'230', options:() => [{v:'230', l:'230 V'}, {v:'400', l:'400 V'}]},
+      {id:'modo', type:'seg', label:'Cómo la introduces', def:'v', nocond:true, options:() => [{v:'v', l:'Dos tensiones'}, {v:'p', l:'Porcentaje'}]},
+      {id:'uo', type:'num', meas:true, label:'Tensión en el origen', unit:'V', show:v => v.modo === 'v'},
+      {id:'up', type:'num', meas:true, label:'Tensión en el punto', unit:'V', show:v => v.modo === 'v'},
+      {id:'p', type:'num', meas:true, label:'Caída de tensión', unit:'%', show:v => v.modo === 'p'} ],
+    calc:(v, Pp) => {
+      const k = v.tipo, row = DU_OPTS.find(o => o[0] === k) || DU_OPTS[0];
+      let m = null, mText = null;
+      if (v.modo === 'p') m = parseNum(v.p);
+      else {
+        const a = parseNum(v.uo), b = parseNum(v.up);
+        if (a === null || b === null) m = null;
+        else if (!isNum(a) || !isNum(b)) m = NaN;
+        else { m = (a - b) / (+v.un) * 100; mText = `${fmt(a)} → ${fmt(b)} V (${fmt(m)} %)`; }
+      }
+      return { rule:{kind:'max', value:Pp[k], unit:'%'}, used:[k], measured:m, mText, ref:row[2],
+        info:'Porcentaje sobre la tensión nominal. Mide con en marcha los receptores que pueden funcionar a la vez.' };
+    } },
+
+  { id:'pol', code:'L-N', short:'Polaridad', name:'Polaridad', group:'Línea', ref:'UNE-HD 60364-6 · ITC-BT-19 · 2.2.4',
+    fields:[ {id:'res', type:'yn', meas:true, label:'Resultado', yes:'Correcta', no:'Invertida'} ],
+    calc:v => ({ rule:{kind:'yes', text:'Polaridad correcta', ok:'Polaridad correcta', ko:'Polaridad invertida'}, used:[], measured:yn(v.res),
+      info:'Los interruptores unipolares cortan la fase, nunca el neutro. Neutro en azul claro, protección en verde-amarillo y fases en marrón, negro o gris.' }) },
+
+  { id:'rot', code:'L1 L2 L3', short:'Secuencia de fases', name:'Secuencia de fases', group:'Línea', ref:'UNE-HD 60364-6',
+    fields:[ {id:'res', type:'yn', meas:true, label:'Sentido de giro', yes:'Directo L1-L2-L3', no:'Inverso'} ],
+    calc:v => ({ rule:{kind:'yes', text:'Secuencia directa', ok:'Secuencia directa L1-L2-L3', ko:'Secuencia inversa'}, used:[], measured:yn(v.res),
+      info:'Compruébalo en las tomas trifásicas y en las alimentaciones de motores.' }) },
+
+  { id:'emer', code:'EMER', short:'Emergencias', name:'Alumbrado de emergencia', group:'Emergencias', ref:'ITC-BT-28 · 3.3',
+    fields:[
+      {id:'que', type:'seg', label:'Qué compruebas', def:'aut', options:() => [{v:'aut', l:'Autonomía'}, {v:'evac', l:'Ruta de evacuación'}, {v:'cuadro', l:'Junto a cuadros'}, {v:'amb', l:'Ambiente o antipánico'}]},
+      {id:'x', type:'num', meas:true, label:v => v.que === 'aut' ? 'Autonomía medida' : 'Iluminancia medida', unit:v => v.que === 'aut' ? 'min' : 'lux'} ],
+    calc:(v, Pp) => {
+      const map = {
+        aut:['emer_aut', 'min', `Tras cortar la alimentación normal, debe aguantar al menos ${fmt(Pp.emer_aut)} min.`],
+        evac:['emer_evac', 'lux', 'Medida a nivel del suelo, en el eje de los pasos principales de la ruta de evacuación.'],
+        cuadro:['emer_cuadro', 'lux', 'En los cuadros de distribución del alumbrado y donde haya equipos contra incendios de uso manual.'],
+        amb:['emer_amb', 'lux', 'Iluminancia horizontal en todo el espacio, desde el suelo hasta 1 m de altura.']
+      };
+      const [k, u, info] = map[v.que] || map.aut;
+      return { rule:{kind:'min', value:Pp[k], unit:u}, used:[k], measured:parseNum(v.x), info };
+    } }
+];
+const T = id => TESTS.find(t => t.id === id) || TESTS[1];
+
+/* ---------- Juicio ---------- */
+function judge(rule, m){
+  if (m === null || m === undefined) return 'wait';
+  if (rule.kind === 'yes') return m === true ? 'pass' : 'fail';
+  if (!isNum(m)) return 'invalid';
+  if (rule.kind === 'info') return 'info';
+  const e = 1e-9 * Math.max(1, Math.abs(m));
+  if (rule.kind === 'max') return m <= rule.value + e ? 'pass' : 'fail';
+  if (rule.kind === 'min') return m >= rule.value - e ? 'pass' : 'fail';
+  if (rule.kind === 'range') return (m >= rule.min - e && m <= rule.max + e) ? 'pass' : 'fail';
+  return 'wait';
+}
+function ruleText(R){
+  if (R.kind === 'max') return `≤ ${fmt(R.value)} ${R.unit}`;
+  if (R.kind === 'min') return `≥ ${fmt(R.value)} ${R.unit}`;
+  if (R.kind === 'range') return `${fmt(R.min)} – ${fmt(R.max)} ${R.unit}`;
+  if (R.kind === 'info') return 'Sin límite';
+  return R.text;
+}
+function cmpLine(r, st){
+  const R = r.rule;
+  if (R.kind === 'yes') return st === 'pass' ? R.ok : R.ko;
+  const u = R.unit, ms = r.mText || `${fmt(r.measured)} ${u}`;
+  if (R.kind === 'info') return ms;
+  if (R.kind === 'max') return `${ms} ${st === 'pass' ? '≤' : '>'} ${fmt(R.value)} ${u}`;
+  if (R.kind === 'min') return `${ms} ${st === 'pass' ? '≥' : '<'} ${fmt(R.value)} ${u}`;
+  if (st === 'pass') return `${ms}, dentro de ${fmt(R.min)} – ${fmt(R.max)} ${u}`;
+  return r.measured < R.min ? `${ms} < ${fmt(R.min)} ${u} (mínimo)` : `${ms} > ${fmt(R.max)} ${u} (máximo)`;
+}
+function condText(t, v){
+  return t.fields.filter(f => !f.meas && !f.nocond && (!f.show || f.show(v))).map(f => {
+    const val = v[f.id];
+    if (f.type === 'num') return val ? `${f.sl ? f.sl + ' ' : ''}${val} ${resolve(f.unit, v) || ''}`.trim() : null;
+    if (f.condLabel) return f.condLabel(val);
+    const o = resolve(f.options, P).find(x => x.v === val);
+    return (f.sl ? f.sl + ' ' : '') + (o ? o.l : val);
+  }).filter(Boolean).join(' · ');
+}
+function medidaText(t, v, r){
+  if (r.rule.kind === 'yes') {
+    const f = t.fields.find(x => x.meas && x.type === 'yn');
+    return v[f.id] === 'y' ? f.yes : f.no;
+  }
+  return r.mText || `${fmt(r.measured)} ${r.rule.unit}`;
+}
+const ICON_OK = '<svg class="v-icon" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-width="3.5"/><path d="M14 25l7 7 13-15" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_INFO = '<svg class="v-icon" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-width="3.5"/><path d="M24 22v13" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><circle cx="24" cy="14.5" r="2.6" fill="currentColor"/></svg>';
+const RES_LABEL = {pass:'Pasa', fail:'No pasa', info:'Registrada'};
+const ICON_KO = '<svg class="v-icon" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-width="3.5"/><path d="M16 16l16 16M32 16L16 32" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
+
+/* ---------- Viviendas: estado ---------- */
+const DATOS = [
+  {k:'promocion', l:'Promoción u obra', ph:'Nombre de la promoción'},
+  {k:'vivienda', l:'Vivienda', ph:'Portal, planta y puerta'},
+  {k:'direccion', l:'Dirección', ph:'Calle y número'},
+  {k:'localidad', l:'Localidad', ph:''},
+  {k:'titular', l:'Titular o cliente', ph:''},
+  {k:'fecha', l:'Fecha de las pruebas', type:'date'},
+  {k:'tecnico', l:'Realizado por', ph:'Nombre del instalador'},
+  {k:'empresa', l:'Empresa instaladora', ph:''},
+  {k:'equipo', l:'Equipo de medida', ph:'Marca, modelo y n.º de serie', full:true},
+  {k:'obs', l:'Observaciones', type:'textarea', full:true, ph:''}
+];
+let mode = 'loading';          // 'loading' | 'db' | 'local'
+let col = null;
+let loaded = false;
+const viviendas = new Map();
+let activeId = LS.get('rebt.activa') || null;
+let circuito = '';
+const writers = {};
+const deleting = new Set();
+
+function blankDatos(){ const o = {}; DATOS.forEach(f => { o[f.k] = ''; }); return o; }
+const str = (x, max) => typeof x === 'string' ? x.slice(0, max) : '';
+function fromDoc(id, d){
+  d = d || {};
+  const datos = blankDatos(), src = d.datos || {};
+  DATOS.forEach(f => { datos[f.k] = str(src[f.k], f.k === 'obs' ? 4000 : 300); });
+  const pruebas = Array.isArray(d.pruebas) ? d.pruebas.filter(p => p && typeof p === 'object' && (p.res === 'pass' || p.res === 'fail' || p.res === 'info')).map(p => ({
+    id:str(p.id, 40) || rid('p'), t:str(p.t, 40), test:str(p.test, 20), codigo:str(p.codigo, 20), nombre:str(p.nombre, 120),
+    circuito:str(p.circuito, 120), cond:str(p.cond, 400), medida:str(p.medida, 120), limite:str(p.limite, 120),
+    res:p.res, pers:!!p.pers, ref:str(p.ref, 120)
+  })) : [];
+  return {id, datos, pruebas, creado:str(d.creado, 40), actualizado:str(d.actualizado, 40)};
+}
+function toDoc(v){ return {datos:Object.assign({}, v.datos), pruebas:v.pruebas.map(p => Object.assign({}, p)), creado:v.creado, actualizado:v.actualizado}; }
+const sortedViv = () => [...viviendas.values()].sort((a, b) => (b.actualizado || '').localeCompare(a.actualizado || ''));
+function vivTitle(v){ const d = v.datos; return [d.promocion, d.vivienda].filter(Boolean).join(' · ') || 'Vivienda sin nombre'; }
+function vivSub(v){ const d = v.datos; return [d.direccion, d.titular, fechaFmt(d.fecha)].filter(Boolean).join(' · ') || 'Sin datos todavía'; }
+function vivShort(v){ const s = v.datos.vivienda || v.datos.promocion || 'la vivienda'; return s.length > 26 ? s.slice(0, 25) + '…' : s; }
+function setActive(id){ activeId = id || null; LS.set('rebt.activa', activeId || ''); }
+const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
+
+function writerFor(id){ return writers[id] || (writers[id] = {chain:Promise.resolve(), seq:0, saved:0, timer:null}); }
+const isDirtyDoc = id => !!writers[id] && writers[id].seq !== writers[id].saved;
+function saveAllLocal(){
+  const ok = LS.set('rebt.viviendas', JSON.stringify(sortedViv().map(v => Object.assign({id:v.id}, toDoc(v)))));
+  if (!ok) showToast('No se pudo guardar en la tableta. Exporta una copia de seguridad y borra viviendas antiguas.');
+  return ok;
+}
+function persist(id, immediate){
+  const w = writerFor(id);
+  w.seq++;
+  clearTimeout(w.timer);
+  const go = () => { const seq = w.seq; saveAllLocal(); w.saved = seq; };
+  if (immediate) go(); else w.timer = setTimeout(go, 500);
+}
+window.addEventListener('pagehide', () => { Object.keys(writers).forEach(id => { if (isDirtyDoc(id)) { clearTimeout(writers[id].timer); saveAllLocal(); writers[id].saved = writers[id].seq; } }); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Object.keys(writers).forEach(id => { if (isDirtyDoc(id)) { clearTimeout(writers[id].timer); saveAllLocal(); writers[id].saved = writers[id].seq; } }); });
+function newVivienda(){
+  const last = sortedViv()[0];
+  const id = rid('v'), now = nowIso(), datos = blankDatos();
+  datos.fecha = today();
+  if (last) ['promocion', 'direccion', 'localidad', 'tecnico', 'empresa', 'equipo'].forEach(k => { datos[k] = last.datos[k]; });
+  viviendas.set(id, {id, datos, pruebas:[], creado:now, actualizado:now});
+  setActive(id);
+  persist(id, true);
+  if (location.hash !== '#informes') location.hash = '#informes'; else route();
+  renderAll();
+  setTimeout(() => { const el = document.getElementById('d-vivienda'); if (el) el.focus(); }, 0);
+}
+function deleteVivienda(id){
+  if (!viviendas.has(id)) return;
+  viviendas.delete(id);
+  if (activeId === id) setActive(null);
+  if (writers[id]) clearTimeout(writers[id].timer);
+  saveAllLocal();
+  renderAll();
+  showToast('Vivienda eliminada');
+}
+function loadLocalViviendas(){
+  try {
+    const arr = JSON.parse(LS.get('rebt.viviendas') || '[]');
+    if (Array.isArray(arr)) arr.forEach(o => { if (o && typeof o.id === 'string') viviendas.set(o.id, fromDoc(o.id, o)); });
+  } catch(e){}
+  if (activeId && !viviendas.has(activeId)) setActive(null);
+}
+
+/* ---------- Pantalla Probar ---------- */
+const dial = document.getElementById('dial');
+const panel = document.getElementById('panel');
+let cur = LS.get('rebt.test');
+if (!TESTS.some(t => t.id === cur)) cur = 'iso';
+const vals = {};
+function getVals(t){
+  if (!vals[t.id]) {
+    vals[t.id] = {};
+    t.fields.forEach(f => { vals[t.id][f.id] = f.def != null ? String(f.def) : ''; });
+  }
+  return vals[t.id];
+}
+
+function renderDial(){
+  const groups = [...new Set(TESTS.map(t => t.group))];
+  dial.innerHTML = groups.map(g => `<div class="dial-group"><h3>${esc(g)}</h3><ul>${
+    TESTS.filter(t => t.group === g).map(t => `<li><button type="button" class="dial-btn" id="dial-${t.id}" data-t="${t.id}" aria-pressed="${t.id === cur}"><span class="code">${esc(t.code)}</span><span class="nm">${esc(t.short)}</span></button></li>`).join('')
+  }</ul></div>`).join('');
+}
+
+function fieldHTML(t, f, v){
+  const nm = `f-${t.id}-${f.id}`, label = resolve(f.label, v);
+  if (f.type === 'seg') {
+    const opts = resolve(f.options, P);
+    return `<div class="field" role="radiogroup" aria-labelledby="${nm}-l"><span class="lab" id="${nm}-l">${esc(label)}</span><div class="seg">${
+      opts.map(o => `<label class="opt"><input type="radio" name="${nm}" id="${nm}-${esc(o.v)}" value="${esc(o.v)}" data-f="${f.id}"${v[f.id] === o.v ? ' checked' : ''}><span>${esc(o.l)}</span></label>`).join('')
+    }</div></div>`;
+  }
+  if (f.type === 'select') {
+    const opts = resolve(f.options, P);
+    return `<label class="field" for="${nm}"><span class="lab">${esc(label)}</span><select id="${nm}" data-f="${f.id}">${
+      opts.map(o => `<option value="${esc(o.v)}"${v[f.id] === o.v ? ' selected' : ''}>${esc(o.l)}</option>`).join('')
+    }</select></label>`;
+  }
+  return `<label class="field" for="${nm}"><span class="lab">${esc(label)}</span><span class="numwrap"><input type="text" inputmode="decimal" autocomplete="off" id="${nm}" data-f="${f.id}" value="${esc(v[f.id] || '')}" placeholder="${esc(f.placeholder || '')}"><span class="unit">${esc(resolve(f.unit, v) || '')}</span></span>${f.hint ? `<span class="hint">${esc(f.hint)}</span>` : ''}</label>`;
+}
+function measHTML(t, f, v){
+  const nm = `f-${t.id}-${f.id}`, label = resolve(f.label, v);
+  if (f.type === 'yn') {
+    return `<div class="yn" role="radiogroup" aria-labelledby="${nm}-l"><span class="lab" id="${nm}-l">${esc(label)}</span><div class="yn-row">
+      <label class="opt yes"><input type="radio" name="${nm}" id="${nm}-y" value="y" data-f="${f.id}"${v[f.id] === 'y' ? ' checked' : ''}><span>${esc(f.yes)}</span></label>
+      <label class="opt no"><input type="radio" name="${nm}" id="${nm}-n" value="n" data-f="${f.id}"${v[f.id] === 'n' ? ' checked' : ''}><span>${esc(f.no)}</span></label>
+    </div></div>`;
+  }
+  return `<label class="lcd" for="${nm}"><span class="lcd-lab">${esc(label)}</span><span class="lcd-row"><input class="lcd-in" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" id="${nm}" data-f="${f.id}" value="${esc(v[f.id] || '')}" placeholder="– – –"><span class="lcd-unit">${esc(resolve(f.unit, v) || '')}</span></span></label>`;
+}
+
+function renderPanel(){
+  const t = T(cur), v = getVals(t);
+  const vis = f => !f.show || f.show(v);
+  const ctxF = t.fields.filter(f => !f.meas && vis(f));
+  const measF = t.fields.filter(f => f.meas && vis(f));
+  panel.innerHTML = `
+    <div class="p-head"><span class="plate">${esc(t.code)}</span><div class="p-title"><h2>${esc(t.name)}</h2><p class="ref" id="p-ref"></p></div></div>
+    ${ctxF.length ? `<div class="ctx">${ctxF.map(f => fieldHTML(t, f, v)).join('')}</div>` : ''}
+    <div class="limit"><span class="lab">Límite</span><span class="val" id="lim-val"></span><span class="tag" id="lim-tag" hidden></span></div>
+    <div class="meas${measF.filter(f => f.type === 'num').length > 1 ? ' two' : ''}">${measF.map(f => measHTML(t, f, v)).join('')}</div>
+    <div class="verdict" id="verdict" aria-live="polite"></div>
+    <div class="saverow">
+      <label class="field" for="circ"><span class="lab">Circuito o punto</span><input type="text" class="txt" id="circ" autocomplete="off" placeholder="Por ejemplo: C2 tomas de uso general" value="${esc(circuito)}"></label>
+      <button type="button" class="btn primary" id="add-btn" disabled>Añadir al informe</button>
+    </div>
+    <p class="savehint" id="savehint" hidden></p>
+    <p class="info" id="p-info"></p>`;
+  update();
+}
+
+function currentResult(){
+  const t = T(cur), v = getVals(t), r = t.calc(v, P);
+  return {t, v, r, st: judge(r.rule, r.measured)};
+}
+function update(){
+  const {t, v, r, st} = currentResult();
+  const rd = t.calc(v, DEFAULTS);
+  document.getElementById('p-ref').textContent = r.ref || t.ref;
+  document.getElementById('lim-val').textContent = ruleText(r.rule);
+  const tag = document.getElementById('lim-tag');
+  const custom = r.used.some(isCustom);
+  tag.hidden = !custom;
+  if (custom) tag.textContent = `Personalizado · por defecto ${ruleText(rd.rule)}`;
+  document.getElementById('p-info').textContent = r.info;
+  const el = document.getElementById('verdict');
+  el.className = 'verdict v-' + st;
+  if (st === 'wait') {
+    el.innerHTML = `<div><div class="v-word">Esperando medida</div><div class="v-line">${r.rule.kind === 'yes' ? 'Marca el resultado del ensayo.' : 'Escribe el valor que marca el equipo.'}</div></div>`;
+  } else if (st === 'invalid') {
+    el.innerHTML = `<div><div class="v-word">Valor no válido</div><div class="v-line">Usa solo números, con coma o punto para los decimales.</div></div>`;
+  } else if (st === 'info') {
+    el.innerHTML = `${ICON_INFO}<div class="v-word">Medida registrada</div><div class="v-line">${esc(cmpLine(r, st))}</div>`;
+  } else {
+    el.innerHTML = `${st === 'pass' ? ICON_OK : ICON_KO}<div class="v-word">${st === 'pass' ? 'Pasa' : 'No pasa'}</div><div class="v-line">${esc(cmpLine(r, st))}</div>`;
+  }
+  updateSaveRow(st);
+}
+function updateSaveRow(st){
+  const btn = document.getElementById('add-btn'), hint = document.getElementById('savehint');
+  if (!btn) return;
+  if (st === undefined) st = currentResult().st;
+  const viv = viviendas.get(activeId);
+  const ready = st === 'pass' || st === 'fail' || st === 'info';
+  btn.disabled = !(ready && viv);
+  btn.textContent = viv ? `Añadir a ${vivShort(viv)}` : 'Añadir al informe';
+  let msg = '';
+  if (!loaded) msg = 'Cargando las viviendas…';
+  else if (!viv) msg = 'Elige o crea una vivienda arriba para guardar esta prueba en su informe.';
+  hint.textContent = msg;
+  hint.hidden = !msg;
+}
+function addToReport(){
+  const viv = viviendas.get(activeId);
+  const {t, v, r, st} = currentResult();
+  if (!viv || (st !== 'pass' && st !== 'fail' && st !== 'info')) return;
+  if (viv.pruebas.length >= 400) { showToast('Este informe ya tiene 400 pruebas. Crea otra vivienda para seguir.'); return; }
+  const rec = {
+    id:rid('p'), t:nowIso(), test:t.id, codigo:t.code, nombre:t.name, circuito:circuito.trim().slice(0, 120),
+    cond:[condText(t, v), r.cond].filter(Boolean).join(' · '), medida:medidaText(t, v, r), limite:ruleText(r.rule), res:st,
+    pers:r.used.some(isCustom), ref:r.ref || t.ref
+  };
+  viv.pruebas.push(rec);
+  viv.actualizado = rec.t;
+  persist(viv.id, true);
+  t.fields.filter(f => f.meas).forEach(f => { v[f.id] = ''; });
+  renderPanel();
+  renderActbar(); renderList(); syncEditor();
+  showToast(`Añadida a ${vivShort(viv)}: ${RES_LABEL[st].toLowerCase()} · ${plural(viv.pruebas.length, 'prueba', 'pruebas')}`);
+}
+
+function refreshPanel(){
+  const a = document.activeElement;
+  if (a && panel.contains(a) && a.matches('input[type="text"]')) { update(); return; }
+  const id = a && panel.contains(a) ? a.id : null;
+  renderPanel();
+  if (id) { const n = document.getElementById(id); if (n) n.focus({preventScroll:true}); }
+}
+
+dial.addEventListener('click', e => {
+  const b = e.target.closest('.dial-btn');
+  if (!b) return;
+  cur = b.dataset.t;
+  LS.set('rebt.test', cur);
+  dial.querySelectorAll('.dial-btn').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.t === cur)));
+  renderPanel();
+  b.scrollIntoView({block:'nearest', inline:'nearest'});
+});
+panel.addEventListener('input', e => {
+  const el = e.target;
+  if (el.id === 'circ') { circuito = el.value; return; }
+  if (el.matches('input[type="text"][data-f]')) { getVals(T(cur))[el.dataset.f] = el.value; update(); }
+});
+panel.addEventListener('change', e => {
+  const el = e.target;
+  if (el.matches('input[type="radio"][data-f], select[data-f]')) {
+    getVals(T(cur))[el.dataset.f] = el.value;
+    const id = el.id;
+    renderPanel();
+    const n = document.getElementById(id);
+    if (n) n.focus({preventScroll:true});
+  }
+});
+panel.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.matches('input[type="text"]')) e.target.blur();
+});
+panel.addEventListener('click', e => {
+  if (e.target.closest('#add-btn')) addToReport();
+});
+
+/* ---------- Barra de vivienda activa ---------- */
+const actSel = document.getElementById('act-sel');
+function renderActbar(){
+  const cnt = document.getElementById('act-count');
+  if (!loaded) { actSel.innerHTML = '<option value="">Cargando viviendas…</option>'; actSel.disabled = true; cnt.textContent = ''; return; }
+  actSel.disabled = false;
+  actSel.innerHTML = `<option value="">Sin vivienda (no se guarda)</option>` +
+    sortedViv().map(v => `<option value="${esc(v.id)}">${esc(vivTitle(v))}</option>`).join('') +
+    `<option value="__new">+ Nueva vivienda…</option>`;
+  actSel.value = activeId && viviendas.has(activeId) ? activeId : '';
+  const v = viviendas.get(activeId);
+  cnt.textContent = v ? plural(v.pruebas.length, 'prueba', 'pruebas') : '';
+}
+actSel.addEventListener('change', () => {
+  if (actSel.value === '__new') { newVivienda(); return; }
+  setActive(actSel.value || null);
+  renderAll();
+});
+
+/* ---------- Pantalla Informes ---------- */
+const vivList = document.getElementById('viv-list');
+const ed = document.getElementById('inf-ed');
+let edFor = null;
+function renderList(){
+  document.getElementById('store-note').textContent = 'Todo se guarda en esta tableta, también sin conexión.';
+  if (!loaded) { vivList.innerHTML = '<li class="empty">Cargando viviendas…</li>'; return; }
+  const q = norm(document.getElementById('q').value);
+  const list = sortedViv().filter(v => !q || norm([vivTitle(v), vivSub(v), v.datos.titular].join(' ')).includes(q));
+  if (!list.length) {
+    vivList.innerHTML = `<li class="empty">${viviendas.size ? 'Ninguna vivienda coincide con la búsqueda.' : 'Todavía no hay viviendas. Crea la primera con «Nueva vivienda».'}</li>`;
+    return;
+  }
+  vivList.innerHTML = list.map(v => {
+    const n = v.pruebas.length, ko = v.pruebas.filter(p => p.res === 'fail').length, ok = v.pruebas.filter(p => p.res === 'pass').length;
+    return `<li><button type="button" class="viv" data-id="${esc(v.id)}" aria-current="${v.id === activeId}"><span class="viv-t">${esc(vivTitle(v))}</span><span class="viv-s">${esc(vivSub(v))}</span><span class="chips"><span class="chip">${plural(n, 'prueba', 'pruebas')}</span>${ko ? `<span class="chip ko">${ko} no ${ko === 1 ? 'pasa' : 'pasan'}</span>` : ok ? '<span class="chip ok">Todo pasa</span>' : ''}</span></button></li>`;
+  }).join('');
+}
+function editorHTML(){
+  return `<div class="ed-head"><div class="ed-title"><p class="eyebrow">Informe de pruebas</p><h2 id="ed-title"></h2><p class="ref" id="ed-sub"></p></div>
+    <div class="ed-actions"><button type="button" class="btn primary" data-act="pdf" id="pdf-btn">Descargar PDF</button><a class="btn" href="#probar">Seguir probando</a><button type="button" class="btn ghost" data-act="del">Eliminar</button></div></div>
+    <div class="confirm" id="del-confirm" hidden><span>Se borrará la vivienda con todas sus pruebas. No se puede deshacer.</span><button type="button" class="btn danger" data-act="del-yes">Eliminar</button><button type="button" class="btn" data-act="del-no">Cancelar</button></div>
+    <p class="pdf-msg" id="pdf-msg" role="status" hidden></p>
+    <div class="datos">${DATOS.map(f => {
+      const id = 'd-' + f.k;
+      const ctl = f.type === 'textarea'
+        ? `<textarea id="${id}" data-d="${f.k}" rows="3" placeholder="${esc(f.ph || '')}"></textarea>`
+        : `<input id="${id}" data-d="${f.k}" type="${f.type || 'text'}" autocomplete="off" placeholder="${esc(f.ph || '')}">`;
+      return `<label class="${f.full ? 'full' : ''}" for="${id}"><span class="lab">${esc(f.l)}</span>${ctl}</label>`;
+    }).join('')}</div>
+    <div class="pr-head"><h3>Pruebas realizadas</h3><div class="chips" id="sum"></div></div>
+    <div id="pr-box"></div>`;
+}
+function renderEditor(){
+  if (!loaded) { edFor = null; ed.innerHTML = '<p class="empty">Cargando viviendas…</p>'; return; }
+  const v = viviendas.get(activeId);
+  if (!v) {
+    edFor = null;
+    ed.innerHTML = `<div class="ed-empty"><h2>Ninguna vivienda abierta</h2><p>Elige una de la lista o crea una nueva. Las pruebas que añadas desde Probar se guardan en la vivienda abierta, y desde aquí descargas el PDF con los datos y los resultados.</p><button type="button" class="btn primary" data-act="new">Nueva vivienda</button></div>`;
+    return;
+  }
+  if (edFor !== v.id) { edFor = v.id; ed.innerHTML = editorHTML(); }
+  syncEditor();
+}
+function syncEditor(){
+  const v = viviendas.get(activeId);
+  if (!v || edFor !== v.id) return;
+  document.getElementById('ed-title').textContent = vivTitle(v);
+  document.getElementById('ed-sub').textContent = vivSub(v);
+  DATOS.forEach(f => {
+    const el = document.getElementById('d-' + f.k);
+    if (el && document.activeElement !== el && el.value !== v.datos[f.k]) el.value = v.datos[f.k];
+  });
+  const n = v.pruebas.length, ko = v.pruebas.filter(p => p.res === 'fail').length, ok = v.pruebas.filter(p => p.res === 'pass').length, inf = n - ok - ko;
+  document.getElementById('sum').innerHTML = n ? `<span class="chip">${plural(n, 'prueba', 'pruebas')}</span>${ok ? `<span class="chip ok">${ok} ${ok === 1 ? 'pasa' : 'pasan'}</span>` : ''}${ko ? `<span class="chip ko">${ko} no ${ko === 1 ? 'pasa' : 'pasan'}</span>` : ''}${inf ? `<span class="chip">${plural(inf, 'registrada', 'registradas')}</span>` : ''}` : '';
+  const box = document.getElementById('pr-box');
+  if (!n) { box.innerHTML = '<p class="empty">Aún no hay pruebas. Ve a Probar, mete la medida y pulsa «Añadir».</p>'; return; }
+  box.innerHTML = `<div class="pr-wrap"><table class="pr"><thead><tr><th>Nº</th><th>Circuito o punto</th><th>Prueba</th><th>Medida</th><th>Límite</th><th>Resultado</th><th><span class="sr">Quitar</span></th></tr></thead><tbody>${
+    v.pruebas.map((p, i) => `<tr><td class="num">${i + 1}</td><td>${esc(p.circuito || '—')}</td><td><strong>${esc(p.nombre)}</strong>${p.cond ? `<span class="cond">${esc(p.cond)}</span>` : ''}</td><td class="num">${esc(p.medida)}</td><td class="num">${esc(p.limite)}${p.pers ? ' <span class="pers" title="Límite cambiado">*</span>' : ''}</td><td><span class="res ${p.res}">${RES_LABEL[p.res]}</span></td><td><button type="button" class="rm" data-rm="${esc(p.id)}">Quitar</button></td></tr>`).join('')
+  }</tbody></table></div>${v.pruebas.some(p => p.pers) ? '<p class="foot-note">* Límite cambiado respecto al valor por defecto.</p>' : ''}`;
+}
+vivList.addEventListener('click', e => {
+  const b = e.target.closest('.viv');
+  if (!b) return;
+  setActive(b.dataset.id);
+  renderAll();
+  if (window.matchMedia('(max-width: 820px)').matches) ed.scrollIntoView({block:'start', behavior:'smooth'});
+});
+document.getElementById('new-viv').addEventListener('click', newVivienda);
+document.getElementById('q').addEventListener('input', renderList);
+ed.addEventListener('input', e => {
+  const el = e.target;
+  if (!el.matches('[data-d]')) return;
+  const v = viviendas.get(activeId);
+  if (!v) return;
+  v.datos[el.dataset.d] = el.value.slice(0, el.dataset.d === 'obs' ? 4000 : 300);
+  v.actualizado = nowIso();
+  persist(v.id, false);
+  document.getElementById('ed-title').textContent = vivTitle(v);
+  document.getElementById('ed-sub').textContent = vivSub(v);
+  renderList(); renderActbar(); updateSaveRow();
+});
+ed.addEventListener('click', e => {
+  const act = e.target.closest('[data-act]');
+  const rm = e.target.closest('[data-rm]');
+  const v = viviendas.get(activeId);
+  if (rm && v) {
+    const idx = v.pruebas.findIndex(p => p.id === rm.dataset.rm);
+    if (idx < 0) return;
+    const [removed] = v.pruebas.splice(idx, 1);
+    v.actualizado = nowIso();
+    persist(v.id, true);
+    renderAll();
+    const vid = v.id;
+    showToast('Prueba quitada del informe', () => {
+      const vv = viviendas.get(vid);
+      if (!vv) return;
+      vv.pruebas.splice(Math.min(idx, vv.pruebas.length), 0, removed);
+      vv.actualizado = nowIso();
+      persist(vid, true);
+      renderAll();
+    });
+    return;
+  }
+  if (!act) return;
+  const a = act.dataset.act;
+  if (a === 'new') newVivienda();
+  else if (a === 'pdf' && v) downloadPdf(v);
+  else if (a === 'del') { document.getElementById('del-confirm').hidden = false; }
+  else if (a === 'del-no') { document.getElementById('del-confirm').hidden = true; }
+  else if (a === 'del-yes' && v) deleteVivienda(v.id);
+});
+
+/* ---------- Aviso flotante ---------- */
+const toast = document.getElementById('toast');
+let toastTimer = null;
+function showToast(msg, undo){
+  toast.innerHTML = `<span>${esc(msg)}</span>${undo ? '<button type="button" id="toast-undo">Deshacer</button>' : ''}`;
+  toast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, undo ? 7000 : 3800);
+  if (undo) document.getElementById('toast-undo').addEventListener('click', () => { toast.hidden = true; undo(); });
+}
+
+/* ---------- PDF ---------- */
+function pdfName(v){
+  const d = v.datos;
+  const base = ['Pruebas', d.promocion, d.vivienda, fechaFmt(d.fecha).replace(/\//g, '-')].filter(Boolean).join(' ')
+    .replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120);
+  return (base || 'Pruebas vivienda') + '.pdf';
+}
+function buildPdf(v){
+  const doc = MiniPDF.Doc({unit:'mm', format:'a4'});
+  const F = 'helvetica';
+  const tx = s => String(s == null ? '' : s);
+  doc.setProperties({title:'Informe de pruebas · ' + vivTitle(v), creator:'Pruebas MER'});
+  const W = 210, H = 297, M = 16, CW = W - 2 * M, BOTTOM = H - 18;
+  const C = {ink:[27,33,31], muted:[86,96,91], line:[196,202,197], soft:[238,240,236], accent:[233,162,28], head:[27,33,31],
+    pass:[23,112,63], passBg:[219,238,225], fail:[179,38,30], failBg:[247,221,217], white:[255,255,255]};
+  const font = (style, size, color) => { doc.setFont(F, style); doc.setFontSize(size); doc.setTextColor(color[0], color[1], color[2]); };
+  const lh = size => size * 0.3528 * 1.25;
+  const put = (s, x, y, opt) => doc.text(s, x, y, Object.assign({baseline:'top'}, opt || {}));
+  const wrap = (s, w) => doc.splitTextToSize(tx(s), w);
+  const d = v.datos;
+  let y = M;
+  const ensure = h => { if (y + h > BOTTOM) { doc.addPage(); y = M; } };
+
+  font('bold', 17, C.ink); put(tx('Informe de pruebas eléctricas'), M, y);
+  y += 8.5;
+  font('normal', 9, C.muted); put(tx('Verificaciones en baja tensión · límites del REBT (RD 842/2002) y normas UNE de referencia'), M, y);
+  y += 6;
+  doc.setDrawColor(C.accent[0], C.accent[1], C.accent[2]); doc.setLineWidth(0.8); doc.line(M, y, W - M, y);
+  y += 5;
+
+  const pairs = [['Promoción u obra', d.promocion], ['Vivienda', d.vivienda], ['Dirección', d.direccion], ['Localidad', d.localidad],
+    ['Titular o cliente', d.titular], ['Fecha de las pruebas', fechaFmt(d.fecha)], ['Realizado por', d.tecnico], ['Empresa instaladora', d.empresa],
+    ['Equipo de medida', d.equipo, true]];
+  const gap = 8, colW = (CW - gap) / 2;
+  let i = 0;
+  while (i < pairs.length) {
+    const row = pairs[i][2] ? [pairs[i]] : [pairs[i], pairs[i + 1] && !pairs[i + 1][2] ? pairs[i + 1] : null].filter(Boolean);
+    let rowH = 0;
+    row.forEach((p, j) => {
+      const x = M + j * (colW + gap), w = p[2] ? CW : colW;
+      font('bold', 7, C.muted); put(tx(p[0].toUpperCase()), x, y);
+      font('normal', 10.5, C.ink);
+      const ls = wrap(p[1] || '—', w);
+      ls.forEach((l, k) => put(l, x, y + 3.8 + k * lh(10.5)));
+      rowH = Math.max(rowH, 3.8 + ls.length * lh(10.5));
+    });
+    y += rowH + 3.2;
+    i += row.length;
+  }
+
+  const n = v.pruebas.length, ko = v.pruebas.filter(p => p.res === 'fail').length;
+  const nj = v.pruebas.filter(p => p.res === 'pass' || p.res === 'fail').length, inf = n - nj;
+  const infTxt = inf ? ` · ${inf} ${inf === 1 ? 'medida registrada' : 'medidas registradas'} sin límite` : '';
+  y += 1;
+  let bg, fg, big, small;
+  if (!n) { bg = C.soft; fg = C.muted; big = 'SIN PRUEBAS'; small = 'Este informe no tiene pruebas registradas.'; }
+  else if (ko) { bg = C.failBg; fg = C.fail; big = 'NO PASA'; small = `${ko} de ${nj} ${nj === 1 ? 'prueba' : 'pruebas'} no ${ko === 1 ? 'pasa' : 'pasan'}` + infTxt; }
+  else if (nj) { bg = C.passBg; fg = C.pass; big = 'PASA'; small = (nj === 1 ? 'La prueba con límite pasa' : `Las ${nj} pruebas con límite pasan`) + infTxt; }
+  else { bg = C.soft; fg = C.muted; big = 'MEDIDAS'; small = `${inf} ${inf === 1 ? 'medida registrada' : 'medidas registradas'} sin límite`; }
+  doc.setFillColor(bg[0], bg[1], bg[2]); doc.setDrawColor(fg[0], fg[1], fg[2]); doc.setLineWidth(0.4);
+  doc.roundedRect(M, y, CW, 13, 1.5, 1.5, 'FD');
+  font('bold', 15, fg); put(tx(big), M + 5, y + 3.3);
+  const bw = doc.getTextWidth(tx(big));
+  font('normal', 10, C.ink); put(tx(small), M + 5 + bw + 6, y + 4.6);
+  y += 13 + 6;
+
+  const cols = [{t:'Nº', w:8}, {t:'Circuito o punto', w:28}, {t:'Prueba', w:58}, {t:'Medida', w:31}, {t:'Límite', w:27}, {t:'Resultado', w:26}];
+  const pd = 1.6;
+  const drawHead = () => {
+    doc.setFillColor(C.head[0], C.head[1], C.head[2]); doc.rect(M, y, CW, 7, 'F');
+    font('bold', 7.5, C.white);
+    let x = M;
+    cols.forEach(c => { put(tx(c.t.toUpperCase()), x + pd, y + 2.1); x += c.w; });
+    y += 7;
+  };
+  if (!n) {
+    font('normal', 10, C.muted); put(tx('No hay pruebas registradas.'), M, y); y += 8;
+  } else {
+    ensure(20);
+    drawHead();
+    v.pruebas.forEach((p, idx) => {
+      font('normal', 9, C.ink); const circ = wrap(p.circuito || '—', cols[1].w - 2 * pd);
+      font('bold', 9, C.ink); const name = wrap(p.nombre, cols[2].w - 2 * pd);
+      font('normal', 7.5, C.muted); const cond = p.cond ? wrap(p.cond, cols[2].w - 2 * pd) : [];
+      font('normal', 9, C.ink);
+      const med = wrap(p.medida, cols[3].w - 2 * pd);
+      const lim = wrap(p.limite + (p.pers ? ' *' : ''), cols[4].w - 2 * pd);
+      const hTxt = Math.max(circ.length * lh(9), name.length * lh(9) + cond.length * lh(7.5), med.length * lh(9), lim.length * lh(9), lh(9));
+      const rowH = hTxt + 2 * pd + 0.4;
+      if (y + rowH > BOTTOM) { doc.addPage(); y = M; drawHead(); }
+      if (idx % 2 === 1) { doc.setFillColor(C.soft[0], C.soft[1], C.soft[2]); doc.rect(M, y, CW, rowH, 'F'); }
+      const ty = y + pd;
+      let x = M;
+      font('normal', 9, C.muted); put(String(idx + 1), x + pd, ty); x += cols[0].w;
+      font('normal', 9, C.ink); circ.forEach((l, k) => put(l, x + pd, ty + k * lh(9))); x += cols[1].w;
+      font('bold', 9, C.ink); name.forEach((l, k) => put(l, x + pd, ty + k * lh(9)));
+      font('normal', 7.5, C.muted); cond.forEach((l, k) => put(l, x + pd, ty + name.length * lh(9) + k * lh(7.5))); x += cols[2].w;
+      font('normal', 9, C.ink); med.forEach((l, k) => put(l, x + pd, ty + k * lh(9))); x += cols[3].w;
+      lim.forEach((l, k) => put(l, x + pd, ty + k * lh(9))); x += cols[4].w;
+      font('bold', 9, p.res === 'pass' ? C.pass : p.res === 'fail' ? C.fail : C.muted);
+      put(tx(RES_LABEL[p.res].toUpperCase()), x + pd, ty);
+      doc.setDrawColor(C.line[0], C.line[1], C.line[2]); doc.setLineWidth(0.2); doc.line(M, y + rowH, W - M, y + rowH);
+      y += rowH;
+    });
+  }
+  if (v.pruebas.some(p => p.pers)) {
+    y += 3; ensure(6);
+    font('normal', 8, C.muted); put(tx('* Límite cambiado respecto al valor por defecto del comprobador.'), M, y); y += 5;
+  }
+  if (d.obs && d.obs.trim()) {
+    font('normal', 10, C.ink);
+    const ls = wrap(d.obs.trim(), CW);
+    y += 4; ensure(6 + ls.length * lh(10));
+    font('bold', 7, C.muted); put(tx('OBSERVACIONES'), M, y); y += 3.8;
+    font('normal', 10, C.ink); ls.forEach((l, k) => put(l, M, y + k * lh(10)));
+    y += ls.length * lh(10) + 2;
+  }
+  y += 8; ensure(26);
+  const fw = 72, fx = W - M - fw;
+  font('bold', 7, C.muted); put(tx('FIRMA DEL TÉCNICO'), fx, y);
+  doc.setDrawColor(C.ink[0], C.ink[1], C.ink[2]); doc.setLineWidth(0.3); doc.line(fx, y + 17, W - M, y + 17);
+  if (d.tecnico) { font('normal', 9, C.ink); put(tx(d.tecnico), fx, y + 18.5); }
+
+  const total = doc.getNumberOfPages();
+  const gen = 'Generado con Pruebas MER el ' + new Date().toLocaleString('es-ES', {dateStyle:'short', timeStyle:'short'});
+  for (let pg = 1; pg <= total; pg++) {
+    doc.setPage(pg);
+    doc.setDrawColor(C.line[0], C.line[1], C.line[2]); doc.setLineWidth(0.2); doc.line(M, H - 12.5, W - M, H - 12.5);
+    font('normal', 7.5, C.muted);
+    put(tx(gen), M, H - 10.5);
+    put(tx(`Página ${pg} de ${total}`), W - M, H - 10.5, {align:'right'});
+  }
+  return doc.output('blob');
+}
+function setPdfMsg(msg, err){
+  const el = document.getElementById('pdf-msg');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.hidden = !msg;
+  el.classList.toggle('err', !!err);
+}
+function downloadPdf(v){
+  let blob;
+  try { blob = buildPdf(v); }
+  catch(e) { setPdfMsg('No se pudo generar el PDF.', true); return; }
+  const name = pdfName(v);
+  setPdfMsg('');
+  FileOut.save(blob, name, 'application/pdf').then(r => {
+    if (r === 'downloaded') setPdfMsg('PDF guardado: ' + name);
+    else if (r === 'needs-tap') setPdfMsg('Toca otra vez «Descargar PDF» para guardarlo o compartirlo.');
+  });
+}
+
+/* ---------- Pantalla Límites ---------- */
+const grid = document.getElementById('lim-grid');
+function renderLimits(){
+  grid.innerHTML = PGROUPS.map(G => `<section class="lg"><h3>${esc(G.t)}</h3><p class="ref">${esc(G.ref)}</p>${G.note ? `<p class="note">${esc(G.note)}</p>` : ''}<div class="rows">${
+    PARAMS.filter(p => p.g === G.g).map(p => `<div class="prow" id="row-${p.k}"><label class="pl" for="p-${p.k}"><span class="pn">${esc(p.l)}</span><span class="pd" id="pd-${p.k}"></span></label><span class="numwrap"><input type="text" inputmode="decimal" autocomplete="off" id="p-${p.k}" data-k="${p.k}"><span class="unit">${esc(p.u)}</span></span><button type="button" class="reset" data-reset="${p.k}" aria-label="Restaurar ${esc(p.l)}">Restaurar</button></div>`).join('')
+  }</div></section>`).join('');
+}
+const fmtIn = n => String(n).replace('.', ',');
+function syncLimits(){
+  for (const p of PARAMS) {
+    const inp = document.getElementById('p-' + p.k);
+    const mod = isCustom(p.k);
+    if (inp && document.activeElement !== inp) { inp.value = fmtIn(P[p.k]); inp.classList.remove('bad'); }
+    document.getElementById('row-' + p.k).classList.toggle('mod', mod);
+    document.getElementById('pd-' + p.k).textContent = mod ? `Cambiado · por defecto ${fmt(p.d)} ${p.u}` : 'Valor por defecto';
+  }
+  const n = Object.keys(overrides).length;
+  const badge = document.getElementById('nmod');
+  badge.hidden = n === 0;
+  badge.textContent = n;
+  badge.setAttribute('aria-label', `${n} cambiados`);
+  document.getElementById('reset-all').disabled = n === 0;
+}
+function onParamsChanged(){
+  recomputeP();
+  syncLimits();
+  refreshPanel();
+}
+function setParam(k, x){
+  if (x === PMAP[k].d) delete overrides[k]; else overrides[k] = x;
+  overrides = clean(overrides);
+  onParamsChanged();
+  scheduleSave();
+}
+grid.addEventListener('input', e => {
+  const el = e.target;
+  if (!el.matches('input[data-k]')) return;
+  const x = parseNum(el.value);
+  if (!isNum(x) || x < 0) { el.classList.add('bad'); return; }
+  el.classList.remove('bad');
+  setParam(el.dataset.k, x);
+});
+grid.addEventListener('focusout', e => {
+  if (e.target.matches('input[data-k]')) setTimeout(syncLimits, 0);
+});
+grid.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.matches('input[data-k]')) e.target.blur();
+});
+grid.addEventListener('click', e => {
+  const b = e.target.closest('[data-reset]');
+  if (!b) return;
+  const k = b.dataset.reset;
+  delete overrides[k];
+  const inp = document.getElementById('p-' + k);
+  if (inp) inp.value = fmtIn(PMAP[k].d);
+  onParamsChanged();
+  scheduleSave();
+});
+const confirmBox = document.getElementById('confirm');
+document.getElementById('reset-all').addEventListener('click', () => {
+  const n = Object.keys(overrides).length;
+  if (!n) return;
+  document.getElementById('confirm-txt').textContent = `Vas a volver ${n === 1 ? 'el valor cambiado' : `los ${n} valores cambiados`} a los de por defecto.`;
+  confirmBox.hidden = false;
+  document.getElementById('confirm-no').focus();
+});
+document.getElementById('confirm-no').addEventListener('click', () => { confirmBox.hidden = true; });
+document.getElementById('confirm-yes').addEventListener('click', () => {
+  confirmBox.hidden = true;
+  overrides = {};
+  onParamsChanged();
+  scheduleSave();
+});
+
+/* ---------- Guardado de límites ---------- */
+function setStatus(s){
+  const el = document.getElementById('status');
+  el.dataset.s = s === 'error' ? 'error' : 'saved';
+  el.textContent = s === 'error' ? 'No se pudo guardar en la tableta' : 'Guardado en esta tableta';
+}
+function scheduleSave(){
+  setStatus(saveLocal() ? 'saved' : 'error');
+}
+
+/* ---------- Almacenamiento en la tableta ---------- */
+function storageWorks(){
+  try { localStorage.setItem('rebt.test', '1'); localStorage.removeItem('rebt.test'); return true; } catch(e){ return false; }
+}
+function initStore(){
+  mode = 'local';
+  col = null;
+  loadLocalViviendas();
+  loaded = true;
+  setStatus('saved');
+  if (!storageWorks()) document.getElementById('nostore').hidden = false;
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch(e){}
+  renderAll();
+  refreshPanel();
+  renderBackupNote();
+}
+
+/* ---------- Copia de seguridad ---------- */
+function renderBackupNote(){
+  const el = document.getElementById('bk-note');
+  if (!el) return;
+  const last = LS.get('rebt.ultimaCopia');
+  el.textContent = last ? 'Última copia: ' + new Date(last).toLocaleString('es-ES', {dateStyle:'short', timeStyle:'short'}) : 'Aún no has hecho ninguna copia.';
+}
+document.getElementById('bk-export').addEventListener('click', () => {
+  const data = {app:'pruebas-mer', version:1, exportado:nowIso(), limites:Object.assign({}, overrides),
+    viviendas:sortedViv().map(v => Object.assign({id:v.id}, toDoc(v)))};
+  const d = new Date();
+  const name = `Copia Pruebas MER ${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.json`;
+  const blob = new Blob([JSON.stringify(data, null, 1)], {type:'application/json'});
+  FileOut.save(blob, name, 'application/json').then(r => {
+    if (r === 'cancelled') return;
+    LS.set('rebt.ultimaCopia', nowIso());
+    renderBackupNote();
+    showToast(r === 'shared' ? 'Copia lista: guárdala en Archivos o envíatela.' : 'Copia de seguridad guardada: ' + name);
+  });
+});
+document.getElementById('bk-import').addEventListener('click', () => document.getElementById('bk-file').click());
+document.getElementById('bk-file').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  f.text().then(txt => {
+    let data;
+    try { data = JSON.parse(txt); } catch(err) { data = null; }
+    if (!data || data.app !== 'pruebas-mer' || !Array.isArray(data.viviendas)) {
+      showToast('Ese archivo no es una copia de Pruebas MER.');
+      return;
+    }
+    let nuevas = 0, act = 0;
+    data.viviendas.forEach(o => {
+      if (!o || typeof o.id !== 'string' || !o.id) return;
+      const inc = fromDoc(o.id.slice(0, 60), o);
+      const mine = viviendas.get(inc.id);
+      if (!mine) { viviendas.set(inc.id, inc); nuevas++; }
+      else if ((inc.actualizado || '') > (mine.actualizado || '')) { viviendas.set(inc.id, inc); act++; }
+    });
+    if (data.limites && typeof data.limites === 'object') { overrides = clean(data.limites); onParamsChanged(); scheduleSave(); }
+    if (!saveAllLocal()) return;
+    renderAll();
+    showToast(`Copia importada: ${plural(nuevas, 'vivienda nueva', 'viviendas nuevas')}, ${plural(act, 'actualizada', 'actualizadas')}.`);
+  }, () => showToast('No se pudo leer el archivo.'));
+});
+
+/* ---------- Funcionar sin conexión ---------- */
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+}
+
+/* ---------- Navegación ---------- */
+const VIEWS = ['probar', 'informes', 'limites'];
+function route(){
+  const h = location.hash.replace('#', '');
+  const view = VIEWS.includes(h) ? h : 'probar';
+  VIEWS.forEach(n => {
+    document.getElementById('view-' + n).hidden = n !== view;
+    const tab = document.getElementById('tab-' + n);
+    if (n === view) tab.setAttribute('aria-current', 'page'); else tab.removeAttribute('aria-current');
+  });
+}
+window.addEventListener('hashchange', route);
+
+function renderAll(){
+  renderActbar();
+  renderList();
+  renderEditor();
+  updateSaveRow();
+}
+
+renderDial();
+renderPanel();
+renderLimits();
+syncLimits();
+renderAll();
+route();
+initStore();
+})();
+</script>
+</body>
+</html>
