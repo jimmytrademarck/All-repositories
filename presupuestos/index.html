@@ -249,6 +249,29 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:2px s
 @media (min-width:640px){.mline{grid-template-columns:60px minmax(0,1fr) auto}.mline .mctl{grid-column:2/-1}}
 @media (prefers-reduced-motion:reduce){.panel{animation:none}#toast{transition:none}}
 </style>
+<script>
+/* Deja la app guardada en la tableta para usarla sin conexión y avisa la primera vez que está lista. */
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
+  var KEY = 'sin-conexion-lista:' + location.pathname;
+  navigator.serviceWorker.register('./sw.js').then(function () { return navigator.serviceWorker.ready; }).then(function () {
+    var seen = null;
+    try { seen = localStorage.getItem(KEY); } catch (e) { seen = null; }
+    if (seen) return;
+    try { localStorage.setItem(KEY, '1'); } catch (e) { /* sin almacenamiento */ }
+    function show() {
+      var d = document.createElement('div');
+      d.setAttribute('role', 'status');
+      d.textContent = '\u2713 Lista para usar sin conexión';
+      d.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:2147483647;background:#17703F;color:#FFFFFF;font:600 16px/1.3 system-ui,-apple-system,sans-serif;padding:11px 18px;border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;white-space:nowrap';
+      document.body.appendChild(d);
+      setTimeout(function () { d.remove(); }, 5000);
+    }
+    if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
+  }).catch(function () { /* sin conexión la primera vez: se reintenta al abrir con internet */ });
+})();
+</script>
 </head>
 <body>
 <div id="toast" role="status" aria-live="polite"></div>
@@ -2087,9 +2110,6 @@ if (typeof module !== 'undefined') module.exports = Core;
   fillQuote(); setSave(worth(S.q) ? 'pending' : 'draft');
   route();
   Store.start();
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-    window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js').catch(function () {}); });
-  }
 })();
 </script>
 
