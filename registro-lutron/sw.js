@@ -1,5 +1,5 @@
 /* Service worker: guarda la app en la tableta para que funcione sin conexión. */
-const CACHE = "registro-lutron-9fc8efcd05";
+const CACHE = "registro-lutron-5a589ed520";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 const OPTS = {ignoreSearch: true, ignoreVary: true};
 async function clean(res) {

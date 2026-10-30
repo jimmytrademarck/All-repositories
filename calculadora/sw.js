@@ -1,5 +1,5 @@
 /* Service worker: guarda la app en la tableta para que funcione sin conexión. */
-const CACHE = "calculadora-e11f6f0f5b";
+const CACHE = "calculadora-94a1b0c458";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 const OPTS = {ignoreSearch: true, ignoreVary: true};
 async function clean(res) {
