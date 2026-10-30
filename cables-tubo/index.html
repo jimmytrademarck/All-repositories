@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cables en tubo</title>
+<meta name="description" content="Cuántos cables caben en cada tubo dejando el porcentaje libre que elijas. Funciona sin conexión.">
+<meta name="theme-color" content="#E2E5E1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131716" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cables tubo">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+/* Layout: mismo cuadro eléctrico que la Calculadora. Pestañas arriba, selección a la izquierda
+   y resultado en pantalla LCD de polímetro a la derecha (debajo en vertical). */
+:root{
+  --bg:#E2E5E1; --surface:#F7F8F5; --sunk:#ECEFEA; --ink:#1A1F21; --muted:#56605B;
+  --line:#C3C9C3; --line-strong:#98A19B;
+  --accent:#F2B705; --accent-ink:#1A170A; --hl:rgba(242,183,5,.16);
+  --ok:#17703F; --ko:#B3261E;
+  --lcd-frame:#2B302D; --lcd-bg:#B5C1A1; --lcd-ink:#172010; --lcd-dim:#4F5D3C;
+  --f-display:"Avenir Next Condensed","Roboto Condensed","Arial Narrow",sans-serif-condensed,system-ui,sans-serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --f-mono:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#131716; --surface:#1C2120; --sunk:#171B1A; --ink:#E4E8E4; --muted:#9BA59F;
+    --line:#2F3734; --line-strong:#4C5651; --hl:rgba(242,183,5,.13);
+    --ok:#3FBF73; --ko:#FF6B5E;
+    --lcd-frame:#070908; --lcd-bg:#0F1B12; --lcd-ink:#B6EE8A; --lcd-dim:#6E9358;
+    color-scheme:dark;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 40px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+
+.top{display:grid;gap:6px}
+.kicker{margin:0;font-family:var(--f-display);font-weight:600;font-size:.82rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2.1rem,7.5vw,3.1rem);line-height:.95;text-wrap:balance}
+.lede{margin:6px 0 0;max-width:64ch;color:var(--muted)}
+
+.tabbar{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;gap:10px;align-items:center;padding:8px 0}
+.tabs{display:flex;gap:4px;overflow-x:auto;flex:1 1 auto;min-width:0;background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:1 0 auto;min-height:46px;padding:8px 14px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-family:var(--f-display);font-weight:600;font-size:1.08rem;cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--surface)}
+.pill{flex:0 0 auto;min-height:46px;padding:6px 16px;border-radius:999px;border:0;background:var(--accent);color:var(--accent-ink);font-family:var(--f-display);font-weight:700;font-size:1.1rem;cursor:pointer;white-space:nowrap}
+.pill small{display:block;font-family:var(--f-body);font-weight:500;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;opacity:.8;line-height:1}
+
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+#view{display:grid;gap:16px;min-width:0}
+.split{display:grid;gap:16px;min-width:0}
+@media (min-width:1000px){
+  .split{grid-template-columns:minmax(0,1fr) minmax(0,380px);align-items:start;column-gap:20px}
+  .side{position:sticky;top:76px}
+}
+.side{display:grid;gap:14px;min-width:0}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding-block:18px 20px;padding-inline:clamp(14px,3.5vw,26px);display:grid;gap:18px;min-width:0}
+.p-head{display:grid;gap:6px;min-width:0}
+h2{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(1.45rem,4.6vw,1.95rem);line-height:1.05;text-wrap:balance}
+h3{margin:0;font-family:var(--f-display);font-weight:700;font-size:1.25rem;line-height:1.1}
+.block{display:grid;gap:8px;min-width:0}
+.block-label{margin:0;font-family:var(--f-display);font-weight:600;font-size:.8rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
+.bl-sub{letter-spacing:.02em;text-transform:none;font-family:var(--f-body);font-weight:400;font-size:.82rem}
+.hint{margin:0;font-size:.87rem;color:var(--muted);max-width:70ch}
+
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{display:inline-flex;flex-direction:column;align-items:flex-start;justify-content:center;min-height:46px;padding:7px 12px;border:1px solid var(--line-strong);background:transparent;color:var(--ink);border-radius:8px;font:inherit;font-weight:500;cursor:pointer;text-align:left;line-height:1.15}
+.seg button b{font-family:var(--f-display);font-weight:600;font-size:1.08rem}
+.seg button small{font-size:.74rem;color:var(--muted);font-weight:400}
+.seg button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.seg button[aria-pressed="true"] small{color:inherit;opacity:.75}
+.seg-num button{align-items:center;min-width:62px;text-align:center}
+.seg-num button b{font-family:var(--f-mono);font-size:1.02rem;font-variant-numeric:tabular-nums}
+.seg-pct button b{font-family:var(--f-display);font-size:1.15rem}
+
+select,input[type="text"]{height:48px;border:1px solid var(--line-strong);border-radius:8px;background-color:var(--bg);color:var(--ink);font-size:16px}
+select{width:100%;padding:0 34px 0 12px;font-family:var(--f-body);font-weight:500;-webkit-appearance:none;appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;cursor:pointer;text-overflow:ellipsis}
+.frow{display:flex;gap:6px;min-width:0}
+.frow input{flex:1 1 auto;min-width:0;width:100%;padding:0 12px;font-family:var(--f-mono);font-size:1.05rem;font-variant-numeric:tabular-nums}
+.ufix{display:flex;align-items:center;padding:0 10px;font-family:var(--f-mono);font-size:.95rem;color:var(--muted);border:1px solid var(--line);border-radius:8px;background:var(--sunk);white-space:nowrap}
+.dmed{max-width:260px}
+
+/* Pantalla LCD */
+.lcd{background:var(--lcd-frame);border-radius:14px;padding:8px}
+.lcd-screen{background:var(--lcd-bg);color:var(--lcd-ink);border-radius:8px;padding:12px 16px 14px;box-shadow:inset 0 2px 8px rgba(0,0,0,.28);display:grid;gap:8px;min-height:118px;overflow-wrap:anywhere}
+.lcd-cap{margin:0;font-family:var(--f-display);font-weight:600;font-size:.74rem;letter-spacing:.13em;text-transform:uppercase;color:var(--lcd-dim)}
+.lcd-row{display:flex;justify-content:space-between;align-items:baseline;gap:2px 12px;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--lcd-dim)}
+.lcd-row.main{display:grid;gap:2px;border-top:0;padding-top:0}
+.lcd-label{font-family:var(--f-display);font-weight:500;font-size:1rem;color:var(--lcd-dim)}
+.lcd-val{font-family:var(--f-mono);font-weight:600;font-size:1.05rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.main .lcd-val{font-size:clamp(2.6rem,11vw,3.4rem);line-height:1}
+.lcd-u{font-weight:400;font-size:.8em}
+.main .lcd-u{font-size:.36em;margin-left:8px;letter-spacing:.02em}
+.main .lcd-label{font-size:1.1rem;color:var(--lcd-ink)}
+.lcd-txt{font-family:var(--f-display);font-weight:700;font-size:clamp(2.2rem,9vw,2.8rem);line-height:1;display:flex;align-items:center;gap:10px}
+.dot{width:16px;height:16px;border-radius:50%;flex:none;box-shadow:0 0 0 2px var(--lcd-bg),0 0 0 3px var(--lcd-dim)}
+.dot.ok{background:#1E9B52}.dot.ko{background:#D5372A}
+.lcd-msg{margin:0;font-family:var(--f-display);font-weight:500;font-size:1.15rem}
+.lcd-note{margin:2px 0 0;font-size:.9rem;line-height:1.45}
+
+/* Tabla de cuántos caben */
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);max-width:100%;-webkit-overflow-scrolling:touch}
+table{border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums}
+.mx{width:100%}
+.mx th,.mx td{padding:0;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:center}
+.mx tr > :last-child{border-right:0}
+.mx tbody tr:last-child > *{border-bottom:0}
+.mx thead th{background:var(--sunk);font-family:var(--f-display);font-weight:600;font-size:1.02rem;padding:7px 6px;line-height:1.1;white-space:nowrap}
+.mx thead th small{display:block;font-family:var(--f-body);font-weight:400;font-size:.72rem;color:var(--muted)}
+.mx th[scope="row"]{position:sticky;left:0;z-index:1;background:var(--sunk);text-align:right;padding:0 10px;white-space:nowrap;font-family:var(--f-mono);font-weight:600;font-size:.95rem}
+.mx .corner{position:sticky;left:0;z-index:2;text-align:right;font-family:var(--f-body);font-size:.75rem;color:var(--muted);font-weight:500}
+.mx td button{display:block;width:100%;min-width:50px;height:40px;border:0;background:transparent;font-family:var(--f-mono);font-size:1rem;color:var(--ink);cursor:pointer;font-variant-numeric:tabular-nums}
+.mx td.zero button{color:var(--muted)}
+.mx .hc,.mx tr.hr > *{background-color:var(--hl)}
+.mx tr.hr th[scope="row"]{background:linear-gradient(var(--hl),var(--hl)),var(--sunk)}
+.mx td.on button{background:var(--accent);color:var(--accent-ink);font-weight:700}
+
+/* Mezcla */
+.lines{display:grid;gap:8px}
+.line{display:grid;grid-template-columns:minmax(0,1fr) auto 44px;grid-template-areas:"fam fam del" "sec qty qty" "area area area";gap:8px 10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--sunk)}
+.line .l-fam{grid-area:fam}.line .l-sec{grid-area:sec}.line .stepper{grid-area:qty}.line .larea{grid-area:area}.line .del{grid-area:del}
+@media (min-width:600px){
+  .line{grid-template-columns:minmax(0,1fr) minmax(120px,160px) 44px;grid-template-areas:"fam sec del" "qty area area"}
+}
+.stepper{display:flex;gap:4px;align-items:center}
+.stepper input{width:64px;padding:0;text-align:center;font-family:var(--f-mono);font-size:1.1rem;font-weight:600}
+.pm{flex:0 0 46px;width:46px;height:48px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink);font-size:1.35rem;line-height:1;cursor:pointer}
+.larea{font-family:var(--f-mono);font-size:.9rem;color:var(--muted);text-align:right;white-space:nowrap}
+.del{width:44px;height:44px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:1.5rem;cursor:pointer}
+.add{justify-self:start;min-height:46px;padding:8px 16px;border:1px dashed var(--line-strong);border-radius:8px;background:transparent;color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.mins{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;gap:8px}
+.mins ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.mins li button{width:100%;display:flex;justify-content:space-between;align-items:baseline;gap:10px;min-height:44px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--sunk);color:var(--ink);font:inherit;cursor:pointer;text-align:left}
+.mins li button b{font-family:var(--f-mono);white-space:nowrap}
+.mins li button.now{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.mins li span.none{display:flex;justify-content:space-between;gap:10px;padding:6px 10px;color:var(--muted)}
+
+/* % libre */
+.pctl{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pctl .pm{flex-basis:60px;width:60px;height:64px;font-size:1.8rem}
+.pbox{display:flex;align-items:baseline;gap:8px;border:1px solid var(--line-strong);border-radius:10px;background:var(--bg);padding:0 14px;height:64px;align-items:center}
+.pbox input{width:110px;height:auto;border:0;background:transparent;font-family:var(--f-mono);font-weight:700;font-size:2.2rem;text-align:right;padding:0}
+.pbox input:focus-visible{outline:0}
+.pbox:focus-within{outline:2px solid var(--ink);outline-offset:2px}
+.pbox span{font-family:var(--f-display);font-weight:600;font-size:1.2rem;color:var(--muted);white-space:nowrap}
+input[type="range"]{width:100%;accent-color:var(--accent);height:34px;margin:0}
+.bar{display:flex;height:48px;border-radius:10px;overflow:hidden;border:1px solid var(--line-strong);font-weight:600;font-size:.95rem}
+.bar-occ{background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;padding:0 12px;white-space:nowrap;overflow:hidden;min-width:0}
+.bar-free{flex:1 1 auto;background:repeating-linear-gradient(135deg,var(--sunk) 0 9px,var(--surface) 9px 18px);display:flex;align-items:center;justify-content:flex-end;padding:0 12px;white-space:nowrap;min-width:0;overflow:hidden}
+.rebt button{min-width:min(100%,200px)}
+.counts{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.count{border:1px solid var(--line);border-radius:10px;background:var(--sunk);padding:9px 12px 10px;display:grid;gap:0}
+.count .s{font-family:var(--f-mono);color:var(--muted);font-size:.88rem}
+.count .n{font-family:var(--f-display);font-weight:700;font-size:2.1rem;line-height:1.05;font-variant-numeric:tabular-nums}
+.count .u{font-size:.8rem;color:var(--muted)}
+.count.zero .n{color:var(--muted)}
+
+/* Datos */
+.dgrid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))}
+.dcard{display:grid;gap:8px;align-content:start;border:1px solid var(--line);border-radius:12px;background:var(--sunk);padding:14px}
+.dt{width:100%;font-size:.95rem}
+.dt th,.dt td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.dt th:first-child,.dt td:first-child{text-align:left}
+.dt thead th{font-family:var(--f-display);font-weight:600;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:normal;vertical-align:bottom}
+.dt td{font-family:var(--f-mono)}
+.dt tbody tr:last-child td{border-bottom:0}
+.fams{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))}
+.fam{border:1px solid var(--line);border-radius:10px;background:var(--sunk);padding:10px 12px;display:grid;gap:2px}
+.fam b{font-family:var(--f-display);font-size:1.1rem}
+.fam span{font-size:.86rem;color:var(--muted)}
+.fam p{margin:0;font-size:.92rem}
+.prose{display:grid;gap:8px;max-width:72ch}
+.prose p{margin:0}
+.prose ul{margin:0;padding-left:1.2em;display:grid;gap:6px}
+
+.foot{color:var(--muted);font-size:.88rem;display:grid;gap:8px;max-width:80ch;padding-top:4px}
+.foot p{margin:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<script>
+/* Deja la app guardada en la tableta para usarla sin conexión y avisa de si está lista o de qué lo impide. */
+(function () {
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
+  function note(text, bg, ms) {
+    function show() {
+      var d = document.createElement('div');
+      d.setAttribute('role', 'status');
+      d.textContent = text;
+      d.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:2147483647;background:' + bg + ';color:#FFFFFF;font:600 16px/1.35 system-ui,-apple-system,sans-serif;padding:12px 18px;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;width:max-content;max-width:calc(100% - 32px);text-align:center';
+      document.body.appendChild(d);
+      setTimeout(function () { d.remove(); }, ms);
+    }
+    if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
+  }
+  var NO = 'Safari no deja guardar esta app para usarla sin conexión. Si estás en navegación privada, sal de ella, borra el icono y vuelve a añadirlo a la pantalla de inicio.';
+  if (!('serviceWorker' in navigator)) { note(NO, '#B3261E', 12000); return; }
+  var KEY = 'sin-conexion-lista:' + location.pathname;
+  try { navigator.serviceWorker.register('../sw.js', {scope: '../'}).catch(function () {}); } catch (e) { /* opcional */ }
+  navigator.serviceWorker.register('./sw.js').then(function () { return navigator.serviceWorker.ready; }).then(function () {
+    var seen = null;
+    try { seen = localStorage.getItem(KEY); } catch (e) { seen = null; }
+    if (seen) return;
+    try { localStorage.setItem(KEY, '1'); } catch (e) { /* sin almacenamiento */ }
+    note('✓ Lista para usar sin conexión', '#17703F', 5000);
+  }).catch(function () {
+    if (navigator.onLine !== false) note(NO, '#B3261E', 12000);
+  });
+})();
+</script>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <p class="kicker">Llenado de tubos · datos de tus guías de tubos y cables</p>
+    <h1>Cables en tubo</h1>
+    <p class="lede">Elige el tubo y el cable y te dice cuántos caben dejando libre el porcentaje que marques en la pestaña «% libre».</p>
+  </header>
+
+  <div class="tabbar">
+    <div class="tabs" role="tablist" aria-label="Pestañas">
+      <button type="button" class="tab" role="tab" data-tab="caben" aria-controls="view">Cuántos caben</button>
+      <button type="button" class="tab" role="tab" data-tab="mezcla" aria-controls="view">Mezcla de cables</button>
+      <button type="button" class="tab" role="tab" data-tab="libre" aria-controls="view">% libre</button>
+      <button type="button" class="tab" role="tab" data-tab="datos" aria-controls="view">Datos</button>
+    </div>
+    <button type="button" class="pill" id="pill"></button>
+  </div>
+
+  <main id="view" role="tabpanel"></main>
+
+  <footer class="foot">
+    <p>Cálculo por superficie con las medidas de tus guías: sección útil del tubo y sección del cable con aislamiento. Para un proyecto definitivo comprueba el Ø exterior real del cable en la ficha del fabricante y los mínimos del REBT (ITC-BT-21).</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- Datos: Guía de tubos eléctricos (medidas interiores y sección útil) ---------- */
+/* m: [medida nominal, Ø interior usado (mm), sección útil (mm²)] */
+const TUBOS=[
+  {id:'zapa-pvc',nombre:'Zapa PVC',corto:'Zapa PVC',pre:'DN',min:false,ref:'PEMSA TFA',
+   desc:'Tubo flexible helicoidal de PVC con espiral interior de PVC rígido',
+   m:[[7,10,78.5],[9,11.8,109.4],[11,14.7,169.7],[13,16.8,221.7],[16,18.1,257.3],[21,23.6,437.4],[29,30.5,730.6],[36,40,1256.6],[48,53.1,2214.5]]},
+  {id:'zapa-metal',nombre:'Zapa metálico',corto:'Zapa metálico',pre:'DN',min:false,ref:'PEMSA TM',
+   desc:'Tubo flexible metálico de fleje de acero, versión TM sin cubierta de PVC',
+   m:[[7,9.7,73.9],[9,11.5,103.9],[11,15.3,183.9],[13,17.1,229.7],[16,19.3,292.6],[21,23.4,430.1],[29,30.7,740.2],[36,39.8,1244.1],[48,52.7,2181.3]]},
+  {id:'corrugado-lh',nombre:'Corrugado libre de halógenos',corto:'Corrugado LH',pre:'',min:true,ref:'TUPERSA Corrugado LH',
+   desc:'Tubo corrugado libre de halógenos para canalizaciones empotradas',
+   m:[[16,11,95.0],[20,14,153.9],[25,17,227.0],[32,23,415.5],[40,30,706.9],[50,40,1256.6]]},
+  {id:'corrugado',nombre:'Corrugado',corto:'Corrugado',pre:'',min:true,ref:'TUPERSA Corrugado PVC',
+   desc:'Tubo corrugado flexible de PVC',
+   m:[[16,11,95.0],[20,14,153.9],[25,17,227.0],[32,23,415.5],[40,30,706.9],[50,40,1256.6]]},
+  {id:'forroplast',nombre:'Forroplast / forrado PVC',corto:'Forroplast',pre:'',min:true,ref:'TUPERSA Forrado PVC',
+   desc:'Tubo flexible forrado de PVC',
+   m:[[16,11,95.0],[20,14,153.9],[25,17,227.0],[32,23,415.5],[40,30,706.9],[50,40,1256.6]]},
+  {id:'decaplast',nombre:'Decaplas / Decaplast',corto:'Decaplast',pre:'',min:true,ref:'TUPERSA Ultra-TP I Normal',
+   desc:'Canalización eléctrica enterrada de doble pared',
+   m:[[40,30,706.9],[50,37,1075.2],[63,47,1734.9],[75,58.5,2687.8],[90,74,4300.8],[110,90,6361.7],[125,102,8171.3],[160,135,14313.9],[200,169,22431.8],[250,212,35298.9]]}
+];
+
+/* ---------- Datos: Guía de cables (sección nominal, aislamiento calculado, nominal + aislamiento) ---------- */
+const SECC=[[1.5,5.6,7.1],[2.5,7.1,9.6],[4,8.6,12.6],[6,12.1,18.1],[10,18.3,28.3],[16,22.5,38.5],[25,31.7,56.7],[35,43.5,78.5],[50,53.9,103.9],[70,62.7,132.7],[95,70.1,165.1],[120,81.1,201.1],[150,90.5,240.5],[185,98.5,283.5],[240,106.4,346.4]];
+const FAM=[
+  {id:'h07v-k',n:'H07V-K',v:'450/750 V',ais:'PVC',uso:'Unipolar flexible para tubos, cuadros eléctricos, mecanismos, vivienda y circuitos interiores.'},
+  {id:'h07z1-k',n:'H07Z1-K (AS)',v:'450/750 V',ais:'Termoplástico libre de halógenos LSZH',uso:'Instalación interior en locales de pública concurrencia, derivaciones individuales y zonas donde se exige baja emisión de humos.'},
+  {id:'es07z1-k',n:'ES07Z1-K (AS)',v:'450/750 V',ais:'LSZH',uso:'Cable unipolar flexible equivalente libre de halógenos para instalaciones interiores según exigencias CPR/REBT.'},
+  {id:'rz1-k',n:'RZ1-K (AS)',v:'0,6/1 kV',ais:'XLPE + cubierta LSZH',uso:'Distribución de potencia, líneas generales, derivaciones, garajes, locales públicos e industria.'},
+  {id:'rv-k',n:'RV-K',v:'0,6/1 kV',ais:'XLPE + cubierta PVC',uso:'Alimentación de maquinaria, cuadros, instalaciones industriales, canalizaciones y tendidos fijos.'},
+  {id:'h05vv-f',n:'H05VV-F',v:'300/500 V',ais:'PVC + cubierta PVC',uso:'Manguera flexible para aparatos, pequeños receptores, prolongadores ligeros y uso doméstico.'},
+  {id:'h07rn-f',n:'H07RN-F',v:'450/750 V',ais:'Goma EPR + cubierta neopreno/PCP',uso:'Servicios móviles, obra, exterior, maquinaria portátil y ambientes exigentes.'},
+  {id:'nyy',n:'NYY-J / NYY-O',v:'0,6/1 kV',ais:'PVC + cubierta PVC',uso:'Instalación fija de potencia, enterrado con protección mecánica adecuada y distribución general.'},
+  {id:'n2xh',n:'N2XH / RZ1 rígido',v:'0,6/1 kV',ais:'XLPE + LSZH',uso:'Instalaciones fijas libres de halógenos en edificios e industria.'},
+  {id:'mando',n:'Cable de mando / control',v:'300/500 V o 0,6/1 kV',ais:'PVC, LSZH o PUR según modelo',uso:'Señales, maniobra, automatización, control de equipos y cuadros.'},
+  {id:'apantallado',n:'Cable apantallado',v:'Según modelo',ais:'PVC/LSZH + pantalla',uso:'Señales sensibles, variadores, instrumentación y reducción de interferencias electromagnéticas.'},
+  {id:'solar',n:'Cable solar H1Z2Z2-K',v:'1,0/1,0 kV AC - 1,5 kV DC',ais:'Elastómero reticulado libre de halógenos',uso:'Instalaciones fotovoltaicas, strings solares, exterior, radiación UV y altas temperaturas.'},
+  {id:'dali',n:'Cable DALI / Bus',v:'Según sistema',ais:'PVC o LSZH',uso:'Control de iluminación, regulación DALI, automatización y comunicaciones de baja potencia.'},
+  {id:'utp',n:'Cable UTP/FTP/SFTP',v:'Muy baja tensión',ais:'PE/PVC/LSZH según categoría',uso:'Datos, redes Ethernet, comunicaciones, CCTV IP y sistemas de control.'},
+  {id:'coaxial',n:'Cable coaxial',v:'Muy baja tensión',ais:'Dieléctrico PE + cubierta PVC/LSZH',uso:'TV, satélite, RF, CCTV analógico y distribución de señal.'},
+  {id:'tierra',n:'Cable de tierra H07V-K amarillo/verde',v:'450/750 V',ais:'PVC',uso:'Conductor de protección PE y unión equipotencial en instalaciones interiores.'}
+];
+FAM.forEach(f=>{f.s=SECC;});
+const MEDIDA='medida';
+
+/* ---------- Utilidades ---------- */
+const $=s=>document.querySelector(s);
+const nf=(x,d)=>Number(x).toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d,useGrouping:false});
+const nfa=x=>nf(x,1);
+const secL=s=>Number.isInteger(s)?String(s):nf(s,1);
+const pctL=p=>{const r=Math.round(p*10)/10;return Number.isInteger(r)?String(r):nf(r,1);};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const parseNum=v=>{const t=String(v).replace(/\s/g,'').replace(',','.');if(!/^\d*\.?\d+$|^\d+\.$/.test(t))return NaN;return parseFloat(t);};
+const areaD=d=>Math.PI*d*d/4;
+const dEq=a=>2*Math.sqrt(a/Math.PI);
+const clampI=(i,n)=>{i=Math.round(+i);return isFinite(i)&&i>=0&&i<n?i:0;};
+const clampPct=p=>Math.min(95,Math.max(0,p));
+const famById=id=>FAM.find(f=>f.id===id)||FAM[0];
+const tuboById=id=>TUBOS.find(t=>t.id===id)||TUBOS[0];
+const plural=(n,a,b)=>n===1?a:b;
+
+/* ---------- Estado (se guarda en esta tableta) ---------- */
+const KEY='cables-tubo:estado';
+const DEF={tab:'caben',libre:40,tubo:'corrugado',dn:1,fam:'h07v-k',sec:1,dmed:6,
+  mezcla:[{fam:'h07v-k',sec:1,n:2,d:6},{fam:'tierra',sec:1,n:1,d:6},{fam:'h07v-k',sec:0,n:3,d:6}]};
+let S=JSON.parse(JSON.stringify(DEF));
+try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&typeof o==='object')S=Object.assign(S,o);}}catch(e){/* sin almacenamiento */}
+sanitize();
+
+function sanitize(){
+  if(['caben','mezcla','libre','datos'].indexOf(S.tab)<0)S.tab='caben';
+  S.libre=+S.libre;if(!isFinite(S.libre))S.libre=DEF.libre;S.libre=clampPct(S.libre);
+  if(!TUBOS.some(t=>t.id===S.tubo))S.tubo=DEF.tubo;
+  S.dn=clampI(S.dn,tubo().m.length);
+  if(S.fam!==MEDIDA&&!FAM.some(f=>f.id===S.fam))S.fam=DEF.fam;
+  S.sec=clampI(S.sec,SECC.length);
+  S.dmed=+S.dmed;if(!(S.dmed>0&&S.dmed<=300))S.dmed=DEF.dmed;
+  if(!Array.isArray(S.mezcla))S.mezcla=JSON.parse(JSON.stringify(DEF.mezcla));
+  S.mezcla=S.mezcla.filter(l=>l&&typeof l==='object').slice(0,40).map(l=>({
+    fam:(l.fam===MEDIDA||FAM.some(f=>f.id===l.fam))?l.fam:'h07v-k',
+    sec:clampI(l.sec,SECC.length),
+    n:Math.max(0,Math.min(999,Math.round(+l.n)||0)),
+    d:(+l.d>0&&+l.d<=300)?+l.d:6
+  }));
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){/* sin almacenamiento */}}
+
+function tubo(){return tuboById(S.tubo);}
+function dnLabel(t,i){const v=t.m[i][0];return t.pre?t.pre+' '+v:'Ø'+v;}
+function tuboTxt(t,i){return (t.corto||t.nombre)+' '+dnLabel(t,i);}
+const ocup=()=>1-S.libre/100;
+const caben=(At,ac)=>ac>0?Math.max(0,Math.floor(At*ocup()/ac+1e-9)):0;
+function cableOf(fam,sec,d){
+  if(fam===MEDIDA){const ok=d>0&&d<=300;return {nombre:'Cable a medida',label:ok?'Ø '+nf(d,1)+' mm':'Ø ?',a:ok?areaD(d):0};}
+  const f=famById(fam),s=f.s[sec];
+  return {nombre:f.n,label:secL(s[0])+' mm²',a:s[2]};
+}
+function setTubo(id){
+  const old=tubo().m[S.dn][1];
+  S.tubo=id;
+  const t=tubo();let best=0,bd=Infinity;
+  t.m.forEach((m,i)=>{const d=Math.abs(m[1]-old);if(d<bd-1e-9){bd=d;best=i;}});
+  S.dn=best;
+}
+
+/* ---------- Bloques de selección ---------- */
+function tuboBlock(){
+  return '<div class="block"><p class="block-label">Tubo</p><div class="seg" role="group" aria-label="Tipo de tubo">'+
+    TUBOS.map(t=>'<button type="button" data-set="tubo" data-v="'+t.id+'" aria-pressed="'+(t.id===S.tubo)+'"><b>'+esc(t.corto)+'</b><small>'+esc(t.ref)+'</small></button>').join('')+
+    '</div></div>';
+}
+function medidaBlock(){
+  const t=tubo();
+  return '<div class="block"><p class="block-label">Medida <span class="bl-sub">'+(t.min?'Ø interior mínimo de ficha':'Ø interior de ficha')+'</span></p><div class="seg seg-num" role="group" aria-label="Medida del tubo">'+
+    t.m.map((m,i)=>'<button type="button" data-set="dn" data-v="'+i+'" aria-pressed="'+(i===S.dn)+'"><b>'+esc(dnLabel(t,i))+'</b><small>int. '+nf(m[1],1)+'</small></button>').join('')+
+    '</div></div>';
+}
+function famOptions(sel){
+  return FAM.map(f=>'<option value="'+f.id+'"'+(f.id===sel?' selected':'')+'>'+esc(f.n)+' · '+esc(f.v)+'</option>').join('')+
+    '<option value="'+MEDIDA+'"'+(sel===MEDIDA?' selected':'')+'>Cable a medida (Ø exterior)</option>';
+}
+function cableBlock(){
+  let h='<div class="block"><label class="block-label" for="fam">Cable</label><select id="fam">'+famOptions(S.fam)+'</select>';
+  if(S.fam===MEDIDA){
+    h+='<div class="frow dmed"><input id="dmed" type="text" inputmode="decimal" autocomplete="off" value="'+nf(S.dmed,1)+'" aria-label="Ø exterior del cable en milímetros"><span class="ufix">mm Ø ext.</span></div>'+
+       '<p class="hint">Escribe el Ø exterior real (ficha del fabricante o medido). Sirve para mangueras, cables con cubierta o cualquier cable que no esté en la guía.</p>';
+  }else{
+    const f=famById(S.fam);
+    h+='<p class="hint">'+esc(f.ais)+'. '+esc(f.uso)+'</p>';
+  }
+  return h+'</div>';
+}
+function seccionBlock(){
+  if(S.fam===MEDIDA)return '';
+  const f=famById(S.fam);
+  return '<div class="block"><p class="block-label">Sección nominal <span class="bl-sub">mm²</span></p><div class="seg seg-num" role="group" aria-label="Sección nominal">'+
+    f.s.map((s,i)=>'<button type="button" data-set="sec" data-v="'+i+'" aria-pressed="'+(i===S.sec)+'"><b>'+secL(s[0])+'</b><small>'+nfa(s[2])+' ocupa</small></button>').join('')+
+    '</div></div>';
+}
+
+/* ---------- Pestaña: Cuántos caben ---------- */
+function vCaben(){
+  return '<div class="split">'+
+    '<section class="panel" aria-label="Tubo y cable">'+tuboBlock()+medidaBlock()+cableBlock()+seccionBlock()+'</section>'+
+    '<aside class="side"><div class="lcd" id="res" aria-live="polite"></div></aside>'+
+  '</div>'+
+  '<section class="panel" aria-labelledby="mx-t"><div class="p-head"><h2 id="mx-t"></h2><p class="hint">Filas: sección del cable. Columnas: medida del tubo. Toca una casilla para verla arriba.</p></div><div class="tablewrap" id="mx"></div></section>';
+}
+function lcdCaben(){
+  const t=tubo(),m=t.m[S.dn],c=cableOf(S.fam,S.sec,S.dmed);
+  if(!(c.a>0))return '<div class="lcd-screen"><p class="lcd-cap">'+esc(tuboTxt(t,S.dn))+'</p><p class="lcd-msg">Escribe el Ø exterior del cable en milímetros.</p></div>';
+  const n=caben(m[2],c.a),usable=m[2]*ocup();
+  const libreN=100-n*c.a/m[2]*100,libreN1=100-(n+1)*c.a/m[2]*100;
+  let h='<div class="lcd-screen"><p class="lcd-cap">Caben en '+esc(tuboTxt(t,S.dn))+' · '+pctL(S.libre)+' % libre</p>'+
+    '<div class="lcd-row main"><span class="lcd-val">'+n+'<span class="lcd-u">'+plural(n,'cable','cables')+'</span></span><span class="lcd-label">'+esc(c.nombre)+' · '+esc(c.label)+'</span></div>'+
+    '<div class="lcd-row"><span class="lcd-label">Sección útil del tubo</span><span class="lcd-val">'+nfa(m[2])+' <span class="lcd-u">mm²</span></span></div>'+
+    '<div class="lcd-row"><span class="lcd-label">Se puede ocupar ('+pctL(100-S.libre)+' %)</span><span class="lcd-val">'+nfa(usable)+' <span class="lcd-u">mm²</span></span></div>'+
+    '<div class="lcd-row"><span class="lcd-label">'+(S.fam===MEDIDA?'Ocupa cada cable':'Cada cable con aislamiento')+'</span><span class="lcd-val">'+nfa(c.a)+' <span class="lcd-u">mm²</span></span></div>';
+  if(n>0)h+='<div class="lcd-row"><span class="lcd-label">Con '+n+' '+plural(n,'cable','cables')+' queda libre</span><span class="lcd-val">'+pctL(libreN)+' <span class="lcd-u">%</span></span></div>';
+  if(libreN1>=0)h+='<div class="lcd-row"><span class="lcd-label">Con '+(n+1)+' quedaría libre</span><span class="lcd-val">'+pctL(libreN1)+' <span class="lcd-u">%</span></span></div>';
+  if(n===0)h+='<p class="lcd-note">No cabe ninguno dejando un '+pctL(S.libre)+' % libre. Elige una medida mayor o cambia el % libre.</p>';
+  if(S.libre<30&&n>0)h+='<p class="lcd-note">Con menos de un 30 % libre el resultado es solo teórico: los cables redondos dejan huecos entre sí y además hay que poder pasarlos.</p>';
+  return h+'</div>';
+}
+function rowsFor(fam,d){
+  if(fam===MEDIDA){const c=cableOf(MEDIDA,0,d);return c.a>0?[{label:c.label,a:c.a,i:-1}]:[];}
+  return famById(fam).s.map((s,i)=>({label:secL(s[0]),a:s[2],i}));
+}
+function matrix(){
+  const t=tubo(),rows=rowsFor(S.fam,S.dmed);
+  if(!rows.length)return '<p class="hint" style="padding:12px">Escribe el Ø exterior del cable.</p>';
+  let h='<table class="mx"><thead><tr><th scope="col" class="corner">'+(S.fam===MEDIDA?'Cable':'mm²')+'</th>'+
+    t.m.map((m,j)=>'<th scope="col"'+(j===S.dn?' class="hc"':'')+'>'+esc(dnLabel(t,j))+'<small>int. '+nf(m[1],1)+'</small></th>').join('')+'</tr></thead><tbody>';
+  rows.forEach(r=>{
+    const rowOn=r.i===-1||r.i===S.sec;
+    h+='<tr'+(rowOn?' class="hr"':'')+'><th scope="row">'+esc(r.label)+'</th>';
+    t.m.forEach((m,j)=>{
+      const n=caben(m[2],r.a),on=rowOn&&j===S.dn;
+      const cls=[n===0?'zero':'',on?'on':'',(!rowOn&&j===S.dn)?'hc':''].filter(Boolean).join(' ');
+      h+='<td'+(cls?' class="'+cls+'"':'')+'><button type="button" data-cell="'+j+','+r.i+'" aria-label="'+esc(r.label)+' en '+esc(dnLabel(t,j))+': '+n+' '+plural(n,'cable','cables')+'">'+(n===0?'–':n)+'</button></td>';
+    });
+    h+='</tr>';
+  });
+  return h+'</tbody></table>';
+}
+
+/* ---------- Pestaña: Mezcla de cables ---------- */
+function vMezcla(){
+  return '<div class="split">'+
+    '<section class="panel" aria-label="Tubo y cables de la mezcla">'+tuboBlock()+medidaBlock()+
+      '<div class="block"><p class="block-label">Cables que van juntos en el tubo</p><div class="lines">'+S.mezcla.map(lineHtml).join('')+'</div>'+
+      '<button type="button" class="add" data-add="1">+ Añadir cable</button></div>'+
+    '</section>'+
+    '<aside class="side"><div class="lcd" id="mres" aria-live="polite"></div><div class="mins" id="mins"></div></aside>'+
+  '</div>';
+}
+function lineHtml(l,i){
+  let sec;
+  if(l.fam===MEDIDA){
+    sec='<div class="frow l-sec"><input type="text" inputmode="decimal" autocomplete="off" data-lf="d" data-i="'+i+'" value="'+nf(l.d,1)+'" aria-label="Ø exterior en mm"><span class="ufix">mm Ø</span></div>';
+  }else{
+    sec='<select class="l-sec" data-lf="sec" data-i="'+i+'" aria-label="Sección">'+SECC.map((s,j)=>'<option value="'+j+'"'+(j===l.sec?' selected':'')+'>'+secL(s[0])+' mm²</option>').join('')+'</select>';
+  }
+  return '<div class="line">'+
+    '<select class="l-fam" data-lf="fam" data-i="'+i+'" aria-label="Tipo de cable">'+famOptions(l.fam)+'</select>'+sec+
+    '<div class="stepper"><button type="button" class="pm" data-step="-1" data-i="'+i+'" aria-label="Uno menos">−</button>'+
+      '<input type="text" inputmode="numeric" autocomplete="off" data-lf="n" data-i="'+i+'" value="'+l.n+'" aria-label="Cantidad">'+
+      '<button type="button" class="pm" data-step="1" data-i="'+i+'" aria-label="Uno más">+</button></div>'+
+    '<span class="larea" id="la'+i+'"></span>'+
+    '<button type="button" class="del" data-del="'+i+'" aria-label="Quitar esta línea">×</button>'+
+  '</div>';
+}
+function lineArea(l){
+  const c=cableOf(l.fam,l.sec,l.d);
+  if(!(c.a>0))return 'Ø no válido';
+  return l.n+' × '+nfa(c.a)+' = '+nfa(l.n*c.a)+' mm²';
+}
+function mezclaTot(){
+  let N=0,A=0;
+  S.mezcla.forEach(l=>{const c=cableOf(l.fam,l.sec,l.d);if(c.a>0&&l.n>0){N+=l.n;A+=l.n*c.a;}});
+  return {N,A};
+}
+function lcdMezcla(){
+  const t=tubo(),m=t.m[S.dn],{N,A}=mezclaTot();
+  const cap='<p class="lcd-cap">'+esc(tuboTxt(t,S.dn))+' · pides '+pctL(S.libre)+' % libre</p>';
+  if(N===0)return '<div class="lcd-screen">'+cap+'<p class="lcd-msg">Añade al menos un cable con cantidad.</p></div>';
+  const lim=m[2]*ocup(),ok=A<=lim+1e-9,libre=100-A/m[2]*100;
+  let h='<div class="lcd-screen">'+cap+
+    '<div class="lcd-row main"><span class="lcd-txt"><span class="dot '+(ok?'ok':'ko')+'"></span>'+(ok?'Cabe':'No cabe')+'</span><span class="lcd-label">'+N+' '+plural(N,'cable','cables')+' · ocupan '+nfa(A)+' mm²</span></div>'+
+    '<div class="lcd-row"><span class="lcd-label">Sección útil del tubo</span><span class="lcd-val">'+nfa(m[2])+' <span class="lcd-u">mm²</span></span></div>'+
+    '<div class="lcd-row"><span class="lcd-label">Se puede ocupar ('+pctL(100-S.libre)+' %)</span><span class="lcd-val">'+nfa(lim)+' <span class="lcd-u">mm²</span></span></div>';
+  if(libre>=0)h+='<div class="lcd-row"><span class="lcd-label">Queda libre</span><span class="lcd-val">'+pctL(libre)+' <span class="lcd-u">%</span></span></div>';
+  else h+='<div class="lcd-row"><span class="lcd-label">Ocupan más que el tubo entero</span><span class="lcd-val">'+pctL(A/m[2]*100)+' <span class="lcd-u">%</span></span></div>';
+  h+='<div class="lcd-row"><span class="lcd-label">'+(ok?'Aún cabe':'Sobran')+'</span><span class="lcd-val">'+nfa(Math.abs(lim-A))+' <span class="lcd-u">mm²</span></span></div>';
+  return h+'</div>';
+}
+function minsHtml(){
+  const {N,A}=mezclaTot();
+  if(N===0)return '<h3>Medida mínima</h3><p class="hint">Añade cables para verla.</p>';
+  let h='<h3>Medida mínima con '+pctL(S.libre)+' % libre</h3><p class="hint">La medida más pequeña de cada tubo en la que entra esta mezcla. Toca una para elegirla.</p><ul>';
+  TUBOS.forEach(t=>{
+    const j=t.m.findIndex(m=>A<=m[2]*ocup()+1e-9);
+    if(j<0)h+='<li><span class="none"><span>'+esc(t.corto)+'</span><span>ninguna medida llega</span></span></li>';
+    else h+='<li><button type="button" data-pick="'+t.id+','+j+'"'+(t.id===S.tubo&&j===S.dn?' class="now"':'')+'><span>'+esc(t.corto)+'</span><b>'+esc(dnLabel(t,j))+'</b></button></li>';
+  });
+  return h+'</ul>';
+}
+
+/* ---------- Pestaña: % libre ---------- */
+const QUICK=[30,35,40,45,50,55];
+const REBT=[
+  {p:60,t:'Superficie',s:'tubo ≥ 2,5 × cables · 60 % libre'},
+  {p:200/3,t:'Empotrado',s:'tubo ≥ 3 × cables · 66,7 % libre'},
+  {p:75,t:'Al aire o enterrado',s:'tubo ≥ 4 × cables · 75 % libre'}
+];
+const near=(a,b)=>Math.abs(a-b)<0.05;
+function vLibre(){
+  return '<section class="panel" aria-labelledby="lib-t">'+
+    '<div class="p-head"><h2 id="lib-t">Espacio libre en el tubo</h2><p class="hint">Lo que marques aquí se usa en todas las pestañas y se queda guardado.</p></div>'+
+    '<div class="pctl">'+
+      '<button type="button" class="pm" data-pct="-1" aria-label="Un 1 % menos libre">−</button>'+
+      '<label class="pbox"><input id="pct" type="text" inputmode="decimal" autocomplete="off" value="'+pctL(S.libre)+'" aria-label="Porcentaje libre"><span>% libre</span></label>'+
+      '<button type="button" class="pm" data-pct="1" aria-label="Un 1 % más libre">+</button>'+
+    '</div>'+
+    '<input type="range" id="prange" min="0" max="90" step="1" value="'+Math.round(S.libre)+'" aria-label="Porcentaje libre">'+
+    '<div class="bar" id="bar"></div>'+
+    '<div class="block"><p class="block-label">Rápidos</p><div class="seg seg-num seg-pct" id="quick">'+
+      QUICK.map(p=>'<button type="button" data-preset="'+p+'" aria-pressed="'+near(S.libre,p)+'"><b>'+p+' %</b><small>libre</small></button>').join('')+
+    '</div></div>'+
+    '<div class="block"><p class="block-label">REBT · ITC-BT-21</p><div class="seg rebt" id="rebt">'+
+      REBT.map(r=>'<button type="button" data-preset="'+r.p+'" aria-pressed="'+near(S.libre,r.p)+'"><b>'+r.t+'</b><small>'+r.s+'</small></button>').join('')+
+    '</div><p class="hint">El REBT pide estos mínimos cuando van más de 5 conductores por tubo o cables de secciones distintas (enterrado: más de 10). Con menos conductores iguales manda su tabla de diámetros mínimos.</p></div>'+
+  '</section>'+
+  '<section class="panel" aria-labelledby="lt">'+
+    '<div class="p-head"><h2 id="lt"></h2><p class="hint">Cuántos cables de cada sección caben en el tubo elegido, cada sección por separado.</p></div>'+
+    tuboBlock()+medidaBlock()+cableBlock()+
+    '<div class="counts" id="counts"></div>'+
+  '</section>';
+}
+function barHtml(){
+  const o=100-S.libre;
+  return '<div class="bar-occ" style="width:'+o+'%">'+(o>=14?'Ocupado '+pctL(o)+' %':'')+'</div><div class="bar-free">'+(S.libre>=14?'Libre '+pctL(S.libre)+' %':'')+'</div>';
+}
+function countsHtml(){
+  const t=tubo(),m=t.m[S.dn],rows=rowsFor(S.fam,S.dmed);
+  if(!rows.length)return '<p class="hint">Escribe el Ø exterior del cable.</p>';
+  return rows.map(r=>{const n=caben(m[2],r.a);return '<div class="count'+(n?'':' zero')+'"><span class="s">'+esc(r.label)+(r.i>=0?' mm²':'')+'</span><span class="n">'+n+'</span><span class="u">'+plural(n,'cable','cables')+'</span></div>';}).join('');
+}
+
+/* ---------- Pestaña: Datos ---------- */
+function vDatos(){
+  const ej=TUBOS[3].m[1],ejA=ej[2]*0.6,ejC=SECC[1][2];
+  return '<section class="panel"><div class="p-head"><h2>Tubos</h2><p class="hint">Sección útil = π × (Ø interior / 2)². Sin metros de rollo, pesos ni embalajes.</p></div><div class="dgrid">'+
+    TUBOS.map(t=>'<div class="dcard"><h3>'+esc(t.nombre)+'</h3><p class="hint">'+esc(t.ref)+' · '+esc(t.desc)+'. '+(t.min?'Ø interior mínimo de ficha: la sección es una referencia mínima.':'Ø interior publicado en la tabla técnica.')+'</p>'+
+      '<table class="dt"><thead><tr><th>Medida</th><th>Ø interior (mm)</th><th>Sección útil (mm²)</th></tr></thead><tbody>'+
+      t.m.map((m,i)=>'<tr><td>'+esc(dnLabel(t,i))+'</td><td>'+nf(m[1],1)+'</td><td>'+nfa(m[2])+'</td></tr>').join('')+
+      '</tbody></table></div>').join('')+
+  '</div></section>'+
+  '<section class="panel"><div class="p-head"><h2>Cables</h2><p class="hint">En tu guía las 16 familias tienen las mismas medidas por sección (base de cable unipolar aislado). Las mangueras y cables con cubierta ocupan más: para ellos usa «Cable a medida» con su Ø real.</p></div>'+
+    '<div class="tablewrap"><table class="dt"><thead><tr><th>Sección nominal (mm²)</th><th>Aislamiento (mm²)</th><th>Nominal + aislamiento (mm²)</th><th>Ø exterior equivalente (mm)</th></tr></thead><tbody>'+
+    SECC.map(s=>'<tr><td>'+secL(s[0])+'</td><td>'+nfa(s[1])+'</td><td>'+nfa(s[2])+'</td><td>'+nf(dEq(s[2]),1)+'</td></tr>').join('')+
+    '</tbody></table></div>'+
+    '<div class="fams">'+FAM.map(f=>'<div class="fam"><b>'+esc(f.n)+'</b><span>'+esc(f.v)+' · '+esc(f.ais)+'</span><p>'+esc(f.uso)+'</p></div>').join('')+'</div>'+
+  '</section>'+
+  '<section class="panel"><div class="p-head"><h2>Cómo calcula</h2></div><div class="prose">'+
+    '<p><b>Cables que caben</b> = parte entera de (sección útil del tubo × % que se puede ocupar ÷ sección del cable con aislamiento).</p>'+
+    '<p>Ejemplo: corrugado Ø20 tiene '+nfa(ej[2])+' mm². Con un 40 % libre se puede ocupar el 60 %: '+nfa(ejA)+' mm². Un cable de 2,5 mm² ocupa '+nfa(ejC)+' mm², así que '+nfa(ejA)+' ÷ '+nfa(ejC)+' = '+nf(ejA/ejC,2)+' → caben '+Math.floor(ejA/ejC)+'.</p>'+
+    '<ul><li>La sección nominal es la del cobre; la que cuenta para el tubo es la sección total con aislamiento.</li>'+
+    '<li>En corrugado, corrugado LH, Forroplast y Decaplast se usa el Ø interior mínimo de ficha, así que el resultado queda del lado seguro.</li>'+
+    '<li>En la mezcla se suman las secciones de todos los cables y se compara con lo que se puede ocupar.</li>'+
+    '<li>Para un proyecto definitivo usa el Ø exterior real del fabricante y revisa los mínimos del REBT (ITC-BT-21).</li></ul>'+
+  '</div></section>';
+}
+
+/* ---------- Pintar ---------- */
+function render(){
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===S.tab)));
+  const v=$('#view');
+  v.innerHTML=S.tab==='caben'?vCaben():S.tab==='mezcla'?vMezcla():S.tab==='libre'?vLibre():vDatos();
+  refresh();
+}
+function refresh(){
+  const pill=$('#pill');
+  pill.innerHTML=pctL(S.libre)+' % <small>libre</small>';
+  pill.setAttribute('aria-label','Espacio libre '+pctL(S.libre)+' %. Cambiar');
+  if(S.tab==='caben'){
+    const t=tubo();
+    $('#res').innerHTML=lcdCaben();
+    $('#mx-t').textContent=t.nombre+' · '+(S.fam===MEDIDA?'cable a medida':famById(S.fam).n)+' · '+pctL(S.libre)+' % libre';
+    $('#mx').innerHTML=matrix();
+  }else if(S.tab==='mezcla'){
+    S.mezcla.forEach((l,i)=>{const el=$('#la'+i);if(el)el.textContent=lineArea(l);});
+    $('#mres').innerHTML=lcdMezcla();
+    $('#mins').innerHTML=minsHtml();
+  }else if(S.tab==='libre'){
+    const p=$('#pct');if(p&&document.activeElement!==p)p.value=pctL(S.libre);
+    const r=$('#prange');if(r)r.value=Math.round(S.libre);
+    $('#bar').innerHTML=barHtml();
+    document.querySelectorAll('[data-preset]').forEach(b=>b.setAttribute('aria-pressed',String(near(S.libre,+b.dataset.preset))));
+    $('#lt').textContent='Con '+pctL(S.libre)+' % libre en '+tuboTxt(tubo(),S.dn)+' caben:';
+    $('#counts').innerHTML=countsHtml();
+  }
+  save();
+}
+
+/* ---------- Eventos ---------- */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const d=b.dataset;
+  if(d.tab){if(S.tab!==d.tab){S.tab=d.tab;render();const bar=document.querySelector('.tabbar');if(bar&&bar.getBoundingClientRect().top<=0)window.scrollTo(0,bar.offsetTop);}return;}
+  if(b.id==='pill'){S.tab='libre';render();window.scrollTo(0,0);return;}
+  if(d.set){
+    if(d.set==='tubo')setTubo(d.v);else S[d.set]=+d.v;
+    render();return;
+  }
+  if(d.cell){const p=d.cell.split(',').map(Number);S.dn=p[0];if(p[1]>=0)S.sec=p[1];render();return;}
+  if(d.preset){S.libre=clampPct(+d.preset);refresh();return;}
+  if(d.pct){S.libre=clampPct(Math.round(S.libre)+(+d.pct));refresh();return;}
+  if(d.step){
+    const i=+d.i,l=S.mezcla[i];if(!l)return;
+    l.n=Math.max(0,Math.min(999,l.n+(+d.step)));
+    const inp=document.querySelector('input[data-lf="n"][data-i="'+i+'"]');if(inp)inp.value=l.n;
+    refresh();return;
+  }
+  if(d.del){S.mezcla.splice(+d.del,1);render();return;}
+  if(d.add){
+    const last=S.mezcla[S.mezcla.length-1];
+    S.mezcla.push(last?{fam:last.fam,sec:last.sec,n:1,d:last.d}:{fam:'h07v-k',sec:1,n:1,d:6});
+    render();
+    const ins=document.querySelectorAll('input[data-lf="n"]');if(ins.length)ins[ins.length-1].closest('.line').scrollIntoView({block:'nearest'});
+    return;
+  }
+  if(d.pick){const p=d.pick.split(',');S.tubo=p[0];S.dn=+p[1];render();return;}
+});
+document.addEventListener('change',e=>{
+  const el=e.target;
+  if(el.id==='fam'){S.fam=el.value===MEDIDA?MEDIDA:famById(el.value).id;render();return;}
+  if(el.dataset&&el.dataset.lf){
+    const i=+el.dataset.i,l=S.mezcla[i];if(!l)return;
+    if(el.dataset.lf==='fam'){l.fam=el.value===MEDIDA?MEDIDA:famById(el.value).id;render();return;}
+    if(el.dataset.lf==='sec'){l.sec=clampI(el.value,SECC.length);refresh();return;}
+    if(el.dataset.lf==='n'){el.value=l.n;return;}
+    if(el.dataset.lf==='d'){if(l.d>0)el.value=nf(l.d,1);return;}
+  }
+  if(el.id==='pct'){el.value=pctL(S.libre);return;}
+  if(el.id==='dmed'){if(S.dmed>0)el.value=nf(S.dmed,1);return;}
+});
+document.addEventListener('input',e=>{
+  const el=e.target;
+  if(el.id==='pct'){const p=parseNum(el.value);if(isFinite(p)){S.libre=clampPct(p);refresh();}return;}
+  if(el.id==='prange'){S.libre=clampPct(+el.value);refresh();return;}
+  if(el.id==='dmed'){const v=parseNum(el.value);S.dmed=(v>0&&v<=300)?v:0;refresh();return;}
+  if(el.dataset&&el.dataset.lf){
+    const i=+el.dataset.i,l=S.mezcla[i];if(!l)return;
+    if(el.dataset.lf==='n'){const v=parseInt(el.value,10);l.n=isFinite(v)?Math.max(0,Math.min(999,v)):0;refresh();return;}
+    if(el.dataset.lf==='d'){const v=parseNum(el.value);l.d=(v>0&&v<=300)?v:0;refresh();return;}
+  }
+});
+document.addEventListener('focusin',e=>{const el=e.target;if(el.matches&&el.matches('input[type="text"]'))setTimeout(()=>{try{el.select();}catch(err){}},0);});
+
+render();
+})();
+</script>
+</body>
+</html>
