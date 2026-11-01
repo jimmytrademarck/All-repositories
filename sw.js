@@ -1,5 +1,5 @@
 /* Service worker: guarda la app en la tableta para que funcione sin conexión. */
-const CACHE = "todas@5f60c7de93";
+const CACHE = "todas@9a38f13b98";
 const FILES = ["./", "./index.html", "./pruebas-mer/", "./pruebas-mer/index.html", "./pruebas-mer/manifest.webmanifest", "./pruebas-mer/icon-180.png", "./pruebas-mer/icon-192.png", "./pruebas-mer/icon-512.png", "./presupuestos/", "./presupuestos/index.html", "./presupuestos/manifest.webmanifest", "./presupuestos/icon-180.png", "./presupuestos/icon-192.png", "./presupuestos/icon-512.png", "./registro-lutron/", "./registro-lutron/index.html", "./registro-lutron/manifest.webmanifest", "./registro-lutron/icon-180.png", "./registro-lutron/icon-192.png", "./registro-lutron/icon-512.png", "./calculadora/", "./calculadora/index.html", "./calculadora/manifest.webmanifest", "./calculadora/icon-180.png", "./calculadora/icon-192.png", "./calculadora/icon-512.png", "./cables-tubo/", "./cables-tubo/index.html", "./cables-tubo/manifest.webmanifest", "./cables-tubo/icon-180.png", "./cables-tubo/icon-192.png", "./cables-tubo/icon-512.png"];
 const APPS = ["pruebas-mer", "presupuestos", "registro-lutron", "calculadora", "cables-tubo"];
 const OPTS = {ignoreSearch: true, ignoreVary: true};
