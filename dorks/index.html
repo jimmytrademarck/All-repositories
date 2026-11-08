@@ -1,0 +1,1211 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Buscador Dork</title>
+<meta name="description" content="Escribe lo que buscas y la app crea el código de búsqueda avanzada (dork) y lo abre en Google. El código se crea sin conexión.">
+<meta name="theme-color" content="#E2E5E1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131716" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dorks">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+/* Layout: mismo cuadro que las otras apps del taller. Pestañas arriba; en «Buscar» la frase arriba
+   y el código en la pantalla LCD debajo (a la derecha con el iPad en horizontal). */
+:root{
+  --bg:#E2E5E1; --surface:#F7F8F5; --sunk:#ECEFEA; --ink:#1A1F21; --muted:#56605B;
+  --line:#C3C9C3; --line-strong:#98A19B;
+  --accent:#F2B705; --accent-ink:#1A170A; --hl:rgba(242,183,5,.16);
+  --ok:#17703F; --ko:#B3261E;
+  --lcd-frame:#2B302D; --lcd-bg:#B5C1A1; --lcd-ink:#172010; --lcd-dim:#4F5D3C;
+  --f-display:"Avenir Next Condensed","Roboto Condensed","Arial Narrow",sans-serif-condensed,system-ui,sans-serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --f-mono:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#131716; --surface:#1C2120; --sunk:#171B1A; --ink:#E4E8E4; --muted:#9BA59F;
+    --line:#2F3734; --line-strong:#4C5651; --hl:rgba(242,183,5,.13);
+    --ok:#3FBF73; --ko:#FF6B5E;
+    --lcd-frame:#070908; --lcd-bg:#0F1B12; --lcd-ink:#B6EE8A; --lcd-dim:#6E9358;
+    color-scheme:dark;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 40px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+
+.top{display:grid;gap:6px}
+.kicker{margin:0;font-family:var(--f-display);font-weight:600;font-size:.82rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2.1rem,7.5vw,3.1rem);line-height:.95;text-wrap:balance}
+.lede{margin:6px 0 0;max-width:64ch;color:var(--muted)}
+
+.tabbar{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;gap:10px;align-items:center;padding:8px 0}
+.tabs{display:flex;gap:4px;overflow-x:auto;flex:1 1 auto;min-width:0;background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:1 0 auto;min-height:46px;padding:8px 14px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-family:var(--f-display);font-weight:600;font-size:1.08rem;cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--surface)}
+.net{flex:0 0 auto;display:flex;align-items:center;gap:7px;min-height:46px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-family:var(--f-display);font-weight:600;font-size:.98rem;white-space:nowrap}
+.net::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--ok)}
+.net.off::before{background:var(--muted)}
+.net.off{color:var(--muted)}
+@media (max-width:620px){ .net span{display:none} .net{padding:0 16px} }
+
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* Paneles */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding-block:18px 20px;padding-inline:clamp(14px,3.5vw,26px);display:grid;gap:18px;min-width:0;align-content:start}
+.p-head{display:grid;gap:6px;min-width:0}
+h2{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(1.45rem,4.6vw,1.95rem);line-height:1.05;text-wrap:balance}
+h3{margin:0;font-family:var(--f-display);font-weight:700;font-size:1.25rem;line-height:1.1}
+.block{display:grid;gap:8px;min-width:0}
+.block-label{margin:0;font-family:var(--f-display);font-weight:600;font-size:.8rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
+.bl-sub{letter-spacing:.02em;text-transform:none;font-family:var(--f-body);font-weight:400;font-size:.82rem}
+.hint{margin:0;font-size:.87rem;color:var(--muted);max-width:70ch}
+
+/* Pestaña Buscar: frase (a), código (b), atajos (c) */
+.g-buscar{display:grid;gap:16px;min-width:0;grid-template-areas:"a" "b" "c"}
+.g-buscar > .a{grid-area:a}.g-buscar > .b{grid-area:b}.g-buscar > .c{grid-area:c}
+@media (min-width:1000px){
+  .g-buscar{grid-template-columns:minmax(0,1fr) minmax(0,440px);grid-template-areas:"a b" "c b";align-items:start;column-gap:20px}
+  .g-buscar > .b{position:sticky;top:76px}
+}
+.g-cons{display:grid;gap:16px;min-width:0}
+@media (min-width:760px){
+  .g-cons{grid-template-columns:minmax(0,1fr) minmax(0,380px);align-items:start;column-gap:20px}
+  .g-cons > .b{position:sticky;top:76px}
+}
+
+.ask{position:relative}
+.ask textarea{display:block;width:100%;min-height:66px;resize:none;overflow:hidden;border:1px solid var(--line-strong);border-radius:12px;background:var(--bg);color:var(--ink);font:500 1.22rem/1.4 var(--f-body);padding:16px 54px 16px 16px}
+.ask textarea::placeholder{color:var(--muted);opacity:.85}
+.ask .x{position:absolute;top:10px;right:8px;width:44px;height:44px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:1.6rem;line-height:1;cursor:pointer}
+
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{display:inline-flex;flex-direction:column;align-items:flex-start;justify-content:center;min-height:46px;padding:7px 12px;border:1px solid var(--line-strong);background:transparent;color:var(--ink);border-radius:8px;font:inherit;font-weight:500;cursor:pointer;text-align:left;line-height:1.15}
+.seg button b{font-family:var(--f-display);font-weight:600;font-size:1.08rem}
+.seg button small{font-size:.74rem;color:var(--muted);font-weight:400}
+.seg button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.seg button[aria-pressed="true"] small{color:inherit;opacity:.75}
+.seg button:disabled{opacity:.45;cursor:default}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{min-height:44px;padding:6px 14px;border:1px solid var(--line-strong);border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-weight:500;font-size:.98rem;cursor:pointer;text-align:left}
+.chip.more{border-style:dashed}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.examples{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.examples button{width:100%;display:flex;justify-content:space-between;gap:10px;align-items:center;min-height:46px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--sunk);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.examples button::after{content:"›";color:var(--muted);font-size:1.4rem;line-height:1}
+
+/* Pantalla LCD con el código */
+.res{display:grid;gap:12px;min-width:0;align-content:start}
+.lcd{background:var(--lcd-frame);border-radius:14px;padding:8px}
+.lcd-screen{background:var(--lcd-bg);color:var(--lcd-ink);border-radius:8px;padding:12px 16px 14px;box-shadow:inset 0 2px 8px rgba(0,0,0,.28);display:grid;gap:8px;min-height:118px}
+.lcd-cap{margin:0;font-family:var(--f-display);font-weight:600;font-size:.74rem;letter-spacing:.13em;text-transform:uppercase;color:var(--lcd-dim);display:flex;gap:6px 10px;flex-wrap:wrap;align-items:baseline}
+.lcd-cap .edited{letter-spacing:.04em;text-transform:none;font-size:.85rem}
+.lcd-cap .undo{border:0;background:transparent;color:var(--lcd-ink);font:inherit;font-weight:700;text-decoration:underline;padding:4px 2px;cursor:pointer}
+.lcd .code{display:block;width:100%;min-height:3.6em;border:0;border-radius:4px;background:transparent;color:var(--lcd-ink);-webkit-text-fill-color:var(--lcd-ink);font:600 1.22rem/1.45 var(--f-mono);padding:0;margin:0;resize:none;overflow:hidden;overflow-wrap:anywhere}
+.lcd .code::placeholder{color:var(--lcd-dim);-webkit-text-fill-color:var(--lcd-dim);opacity:1;font-weight:500}
+.lcd .code:focus-visible{outline:2px dashed var(--lcd-dim);outline-offset:4px}
+.lcd-extra{margin:0;padding-top:6px;border-top:1px dashed var(--lcd-dim);font-family:var(--f-display);font-weight:600;font-size:1rem}
+.actions{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:8px}
+.btn{min-height:56px;padding:8px 14px;border-radius:12px;font:inherit;cursor:pointer;line-height:1.15}
+.btn.primary{border:0;background:var(--accent);color:var(--accent-ink);font-family:var(--f-display);font-weight:700;font-size:1.3rem}
+.btn.sec{border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font-weight:600}
+.btn.wide{grid-column:1 / -1;min-height:48px}
+.btn.ghost{border:1px dashed var(--line-strong);background:transparent;color:var(--ink);font-weight:600;min-height:48px}
+.warn{margin:0;padding:10px 12px;border-radius:10px;border:1px solid var(--line);border-left:4px solid var(--accent);background:var(--surface);font-size:.92rem}
+.parts-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;gap:10px}
+.parts{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.parts li{display:grid;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--sunk)}
+.parts code{font-family:var(--f-mono);font-weight:600;font-size:.95rem;overflow-wrap:anywhere}
+.parts li.tag code{font-family:var(--f-display);font-size:1rem}
+.parts span{color:var(--muted);font-size:.9rem}
+.parts-note{margin:0;font-size:.86rem;color:var(--muted)}
+
+/* Constructor */
+.fgrid{display:grid;gap:16px 18px;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))}
+.field{display:grid;gap:6px;align-content:start;min-width:0}
+.field label,.field .lab{font-family:var(--f-display);font-weight:600;font-size:1.05rem;line-height:1.15}
+.field label code,.field .lab code{font-family:var(--f-mono);font-weight:500;font-size:.8rem;color:var(--muted);margin-left:4px}
+.field input[type="text"],.field input[type="date"],.field select{width:100%;height:48px;border:1px solid var(--line-strong);border-radius:8px;background-color:var(--bg);color:var(--ink);font-size:16px;padding:0 12px;font-family:var(--f-body);min-width:0}
+.field input[type="date"]{-webkit-appearance:none;appearance:none;display:flex;align-items:center}
+.field select{padding:0 34px 0 12px;font-weight:500;-webkit-appearance:none;appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;cursor:pointer}
+.field .hint{font-size:.82rem}
+.field.full{grid-column:1 / -1}
+.dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.dates span{display:block;font-size:.8rem;color:var(--muted);margin-bottom:2px}
+
+/* Historial */
+.hist{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.h-item{border:1px solid var(--line);border-radius:12px;background:var(--sunk);padding:12px 14px;display:grid;gap:8px}
+.h-top{display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center;justify-content:space-between;font-size:.86rem;color:var(--muted)}
+.badge{display:inline-block;padding:2px 10px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-family:var(--f-display);font-weight:700;font-size:.85rem;letter-spacing:.03em}
+.h-code{font-family:var(--f-mono);font-weight:600;font-size:1rem;overflow-wrap:anywhere}
+.h-src{margin:0;font-size:.88rem;color:var(--muted)}
+.h-act{display:flex;flex-wrap:wrap;gap:6px}
+.h-act button{min-height:44px;padding:6px 14px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.h-act button.go{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.h-act button.del{margin-left:auto;width:44px;padding:0;font-size:1.4rem;color:var(--muted);background:transparent;border-color:transparent}
+.empty{margin:0;padding:18px;border:1px dashed var(--line-strong);border-radius:12px;color:var(--muted);text-align:center}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+
+/* Chuleta */
+.cheat{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))}
+.op{border:1px solid var(--line);border-radius:12px;background:var(--sunk);padding:12px 14px;display:grid;gap:6px;align-content:start}
+.op b{font-family:var(--f-mono);font-size:1.02rem}
+.op p{margin:0;font-size:.93rem}
+.op .ex{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:2px}
+.op .ex code{font-family:var(--f-mono);font-size:.88rem;color:var(--muted);overflow-wrap:anywhere;min-width:0;flex:1 1 180px}
+.op .ex button{min-height:40px;padding:4px 14px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-weight:600;font-size:.9rem;cursor:pointer}
+.say{width:100%;border-collapse:separate;border-spacing:0;font-size:.95rem}
+.say th,.say td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.say thead th{font-family:var(--f-display);font-weight:600;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.say td:last-child{font-family:var(--f-mono);font-size:.88rem;overflow-wrap:anywhere}
+.say tbody tr:last-child td{border-bottom:0}
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);-webkit-overflow-scrolling:touch}
+
+.foot{color:var(--muted);font-size:.88rem;display:grid;gap:8px;max-width:80ch;padding-top:4px}
+.foot p{margin:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<script>
+/* Deja la app guardada en la tableta para usarla sin conexión y avisa de si está lista o de qué lo impide. */
+(function () {
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
+  function note(text, bg, ms) {
+    function show() {
+      var d = document.createElement('div');
+      d.setAttribute('role', 'status');
+      d.textContent = text;
+      d.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:2147483647;background:' + bg + ';color:#FFFFFF;font:600 16px/1.35 system-ui,-apple-system,sans-serif;padding:12px 18px;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;width:max-content;max-width:calc(100% - 32px);text-align:center';
+      document.body.appendChild(d);
+      setTimeout(function () { d.remove(); }, ms);
+    }
+    if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
+  }
+  var NO = 'Safari no deja guardar esta app para usarla sin conexión. Si estás en navegación privada, sal de ella, borra el icono y vuelve a añadirlo a la pantalla de inicio.';
+  if (!('serviceWorker' in navigator)) { note(NO, '#B3261E', 12000); return; }
+  var KEY = 'sin-conexion-lista:' + location.pathname;
+  try { navigator.serviceWorker.register('../sw.js', {scope: '../'}).catch(function () {}); } catch (e) { /* opcional */ }
+  navigator.serviceWorker.register('./sw.js').then(function () { return navigator.serviceWorker.ready; }).then(function () {
+    var seen = null;
+    try { seen = localStorage.getItem(KEY); } catch (e) { seen = null; }
+    if (seen) return;
+    try { localStorage.setItem(KEY, '1'); } catch (e) { /* sin almacenamiento */ }
+    note('✓ Lista para usar sin conexión', '#17703F', 5000);
+  }).catch(function () {
+    if (navigator.onLine !== false) note(NO, '#B3261E', 12000);
+  });
+})();
+</script>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <p class="kicker">Búsqueda avanzada en Google · el código se crea sin conexión</p>
+    <h1>Buscador Dork</h1>
+    <p class="lede">Escribe lo que buscas como lo dirías. La app crea el código de búsqueda avanzada (dork) y lo abre en Google.</p>
+  </header>
+
+  <div class="tabbar">
+    <div class="tabs" role="tablist" aria-label="Pestañas">
+      <button class="tab" role="tab" id="tab-buscar" aria-controls="p-buscar" data-tab="buscar">Buscar</button>
+      <button class="tab" role="tab" id="tab-cons" aria-controls="p-cons" data-tab="cons">Constructor</button>
+      <button class="tab" role="tab" id="tab-hist" aria-controls="p-hist" data-tab="hist">Historial</button>
+      <button class="tab" role="tab" id="tab-chuleta" aria-controls="p-chuleta" data-tab="chuleta">Chuleta</button>
+    </div>
+    <div class="net" id="net" role="status"><span>Con internet</span></div>
+  </div>
+
+  <!-- BUSCAR -->
+  <section id="p-buscar" role="tabpanel" aria-labelledby="tab-buscar" class="g-buscar">
+    <div class="panel a">
+      <div class="block">
+        <label class="block-label" for="nl">¿Qué buscas?</label>
+        <div class="ask">
+          <textarea id="nl" rows="1" enterkeyhint="search" autocapitalize="off" autocomplete="off" spellcheck="true" placeholder="p. ej. libro de electricidad básica en pdf"></textarea>
+          <button type="button" class="x" id="nlClear" aria-label="Borrar lo escrito">×</button>
+        </div>
+        <p class="hint">Pulsa <b>Buscar</b> en el teclado o el botón amarillo y se abre Google con el código.</p>
+      </div>
+      <div class="block">
+        <p class="block-label">El tema, buscarlo como <span class="bl-sub" id="modeWhy"></span></p>
+        <div class="seg" id="modeSeg">
+          <button type="button" data-mode="auto"><b>Auto</b><small>la app decide</small></button>
+          <button type="button" data-mode="palabras"><b>Palabras sueltas</b><small>más resultados</small></button>
+          <button type="button" data-mode="frase"><b>Frase exacta</b><small>"entre comillas"</small></button>
+          <button type="button" data-mode="titulo"><b>En el título</b><small>intitle:</small></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="res b" id="resNL">
+      <div class="lcd"><div class="lcd-screen">
+        <p class="lcd-cap"><label for="codeNL">Código para Google</label><span class="edited" hidden>· editado a mano · <button type="button" class="undo">volver al creado</button></span></p>
+        <textarea class="code" id="codeNL" rows="2" spellcheck="false" autocapitalize="off" autocomplete="off" enterkeyhint="search" placeholder="Aquí sale el código"></textarea>
+        <p class="lcd-extra" hidden></p>
+      </div></div>
+      <div class="actions">
+        <button type="button" class="btn primary go">Buscar en Google</button>
+        <button type="button" class="btn sec copy">Copiar código</button>
+        <button type="button" class="btn ghost wide tocons">Ajustar a mano en el Constructor</button>
+      </div>
+      <p class="warn" hidden></p>
+      <div class="parts-box">
+        <p class="block-label parts-title">Qué hace cada parte</p>
+        <ul class="parts"></ul>
+        <p class="parts-note" hidden></p>
+      </div>
+    </div>
+
+    <div class="panel c">
+      <div class="block">
+        <p class="block-label">Empezar con <span class="bl-sub">toca y escribe el tema</span></p>
+        <div class="chips" id="starts"></div>
+      </div>
+      <div class="block">
+        <p class="block-label">Añadir <span class="bl-sub">se pone al final de lo que has escrito</span></p>
+        <div class="chips" id="adds"></div>
+      </div>
+      <div class="block">
+        <p class="block-label">Ejemplos</p>
+        <ul class="examples" id="examples"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONSTRUCTOR -->
+  <section id="p-cons" role="tabpanel" aria-labelledby="tab-cons" class="g-cons" hidden>
+    <div class="panel a">
+      <div class="p-head">
+        <h2>Constructor</h2>
+        <p class="hint">Rellena solo lo que necesites. El código se va creando a la derecha (abajo con el iPad en vertical).</p>
+      </div>
+      <div class="fgrid">
+        <div class="field"><label for="c-words">Estas palabras</label><input type="text" id="c-words" autocapitalize="off" autocomplete="off" placeholder="diferencial superinmunizado"><p class="hint">Tienen que salir todas.</p></div>
+        <div class="field"><label for="c-exact">Frase exacta <code>"…"</code></label><input type="text" id="c-exact" autocapitalize="off" autocomplete="off" placeholder="electricidad básica"><p class="hint">Juntas y en ese orden. Varias, separadas con comas.</p></div>
+        <div class="field"><label for="c-any">Una u otra <code>OR</code></label><input type="text" id="c-any" autocapitalize="off" autocomplete="off" placeholder="contactor relé telerruptor"><p class="hint">Vale con que salga una.</p></div>
+        <div class="field"><label for="c-none">Que no salgan <code>-</code></label><input type="text" id="c-none" autocapitalize="off" autocomplete="off" placeholder="comprar precio"></div>
+        <div class="field"><label for="c-title">En el título <code>intitle:</code></label><input type="text" id="c-title" autocapitalize="off" autocomplete="off" placeholder="guía técnica"></div>
+        <div class="field"><label for="c-text">En el texto <code>intext:</code></label><input type="text" id="c-text" autocapitalize="off" autocomplete="off" placeholder="tabla de secciones"></div>
+        <div class="field"><label for="c-url">En la dirección <code>inurl:</code></label><input type="text" id="c-url" autocapitalize="off" autocomplete="off" placeholder="manual"></div>
+        <div class="field full">
+          <span class="lab" id="lab-types">Tipo de archivo <code>filetype:</code></span>
+          <div class="seg" id="c-types" role="group" aria-labelledby="lab-types"></div>
+        </div>
+        <div class="field full">
+          <label for="c-sites">Solo en estas webs <code>site:</code></label>
+          <input type="text" id="c-sites" autocapitalize="off" autocomplete="off" inputmode="url" placeholder="boe.es  lutron.com  .es">
+          <div class="chips" id="c-sitechips"></div>
+        </div>
+        <div class="field"><label for="c-nosites">Quitar estas webs <code>-site:</code></label><input type="text" id="c-nosites" autocapitalize="off" autocomplete="off" inputmode="url" placeholder="pinterest.com"></div>
+        <div class="field">
+          <span class="lab">Fecha de publicación <code>after: before:</code></span>
+          <div class="dates">
+            <label><span>Desde</span><input type="date" id="c-after"></label>
+            <label><span>Hasta</span><input type="date" id="c-before"></label>
+          </div>
+        </div>
+        <div class="field full">
+          <span class="lab" id="lab-gtab">Pestaña de Google</span>
+          <div class="seg" id="c-tab" role="group" aria-labelledby="lab-gtab"></div>
+        </div>
+        <div class="field"><label for="c-lang">Idioma de las páginas</label><select id="c-lang"></select></div>
+        <div class="field" style="align-content:end"><button type="button" class="btn ghost" id="c-clear">Vaciar el constructor</button></div>
+      </div>
+    </div>
+
+    <div class="res b" id="resC">
+      <div class="lcd"><div class="lcd-screen">
+        <p class="lcd-cap"><label for="codeC">Código para Google</label><span class="edited" hidden>· editado a mano · <button type="button" class="undo">volver al creado</button></span></p>
+        <textarea class="code" id="codeC" rows="2" spellcheck="false" autocapitalize="off" autocomplete="off" enterkeyhint="search" placeholder="Rellena algún campo"></textarea>
+        <p class="lcd-extra" hidden></p>
+      </div></div>
+      <div class="actions">
+        <button type="button" class="btn primary go">Buscar en Google</button>
+        <button type="button" class="btn sec copy">Copiar código</button>
+      </div>
+      <p class="warn" hidden></p>
+      <div class="parts-box">
+        <p class="block-label parts-title">Qué hace cada parte</p>
+        <ul class="parts"></ul>
+        <p class="parts-note" hidden></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- HISTORIAL -->
+  <section id="p-hist" role="tabpanel" aria-labelledby="tab-hist" hidden>
+    <div class="panel">
+      <div class="row">
+        <div class="p-head">
+          <h2>Historial</h2>
+          <p class="hint">Las búsquedas que has hecho en este iPad. Las que hiciste sin internet salen como <span class="badge">Pendiente</span>: ábrelas cuando tengas conexión.</p>
+        </div>
+        <button type="button" class="btn ghost" id="h-clear">Borrar historial</button>
+      </div>
+      <ul class="hist" id="hist"></ul>
+    </div>
+  </section>
+
+  <!-- CHULETA -->
+  <section id="p-chuleta" role="tabpanel" aria-labelledby="tab-chuleta" hidden>
+    <div class="panel">
+      <div class="p-head">
+        <h2>Qué entiende la app</h2>
+        <p class="hint">En la pestaña Buscar puedes escribir así. La app lo convierte en el código de la derecha.</p>
+      </div>
+      <div class="tablewrap">
+        <table class="say">
+          <thead><tr><th scope="col">Si escribes…</th><th scope="col">La app pone</th></tr></thead>
+          <tbody id="sayRows"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <div class="p-head">
+        <h2>Operadores de Google</h2>
+        <p class="hint">También puedes escribirlos tú directamente. Toca «Probar» para llevar el ejemplo a Buscar.</p>
+      </div>
+      <div class="cheat" id="cheat"></div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <p>El código se crea en el iPad, sin internet. Para ver los resultados de Google sí hace falta conexión: si no la hay, la búsqueda se guarda en Historial y el código se copia.</p>
+    <p>Google solo tiene en cuenta unas 32 palabras por búsqueda. Si no sale nada, quita algún filtro o cambia «Frase exacta» por «Palabras sueltas».</p>
+  </footer>
+</div>
+
+<script>
+'use strict';
+/* ================= Utilidades ================= */
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('dorks:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('dorks:' + k, JSON.stringify(v)); } catch (e) { /* sin almacenamiento */ } }
+};
+function toast(text, bg, ms) {
+  const d = document.createElement('div');
+  d.setAttribute('role', 'status');
+  d.textContent = text;
+  const above = $$('body > div[role="status"]').length * 64;
+  d.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(' + (18 + above) + 'px + env(safe-area-inset-bottom,0px));z-index:2147483646;background:' + (bg || '#1A1F21') + ';color:#FFFFFF;font:600 16px/1.35 system-ui,-apple-system,sans-serif;padding:12px 18px;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;width:max-content;max-width:calc(100% - 32px);text-align:center';
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), ms || 3500);
+}
+function grow(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; }
+const pad = n => String(n).padStart(2, '0');
+const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const fmtD = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s); return m ? (+m[3]) + '/' + (+m[2]) + '/' + m[1] : s; };
+
+/* ================= Datos ================= */
+const TYPES = {
+  pdf: {label: 'PDF', ext: ['pdf']},
+  word: {label: 'Word', ext: ['doc', 'docx']},
+  excel: {label: 'Excel', ext: ['xls', 'xlsx']},
+  ppt: {label: 'PowerPoint', ext: ['ppt', 'pptx']},
+  dwg: {label: 'AutoCAD', ext: ['dwg']},
+  dxf: {label: 'DXF', ext: ['dxf']},
+  epub: {label: 'EPUB', ext: ['epub']},
+  txt: {label: 'TXT', ext: ['txt']},
+  csv: {label: 'CSV', ext: ['csv']}
+};
+const EXTLABEL = {pdf: 'PDF', doc: 'Word', docx: 'Word', xls: 'Excel', xlsx: 'Excel', ppt: 'PowerPoint', pptx: 'PowerPoint', dwg: 'AutoCAD (DWG)', dxf: 'DXF', epub: 'EPUB', txt: 'de texto', csv: 'CSV', odt: 'ODT', rtf: 'RTF'};
+const GTABS = {'': 'Todo', img: 'Imágenes', vid: 'Vídeos', nws: 'Noticias', bks: 'Libros'};
+const LANGS = {'': 'Cualquiera', es: 'Español', en: 'Inglés', fr: 'Francés', pt: 'Portugués', de: 'Alemán', it: 'Italiano', ca: 'Catalán'};
+const LANGS_IN = {es: 'en español', en: 'en inglés', fr: 'en francés', pt: 'en portugués', de: 'en alemán', it: 'en italiano', ca: 'en catalán'};
+/* Webs que se reconocen solas al nombrarlas (p. ej. «en youtube») */
+const PLATFORMS = {
+  youtube: 'youtube.com', wikipedia: 'wikipedia.org', reddit: 'reddit.com', boe: 'boe.es', github: 'github.com',
+  linkedin: 'linkedin.com', facebook: 'facebook.com', instagram: 'instagram.com', tiktok: 'tiktok.com', pinterest: 'pinterest.com',
+  twitter: 'x.com', scribd: 'scribd.com', gutenberg: 'gutenberg.org', dialnet: 'dialnet.unirioja.es', amazon: 'amazon.es',
+  wallapop: 'wallapop.com', milanuncios: 'milanuncios.com', ebay: 'ebay.es', aliexpress: 'aliexpress.com', forocoches: 'forocoches.com',
+  'proyecto gutenberg': 'gutenberg.org', 'internet archive': 'archive.org', 'google drive': 'drive.google.com'
+};
+/* Webs que solo se usan detrás de «en la web de…» (si no, son palabras normales) */
+const BRANDS = Object.assign({}, PLATFORMS, {
+  schneider: 'se.com', 'schneider electric': 'se.com', simon: 'simonelectric.com', lutron: 'lutron.com',
+  leroy: 'leroymerlin.es', 'leroy merlin': 'leroymerlin.es', obramat: 'obramat.es', bricomart: 'obramat.es',
+  bricodepot: 'bricodepot.es', 'brico depot': 'bricodepot.es', mediamarkt: 'mediamarkt.es', 'media markt': 'mediamarkt.es',
+  ministerio: 'gob.es', gobierno: 'gob.es', drive: 'drive.google.com', archive: 'archive.org', wiki: 'wikipedia.org'
+});
+const FILEEXT = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'xlsm', 'ppt', 'pptx', 'txt', 'csv', 'dwg', 'dxf', 'epub', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'rar', 'mp4', 'mp3', 'odt', 'rtf']);
+const STOP = new Set(('un una unos unas el la los las lo le les de del al a en sobre acerca que para con por y e o u ni me mi mis te tu tus se su sus ' +
+  'algo alguno alguna algun algunos algunas cualquier como cual cuales donde cuando quien este esta estos estas ese esa esos esas mas muy tipo solo tal').split(' '));
+const NOISE = new Set(('gratis gratuito gratuita gratuitos gratuitas completo completa completos completas online descargable descargables ' +
+  'link links enlace enlaces info informacion cosas todo toda todos todas formato archivo archivos fichero ficheros documento documentos').split(' '));
+const NUMW = {un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12, quince: 15, veinte: 20, treinta: 30};
+const OPS = /^-?(site|filetype|ext|intitle|allintitle|inurl|allinurl|intext|allintext|after|before|define|inanchor|allinanchor|source|related):/i;
+
+/* ================= Intérprete de frases ================= */
+function tokenize(text) {
+  const T = [];
+  const re = /(-|-?[A-Za-z]+:)"([^"]*)"?|"([^"]*)"?|“([^”]*)”?|«([^»]*)»?|(\S+)/g;
+  let m;
+  while ((m = re.exec(text))) {
+    if (m[1] !== undefined) { T.push({raw: m[1] + '"' + m[2].trim() + '"', n: norm(m[1] + m[2]), op: true}); continue; }
+    if (m[6] === undefined) {
+      const p = (m[3] !== undefined ? m[3] : m[4] !== undefined ? m[4] : m[5] || '').trim();
+      if (p) T.push({raw: p, n: norm(p), q: true});
+      continue;
+    }
+    let w = m[6].replace(/^[¿¡(\[{]+/, '');
+    let comma = false;
+    const tail = w.match(/[?!.,;:)\]}]+$/);
+    if (tail && !OPS.test(w)) { if (/[,;]/.test(tail[0])) comma = true; w = w.slice(0, -tail[0].length); }
+    if (!w) { if (comma && T.length) T[T.length - 1].comma = true; continue; }
+    const t = {raw: w, n: norm(w), comma};
+    if (OPS.test(w) || (w.length > 1 && w[0] === '-' && !/^-[\d.,]/.test(w))) t.op = true;
+    if (w === 'OR' || w === '|' || w === 'AND') t.n = w === 'AND' ? 'y' : 'or';
+    T.push(t);
+  }
+  return T;
+}
+const numOf = n => /^\d{1,3}$/.test(n) ? +n : (NUMW[n] || 0);
+const isYear = n => /^(19|20)\d\d$/.test(n);
+function domainOf(w) {
+  const s = String(w).trim().toLowerCase();
+  const m = s.match(/^(?:https?:\/\/)?(?:www\.)?((?:[a-z0-9-]+\.)+([a-z]{2,}))(\/\S*)?$/);
+  if (m && !FILEEXT.has(m[2])) return m[1] + (m[3] && m[3] !== '/' ? m[3].replace(/\/+$/, '') : '');
+  const t = s.match(/^\.([a-z]{2,}(?:\.[a-z]{2,})?)$/);
+  return t ? '.' + t[1] : null;
+}
+function isModel(raw) { return raw.length >= 3 && /[a-z]/i.test(raw) && (/\d/.test(raw) || /[a-z0-9][-_/][a-z0-9]/i.test(raw)); }
+
+/* Reglas: patrón de palabras (sin tildes); «|» = alternativas; «;» separa patrones; «#» = número */
+const RULES = [];
+function rule(pats, k, v, arg, extra) {
+  pats.split(';').forEach(p => {
+    const pp = p.trim().split(/\s+/).map(x => x === '#' ? '#' : x.split('|'));
+    RULES.push(Object.assign({p: pp, k, v, arg}, extra || {}));
+  });
+}
+// Formatos de archivo
+rule('pdf|pdfs', 'type', 'pdf');
+rule('word|doc|docx', 'type', 'word');
+rule('excel|xls|xlsx|xlsm; hoja|hojas de calculo; hoja|hojas excel', 'type', 'excel');
+rule('powerpoint|ppt|pptx|diapositivas|presentacion|presentaciones', 'type', 'ppt');
+rule('dwg|autocad|cad', 'type', 'dwg');
+rule('dxf', 'type', 'dxf'); rule('epub', 'type', 'epub'); rule('txt', 'type', 'txt'); rule('csv', 'type', 'csv');
+rule('ebook|ebooks|e-book|e-books; libro|libros electronico|electronicos|digital|digitales', 'ebook');
+rule('libro|libros|novela|novelas', 'book');
+// Tipos de documento: palabra clave y PDF si no se dice otro formato
+rule('manual|manuales de instrucciones|usuario|uso; manual|manuales', 'kw', 'manual', null, {doc: 'es un manual'});
+rule('instrucciones', 'kw', 'instrucciones', null, {doc: 'son instrucciones'});
+rule('ficha|fichas tecnica|tecnicas; datasheet|datasheets; hoja|hojas de datos; hoja|hojas tecnica|tecnicas', 'kw', '("ficha técnica" OR datasheet)', null, {doc: 'es una ficha técnica'});
+rule('catalogo|catalogos', 'kw', 'catálogo', null, {doc: 'es un catálogo'});
+rule('tarifa|tarifas; lista|listas de precios', 'kw', 'tarifa', null, {doc: 'es una tarifa'});
+rule('apuntes', 'kw', 'apuntes', null, {doc: 'son apuntes'});
+rule('temario|temarios', 'kw', 'temario', null, {doc: 'es un temario'});
+rule('ejercicios resueltos', 'kw', '"ejercicios resueltos"', null, {doc: 'son ejercicios'});
+rule('foro|foros|forum', 'kw', '(inurl:foro OR inurl:forum)');
+// Pestaña de Google
+rule('imagen|imagenes|foto|fotos|fotografia|fotografias|dibujo|dibujos', 'tab', 'img');
+rule('video|videos|videotutorial|videotutoriales', 'tab', 'vid');
+rule('noticia|noticias', 'tab', 'nws');
+rule('google libros|books', 'tab', 'bks');
+// Idioma
+rule('en ingles', 'lang', 'en'); rule('en espanol|castellano', 'lang', 'es'); rule('en frances', 'lang', 'fr');
+rule('en portugues', 'lang', 'pt'); rule('en aleman', 'lang', 'de'); rule('en italiano', 'lang', 'it'); rule('en catalan', 'lang', 'ca');
+// Webs
+rule(Object.keys(PLATFORMS).join(';'), 'siteFix');
+rule('webs|paginas|sitios espanolas|espanoles; webs|paginas|sitios de espana; solo espana', 'siteFix', '.es');
+rule('webs|paginas|sitios oficiales; del gobierno; webs|paginas del gobierno', 'siteFix', 'gob.es');
+rule('en|de la web|pagina de|del; en|de la pagina web de|del; en|de el sitio de|del; en|de la web|pagina; en el sitio|dominio; ' +
+  'web|pagina|sitio oficial de|del; pagina|sitio web de|del; web de|del; site', 'site', null, 'site');
+rule('sin', 'nosite', null, 'site');
+// Quitar palabras
+rule('excepto|salvo|menos|quitando|excluyendo|evitando; sin la|las palabra|palabras; sin palabra|palabras; ' +
+  'que no salga|salgan|tenga|tengan|aparezca|aparezcan|sea|sean; que no sea|sean de; no quiero', 'excl', null, 'list');
+// Título, texto, dirección, autor
+rule('en|con el titulo; con titulo; que el titulo tenga|sea|diga|ponga; cuyo titulo sea|tenga; titulado|titulada|titulo; que se llame|llama; llamado|llamada', 'title', null, 'greedy');
+rule('en el texto; que contenga|contengan|diga|digan|ponga|pongan', 'text', null, 'greedy');
+rule('en la url|direccion|ruta; en el enlace|link', 'url', null, 'one');
+rule('del|de autor; de la autora; autor|autora; escrito|escrita por', 'author', null, 'greedy');
+rule('frase exacta; exacto|exacta|literal|literalmente; tal cual', 'exact');
+// Fechas
+rule('desde; desde el|del ano; a partir de|del; despues de|del; posterior|posteriores a|al; mas nuevo|nuevos|nueva|nuevas que', 'after', null, 'year');
+rule('antes de|del; anterior|anteriores a|al', 'before0', null, 'year');
+rule('hasta; hasta el|del ano', 'before1', null, 'year');
+rule('del ano; de ano; en el ano; ano; publicado|publicada|publicados|publicadas en|el', 'year', null, 'year');
+rule('entre', 'between', null, 'years2');
+rule('reciente|recientes; ultimo ano', 'rel', 365);
+rule('este ano', 'thisYear');
+rule('ultimo mes; este mes', 'rel', 30);
+rule('ultima semana; esta semana', 'rel', 7);
+rule('ultimos|ultimas # anos|meses|semanas|dias', 'relN');
+// Órdenes y relleno que no se buscan
+rule('busca|buscar|buscame|buscarme|busqueme|buscas|encuentra|encuentrame|encontrar|quiero|queria|quisiera|necesito|necesitaria|dame|consigue|consigueme|' +
+  'localiza|localizame|muestrame|ensename|hola|gracias|porfa|porfavor|descargar|descargarlo|descargarla|descargarme|bajar|bajarme|puedes|podrias|ponme|sacame; por favor; una busqueda de', 'drop');
+RULES.sort((a, b) => b.p.length - a.p.length);
+const WEAK = new Set(['kw', 'drop', 'book', 'ebook', 'exact']);
+
+function patAt(T, i, p) {
+  for (let k = 0; k < p.length; k++) {
+    const t = T[i + k];
+    if (!t || t.q || t.op) return false;
+    if (p[k] === '#') { if (!numOf(t.n)) return false; } else if (p[k].indexOf(t.n) < 0) return false;
+  }
+  return true;
+}
+function strongAt(T, i) { return RULES.some(r => !WEAK.has(r.k) && patAt(T, i, r.p) && (r.arg !== 'year' || (T[i + r.p.length] && isYear(T[i + r.p.length].n)))); }
+function bareRuleAt(T, i) { return RULES.find(r => patAt(T, i, r.p)) || null; }
+function trimEdges(toks) {
+  let a = 0, b = toks.length;
+  const junk = t => !t.q && (STOP.has(t.n) || NOISE.has(t.n) || t.n === 'or');
+  while (a < b && junk(toks[a])) a++;
+  while (b > a && junk(toks[b - 1])) b--;
+  return toks.slice(a, b);
+}
+function siteTok(T, j) {
+  const t = T[j];
+  if (!t || t.op) return null;
+  if (t.q) return {toks: [t], end: j + 1};
+  const t2 = T[j + 1];
+  if (t2 && !t2.q && !t2.op && BRANDS[t.n + ' ' + t2.n]) return {toks: [t, t2], end: j + 2};
+  if (STOP.has(t.n)) return null;
+  const r = bareRuleAt(T, j);
+  if (r && r.k !== 'siteFix') return null;
+  return {toks: [t], end: j + 1};
+}
+const joinRaw = toks => toks.map(t => t.raw).join(' ');
+const joinN = toks => toks.map(t => t.n).join(' ');
+function siteOf(toks) {
+  const d = domainOf(joinRaw(toks));
+  if (d) return {sites: [d]};
+  const n = joinN(toks);
+  if (BRANDS[n]) return {sites: [BRANDS[n]]};
+  const s = n.replace(/[^a-z0-9-]/g, '');
+  return s ? {sites: [s + '.com', s + '.es'], guess: s} : {sites: []};
+}
+function getArg(r, T, j) {
+  switch (r.arg) {
+    case 'one': { const t = T[j]; return t && !t.op ? {toks: [t], end: j + 1} : null; }
+    case 'site': {
+      const a = siteTok(T, j);
+      if (!a) return null;
+      if (r.k === 'nosite' && !domainOf(joinRaw(a.toks)) && !PLATFORMS[joinN(a.toks)]) return null;
+      return a;
+    }
+    case 'year': { const t = T[j]; return t && isYear(t.n) ? {year: +t.n, end: j + 1} : null; }
+    case 'years2': {
+      const a = T[j], c = T[j + 1], b = T[j + 2];
+      return a && b && c && isYear(a.n) && isYear(b.n) && ['y', 'a', 'e', 'al', 'hasta'].indexOf(c.n) >= 0 ? {y1: +a.n, y2: +b.n, end: j + 3} : null;
+    }
+    case 'list': {
+      const items = [];
+      let k = j;
+      while (k < T.length && !T[k].q && !T[k].op && STOP.has(T[k].n)) k++;
+      while (k < T.length) {
+        const a = siteTok(T, k) || (T[k] && !T[k].op && !STOP.has(T[k].n) ? {toks: [T[k]], end: k + 1} : null);
+        if (!a) break;
+        items.push(a.toks);
+        k = a.end;
+        const last = a.toks[a.toks.length - 1];
+        if (last.comma && T[k] && !T[k].op) continue;
+        if (T[k] && ['y', 'ni', 'o', 'e'].indexOf(T[k].n) >= 0 && T[k + 1] && !T[k + 1].op && !STOP.has(T[k + 1].n)) { k++; continue; }
+        break;
+      }
+      return items.length ? {items, end: k} : null;
+    }
+    case 'greedy': {
+      if (T[j] && T[j].q) return {toks: [T[j]], end: j + 1};
+      const toks = [];
+      let k = j;
+      while (k < T.length) {
+        const t = T[k];
+        if (t.q || t.op || strongAt(T, k)) break;
+        toks.push(t);
+        k++;
+        if (t.comma) break;
+      }
+      return {toks: trimEdges(toks), end: k};
+    }
+    default: return {end: j};
+  }
+}
+function matchAt(T, i) {
+  for (const r of RULES) {
+    if (!patAt(T, i, r.p)) continue;
+    const a = getArg(r, T, i + r.p.length);
+    if (a) return {r, a, toks: T.slice(i, i + r.p.length)};
+  }
+  return null;
+}
+function emptyF() { return {words: [], exact: [], any: [], none: [], title: [], text: [], url: [], types: [], sites: [], nosites: [], after: '', before: '', tab: '', lang: ''}; }
+const addU = (arr, v) => { if (v && arr.indexOf(v) < 0) arr.push(v); };
+
+function parseNL(text, mode) {
+  const T = tokenize(text || '');
+  const F = emptyF();
+  const S = {book: false, bookWord: '', ebook: false, doc: '', titleMode: false, exact: false, guess: [], datesSet: false};
+  const segs = [];
+  const late = [];   // palabras clave y operadores escritos a mano (van detrás del tema)
+  let seg = [];
+  const flush = () => { if (seg.length) { segs.push(seg); seg = []; } };
+  const today = new Date();
+  const setAfter = d => { F.after = d; S.datesSet = true; };
+  const setBefore = d => { F.before = d; S.datesSet = true; };
+  let i = 0;
+  while (i < T.length) {
+    const t = T[i];
+    if (t.q) { flush(); addU(F.exact, t.raw); i++; continue; }
+    if (t.op) { flush(); late.push(t.raw); i++; continue; }
+    const dom = domainOf(t.raw);
+    if (dom) { flush(); addU(F.sites, dom); i++; continue; }
+    const m = matchAt(T, i);
+    if (!m) { seg.push(t); if (t.comma) flush(); i++; continue; }
+    flush();
+    const {r, a} = m;
+    switch (r.k) {
+      case 'type': addU(F.types, r.v); break;
+      case 'ebook': S.ebook = true; S.book = true; break;
+      case 'book': S.book = true; S.bookWord = m.toks[0].raw; break;
+      case 'kw': if (late.indexOf(r.v) < 0) late.push(r.v); if (r.doc && !S.doc) S.doc = r.doc; break;
+      case 'tab': F.tab = r.v; break;
+      case 'lang': F.lang = r.v; break;
+      case 'siteFix': addU(F.sites, r.v || PLATFORMS[joinN(m.toks)]); break;
+      case 'site': { const s = siteOf(a.toks); s.sites.forEach(x => addU(F.sites, x)); if (s.guess) S.guess.push(s.guess); break; }
+      case 'nosite': addU(F.nosites, domainOf(joinRaw(a.toks)) || PLATFORMS[joinN(a.toks)]); break;
+      case 'excl':
+        a.items.forEach(toks => {
+          const d = domainOf(joinRaw(toks)) || PLATFORMS[joinN(toks)];
+          if (d) addU(F.nosites, d); else addU(F.none, joinRaw(toks));
+        });
+        break;
+      case 'title': if (a.toks.length) addU(F.title, joinRaw(a.toks)); else S.titleMode = true; break;
+      case 'text': if (a.toks.length) addU(F.text, joinRaw(a.toks)); break;
+      case 'url': addU(F.url, a.toks[0].raw); break;
+      case 'author': if (a.toks.length > 1 || (a.toks[0] && a.toks[0].q)) addU(F.exact, joinRaw(a.toks)); else if (a.toks.length) late.push(a.toks[0].raw); break;
+      case 'exact': S.exact = true; break;
+      case 'after': setAfter(a.year + '-01-01'); break;
+      case 'before0': setBefore(a.year + '-01-01'); break;
+      case 'before1': setBefore(a.year + '-12-31'); break;
+      case 'year': setAfter(a.year + '-01-01'); setBefore(a.year + '-12-31'); break;
+      case 'between': setAfter(Math.min(a.y1, a.y2) + '-01-01'); setBefore(Math.max(a.y1, a.y2) + '-12-31'); break;
+      case 'thisYear': setAfter(today.getFullYear() + '-01-01'); break;
+      case 'rel': { const d = new Date(today); d.setDate(d.getDate() - r.v); setAfter(iso(d)); break; }
+      case 'relN': {
+        const n = numOf(m.toks[1].n), u = m.toks[2].n, d = new Date(today);
+        if (u === 'anos') d.setFullYear(d.getFullYear() - n); else if (u === 'meses') d.setMonth(d.getMonth() - n);
+        else if (u === 'semanas') d.setDate(d.getDate() - 7 * n); else d.setDate(d.getDate() - n);
+        setAfter(iso(d)); break;
+      }
+      default: break;
+    }
+    i += r.p.length;
+    i = Math.max(i, a.end || i);
+  }
+  flush();
+
+  /* Formato por defecto según lo que se busca */
+  let autoWhy = '';
+  if (!F.types.length && !F.tab) {
+    if (S.ebook) { F.types.push('pdf', 'epub'); autoWhy = 'es un libro electrónico'; }
+    else if (S.doc) { F.types.push('pdf'); autoWhy = S.doc; }
+  }
+  if (S.book && !S.ebook && !F.types.length && !F.tab && S.bookWord) late.unshift(S.bookWord.toLowerCase());
+
+  /* El tema: lo que queda */
+  const topic = segs.map(trimEdges).filter(s => s.length);
+  const words = topic.reduce((n, s) => n + s.filter(t => t.n !== 'or').length, 0);
+  let used = mode && mode !== 'auto' ? mode : '';
+  let why = '';
+  if (!used) {
+    if (S.titleMode) { used = 'titulo'; why = 'has pedido «en el título»'; }
+    else if (S.exact) { used = 'frase'; why = 'has pedido frase exacta'; }
+    else if (S.book && words >= 2) { used = 'frase'; why = 'es un libro: busca el título tal cual'; }
+    else { used = 'palabras'; why = 'más resultados'; }
+  }
+  const topicWords = [], topicExact = [], topicTitle = [];
+  topic.forEach(s => {
+    if (used === 'palabras') {
+      let n = 0;
+      s.forEach(t => {
+        if (t.n === 'or' || t.n === 'o' || t.n === 'u') { if (n && topicWords[topicWords.length - 1] !== 'OR') topicWords.push('OR'); return; }
+        if (STOP.has(t.n) || NOISE.has(t.n)) return;
+        topicWords.push(isModel(t.raw) ? '"' + t.raw + '"' : t.raw);
+        n++;
+      });
+      if (topicWords[topicWords.length - 1] === 'OR') topicWords.pop();
+      return;
+    }
+    /* frase o título: cada trozo entre «o» es una alternativa */
+    const alts = [];
+    let cur = [];
+    s.forEach(t => { if (t.n === 'or' || t.n === 'o' || t.n === 'u') { if (cur.length) alts.push(cur); cur = []; } else cur.push(t); });
+    if (cur.length) alts.push(cur);
+    const clean = alts.map(trimEdges).filter(x => x.length);
+    if (used === 'titulo') { clean.forEach(x => addU(topicTitle, joinRaw(x))); return; }
+    if (clean.length > 1) { topicWords.push(clean.map(x => x.length > 1 || isModel(x[0].raw) ? '"' + joinRaw(x) + '"' : x[0].raw).join(' OR ')); return; }
+    const x = clean[0];
+    if (!x) return;
+    if (x.length === 1 && !isModel(x[0].raw)) topicWords.push(x[0].raw); else addU(topicExact, joinRaw(x));
+  });
+  F.exact = topicExact.concat(F.exact.filter(p => topicExact.indexOf(p) < 0));
+  F.title = topicTitle.concat(F.title.filter(p => topicTitle.indexOf(p) < 0));
+  F.words = topicWords.concat(late);
+
+  const notes = [];
+  S.guess.forEach(g => notes.push('No conozco la web «' + g + '»: busca en ' + g + '.com y ' + g + '.es. Si es otra, escribe su dirección (p. ej. ' + g + '.net).'));
+  return {F, mode: used, auto: !(mode && mode !== 'auto'), why, notes, autoWhy, topicWords: words};
+}
+/* Si lo escrito ya es código (site:, filetype:, OR, paréntesis, -palabra…) se usa tal cual */
+function isDork(text) { return /(^|\s)\(|\)(\s|$)|\sOR\s/.test(text) || tokenize(text).some(t => t.op); }
+function literalF(text) { const F = emptyF(); const v = String(text).replace(/\s+/g, ' ').trim(); if (v) F.words = [v]; return F; }
+
+/* ================= Código y descripción ================= */
+const q1 = s => { s = String(s).trim().replace(/"/g, ''); return /\s/.test(s) ? '"' + s + '"' : s; };
+function typesCode(types) {
+  const exts = [];
+  types.forEach(k => (TYPES[k] ? TYPES[k].ext : [k]).forEach(e => addU(exts, e)));
+  if (!exts.length) return '';
+  return exts.length > 1 ? '(' + exts.map(e => 'filetype:' + e).join(' OR ') + ')' : 'filetype:' + exts[0];
+}
+function sitesCode(sites) { return sites.length > 1 ? '(' + sites.map(s => 'site:' + s).join(' OR ') + ')' : sites.length ? 'site:' + sites[0] : ''; }
+function build(F) {
+  const P = [];
+  F.exact.forEach(p => { p = p.trim().replace(/"/g, ''); if (p) P.push('"' + p + '"'); });
+  F.words.forEach(w => { w = String(w).trim(); if (w) P.push(w); });
+  if (F.any.length) P.push(F.any.length > 1 ? '(' + F.any.map(q1).join(' OR ') + ')' : q1(F.any[0]));
+  F.title.forEach(t => t.trim() && P.push('intitle:' + q1(t)));
+  F.text.forEach(t => t.trim() && P.push('intext:' + q1(t)));
+  F.url.forEach(t => t.trim() && P.push('inurl:' + t.trim().replace(/\s+/g, '')));
+  const tc = typesCode(F.types); if (tc) P.push(tc);
+  const sc = sitesCode(F.sites); if (sc) P.push(sc);
+  F.nosites.forEach(s => P.push('-site:' + s));
+  F.none.forEach(w => w.trim() && P.push('-' + q1(w)));
+  if (F.after) P.push('after:' + F.after);
+  if (F.before) P.push('before:' + F.before);
+  return P.join(' ');
+}
+const SPECIAL = {
+  '("ficha técnica" OR datasheet)': 'Que sea una ficha técnica o datasheet',
+  '(inurl:foro OR inurl:forum)': 'Páginas de foros',
+  '"ejercicios resueltos"': 'Frase exacta: ejercicios resueltos'
+};
+function opDesc(tok) {
+  let neg = false, t = tok;
+  if (t[0] === '-') { neg = true; t = t.slice(1); }
+  const m = /^([a-z]+):(.*)$/i.exec(t);
+  if (!m) {
+    if (neg) return 'Que no salga «' + t.replace(/"/g, '') + '»';
+    return null;
+  }
+  const op = m[1].toLowerCase(), v = m[2].replace(/"/g, '');
+  const d = {
+    site: v[0] === '.' ? 'webs terminadas en ' + v : 'resultados de ' + v,
+    filetype: 'archivos ' + (EXTLABEL[v.toLowerCase()] || v.toUpperCase()),
+    ext: 'archivos ' + (EXTLABEL[v.toLowerCase()] || v.toUpperCase()),
+    intitle: '«' + v + '» en el título de la página', allintitle: 'todas estas palabras en el título',
+    inurl: '«' + v + '» en la dirección web', allinurl: 'todas estas palabras en la dirección web',
+    intext: '«' + v + '» en el texto de la página', allintext: 'todas estas palabras en el texto',
+    inanchor: '«' + v + '» en los enlaces que apuntan a la página', allinanchor: 'todas en los enlaces',
+    after: 'publicado desde el ' + fmtD(v), before: 'publicado antes del ' + fmtD(v),
+    define: 'la definición de «' + v + '»', source: 'noticias de la fuente ' + v, related: 'webs parecidas a ' + v
+  }[op];
+  if (!d) return null;
+  if (op === 'site') return neg ? 'Sin ' + d : 'Solo ' + d;
+  if (op === 'filetype' || op === 'ext') return neg ? 'Sin ' + d : 'Solo ' + d;
+  if (op === 'after' || op === 'before' || op === 'define' || op === 'source' || op === 'related') return (neg ? 'Que no sea ' : 'Solo ') + d;
+  return neg ? 'Que no salga ' + d : 'Que salga ' + d;
+}
+function describe(F, autoWhy) {
+  const L = [];
+  F.exact.forEach(p => p.trim() && L.push({c: '"' + p.trim().replace(/"/g, '') + '"', d: isModel(p) && !/\s/.test(p) ? 'Tal cual, sin cambiar ni una letra (referencia exacta)' : 'Frase exacta: estas palabras juntas y en este orden'}));
+  const plain = [];
+  F.words.forEach(w => {
+    w = String(w).trim();
+    if (!w) return;
+    if (SPECIAL[w]) { L.push({c: w, d: SPECIAL[w]}); return; }
+    if (F.words.length > 1 && / OR /.test(w)) { L.push({c: w, d: 'Vale una u otra'}); return; }
+    w.split(/\s+(?=(?:[^"]*"[^"]*")*[^"]*$)/).forEach(tok => {
+      const bare = tok.replace(/^\(+/, '').replace(/\)+$/, '');
+      if (!bare) return;
+      const od = opDesc(bare);
+      if (od) { L.push({c: bare, d: od}); return; }
+      if (/^".*"$/.test(bare)) { L.push({c: bare, d: isModel(bare.replace(/"/g, '')) ? 'Tal cual, sin cambiar ni una letra (referencia exacta)' : 'Frase exacta: estas palabras juntas y en este orden'}); return; }
+      plain.push(bare);
+    });
+  });
+  if (plain.length) L.unshift({c: plain.join(' '), d: plain.indexOf('OR') >= 0 ? 'Palabras que deben salir (OR = vale una u otra)' : 'Palabras que deben salir en la página'});
+  if (F.any.length) L.push({c: F.any.length > 1 ? '(' + F.any.map(q1).join(' OR ') + ')' : q1(F.any[0]), d: 'Vale con que salga una de estas'});
+  F.title.forEach(t => t.trim() && L.push({c: 'intitle:' + q1(t), d: 'En el título de la página'}));
+  F.text.forEach(t => t.trim() && L.push({c: 'intext:' + q1(t), d: 'En el texto de la página'}));
+  F.url.forEach(t => t.trim() && L.push({c: 'inurl:' + t.trim(), d: 'En la dirección web (URL)'}));
+  const tc = typesCode(F.types);
+  if (tc) {
+    const labs = []; F.types.forEach(k => addU(labs, TYPES[k] ? TYPES[k].label : k));
+    L.push({c: tc, d: 'Solo archivos ' + labs.join(' o ') + (autoWhy ? ' (porque ' + autoWhy + ')' : '')});
+  }
+  if (F.sites.length) L.push({c: sitesCode(F.sites), d: 'Solo en ' + F.sites.map(s => s[0] === '.' ? 'webs terminadas en ' + s : s).join(' o ')});
+  F.nosites.forEach(s => L.push({c: '-site:' + s, d: 'Sin resultados de ' + s}));
+  F.none.forEach(w => w.trim() && L.push({c: '-' + q1(w), d: 'Que no salga «' + w.trim() + '»'}));
+  if (F.after) L.push({c: 'after:' + F.after, d: 'Publicado desde el ' + fmtD(F.after)});
+  if (F.before) L.push({c: 'before:' + F.before, d: 'Publicado antes del ' + fmtD(F.before)});
+  if (F.tab) L.push({c: 'Pestaña ' + GTABS[F.tab], d: 'Google se abre directamente en la pestaña ' + GTABS[F.tab], tag: true});
+  if (F.lang) L.push({c: 'Idioma ' + LANGS[F.lang].toLowerCase(), d: 'Solo páginas ' + LANGS_IN[F.lang], tag: true});
+  return L;
+}
+function googleURL(code, tab, lang) {
+  let u = 'https://www.google.com/search?q=' + encodeURIComponent(code.trim());
+  if (tab === 'img') u += '&udm=2'; else if (tab === 'vid') u += '&tbm=vid'; else if (tab === 'nws') u += '&tbm=nws'; else if (tab === 'bks') u += '&tbm=bks';
+  if (lang) u += '&lr=lang_' + lang;
+  return u;
+}
+
+/* ================= Historial y abrir Google ================= */
+let HIST = store.get('hist', []);
+function saveHist() { store.set('hist', HIST.slice(0, 150)); }
+function addHist(e) {
+  const prev = HIST[0];
+  if (prev && prev.url === e.url) { prev.t = e.t; prev.pending = e.pending; prev.src = e.src || prev.src; }
+  else HIST.unshift(e);
+  HIST = HIST.slice(0, 150);
+  saveHist();
+  renderHist();
+}
+async function copyText(s) {
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(s); return true; } } catch (e) { /* plan B */ }
+  const ta = document.createElement('textarea');
+  ta.value = s; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, s.length);
+  let ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  ta.remove();
+  return ok;
+}
+function openURL(url) {
+  let w = null;
+  try { w = window.open(url, '_blank'); } catch (e) { w = null; }
+  if (w) { try { w.opener = null; } catch (e) { /* nada */ } } else location.href = url;
+}
+function goGoogle(code, tab, lang, src) {
+  code = String(code || '').trim();
+  if (!code) { toast('Escribe primero qué buscas'); return; }
+  const url = googleURL(code, tab, lang);
+  const offline = navigator.onLine === false;
+  addHist({t: Date.now(), code, url, tab: tab || '', lang: lang || '', src: src || '', pending: offline});
+  if (offline) {
+    copyText(code);
+    toast('Sin internet: guardada en Historial como pendiente y código copiado', '#56605B', 5000);
+    return;
+  }
+  openURL(url);
+}
+
+/* ================= Bloque de resultado (LCD + botones) ================= */
+function Result(root, srcFn) {
+  const code = $('.code', root), edited = $('.edited', root), extra = $('.lcd-extra', root);
+  const list = $('.parts', root), pnote = $('.parts-note', root), warn = $('.warn', root), ptitle = $('.parts-title', root);
+  const R = {gen: '', F: emptyF(), why: '', emptyHTML: ''};
+  function checkWarn() {
+    const v = code.value.trim();
+    const n = v ? v.split(/\s+/).length : 0;
+    warn.hidden = n <= 32;
+    warn.textContent = 'El código tiene ' + n + ' palabras y Google solo usa unas 32. Quita alguna para que no se pierdan las del final.';
+  }
+  function parts(L, notes) {
+    if (!L.length) {
+      ptitle.hidden = !R.emptyHTML;
+      list.innerHTML = R.emptyHTML;
+      pnote.hidden = true;
+      return;
+    }
+    ptitle.hidden = false;
+    list.innerHTML = L.map(x => '<li' + (x.tag ? ' class="tag"' : '') + '><code>' + esc(x.c) + '</code><span>' + esc(x.d) + '</span></li>').join('');
+    pnote.hidden = !(notes && notes.length);
+    pnote.textContent = (notes || []).join(' ');
+  }
+  function showExtra(F) {
+    const bits = [];
+    if (F.tab) bits.push('Pestaña ' + GTABS[F.tab]);
+    if (F.lang) bits.push('Páginas ' + LANGS_IN[F.lang]);
+    extra.hidden = !bits.length;
+    extra.textContent = bits.join(' · ');
+  }
+  R.set = (F, why, notes) => {
+    R.F = F; R.why = why || '';
+    R.gen = build(F);
+    code.value = R.gen;
+    edited.hidden = true;
+    grow(code); checkWarn(); showExtra(F);
+    parts(describe(F, R.why), notes);
+  };
+  code.addEventListener('input', () => {
+    const v = code.value.replace(/\n+/g, ' ');
+    if (v !== code.value) code.value = v;
+    edited.hidden = v.trim() === R.gen;
+    grow(code); checkWarn();
+    if (!edited.hidden) { const F = literalF(v); F.tab = R.F.tab; F.lang = R.F.lang; parts(describe(F, ''), []); }
+    else parts(describe(R.F, R.why), []);
+  });
+  code.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); R.go(); } });
+  $('.undo', root).addEventListener('click', () => { code.value = R.gen; edited.hidden = true; grow(code); checkWarn(); parts(describe(R.F, R.why), []); });
+  $('.go', root).addEventListener('click', () => R.go());
+  $('.copy', root).addEventListener('click', async () => {
+    const v = code.value.trim();
+    if (!v) { toast('Todavía no hay código'); return; }
+    const ok = await copyText(v);
+    toast(ok ? '✓ Código copiado' : 'No se pudo copiar: mantén el dedo sobre el código y copia', ok ? '#17703F' : '#B3261E');
+  });
+  R.go = () => goGoogle(code.value, R.F.tab, R.F.lang, srcFn());
+  R.code = code;
+  R.refit = () => grow(code);
+  return R;
+}
+
+/* ================= Pestaña Buscar ================= */
+const nl = $('#nl');
+let MODE = store.get('mode', 'auto');
+const resNL = Result($('#resNL'), () => nl.value.trim());
+const EXAMPLES = [
+  'libro de electricidad básica en pdf',
+  'manual del lutron qse-ci-wci',
+  'ficha técnica diferencial superinmunizado',
+  'reglamento de baja tensión en el boe',
+  'vídeo cómo conectar un contactor',
+  'apuntes de luminotecnia desde 2020',
+  'presentación de energía solar en powerpoint',
+  'esquemas de cuadros eléctricos imágenes',
+  'tarifa en la web de simon este año',
+  'itc-bt-25 en pdf con el título guía técnica excepto scribd'
+];
+resNL.emptyHTML = '<li><span>Escribe arriba qué buscas o toca un ejemplo.</span></li>';
+const STARTS = [
+  ['Libro en PDF', 'libro en pdf de '], ['Manual', 'manual de '], ['Ficha técnica', 'ficha técnica de '],
+  ['Catálogo', 'catálogo de '], ['Normativa (BOE)', 'en el boe '], ['Vídeo', 'vídeo de '], ['Imágenes', 'imágenes de '],
+  ['Excel', 'excel de '], ['PowerPoint', 'presentación de '], ['Plano DWG', 'plano dwg de '], ['Foros', 'foros sobre ']
+];
+const ADDS = [
+  ['excepto…', ' excepto '], ['en la web de…', ' en la web de '], ['en el título…', ' en el título '], ['que contenga…', ' que contenga '],
+  ['recientes', ' recientes'], ['este año', ' este año'], ['desde el año…', ' desde '], ['webs españolas', ' webs españolas'],
+  ['webs oficiales', ' webs oficiales'], ['en inglés', ' en inglés']
+];
+$('#starts').innerHTML = STARTS.map((s, k) => '<button type="button" class="chip" data-k="' + k + '">' + esc(s[0]) + '</button>').join('');
+$('#adds').innerHTML = ADDS.map((s, k) => '<button type="button" class="chip more" data-k="' + k + '">+ ' + esc(s[0]) + '</button>').join('');
+$('#examples').innerHTML = EXAMPLES.map(e => '<li><button type="button">' + esc(e) + '</button></li>').join('');
+
+function focusEnd(el) { el.focus(); const n = el.value.length; try { el.setSelectionRange(n, n); } catch (e) { /* nada */ } }
+function updateNL() {
+  store.set('nl', nl.value);
+  grow(nl);
+  const dork = isDork(nl.value);
+  const p = dork ? {F: literalF(nl.value), mode: '', why: '', notes: [], autoWhy: ''} : parseNL(nl.value, MODE);
+  resNL.set(p.F, p.autoWhy, p.notes);
+  const names = {palabras: 'palabras sueltas', frase: 'frase exacta', titulo: 'en el título'};
+  $('#modeWhy').textContent = !nl.value.trim() ? '' : dork ? '· has escrito código de Google: se usa tal cual' : MODE === 'auto' ? '· ahora: ' + names[p.mode] + ' (' + p.why + ')' : '';
+  $$('#modeSeg button').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.mode === MODE)); b.disabled = dork; });
+  LAST_NL = p;
+}
+let LAST_NL = null;
+nl.addEventListener('input', updateNL);
+nl.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); resNL.go(); } });
+$('#nlClear').addEventListener('click', () => { nl.value = ''; updateNL(); nl.focus(); });
+$('#modeSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; MODE = b.dataset.mode; store.set('mode', MODE); updateNL(); });
+$('#starts').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const s = STARTS[+b.dataset.k][1];
+  const cur = nl.value.trim();
+  nl.value = cur && norm(cur).indexOf(norm(s.trim())) !== 0 ? s + cur : (cur ? cur + ' ' : s);
+  updateNL(); focusEnd(nl);
+});
+$('#adds').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  nl.value = (nl.value.replace(/\s+$/, '') + ADDS[+b.dataset.k][1]).replace(/^\s+/, '');
+  updateNL(); focusEnd(nl);
+});
+$('#examples').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; nl.value = b.textContent; updateNL(); if (window.innerWidth < 1000) $('#resNL').scrollIntoView({behavior: 'smooth', block: 'start'}); });
+$('#resNL .tocons').addEventListener('click', () => {
+  if (!LAST_NL || !nl.value.trim()) { toast('Escribe primero qué buscas'); return; }
+  const F = LAST_NL.F;
+  setC({
+    words: F.words.join(' '), exact: F.exact.join(', '), any: F.any.join(', '), none: F.none.join(', '),
+    title: F.title.join(', '), text: F.text.join(', '), url: F.url.join(' '), types: F.types.slice(),
+    sites: F.sites.join(' '), nosites: F.nosites.join(' '), after: F.after, before: F.before, tab: F.tab, lang: F.lang
+  });
+  showTab('cons');
+  toast('Pasado al Constructor');
+});
+
+/* ================= Pestaña Constructor ================= */
+const CF = ['words', 'exact', 'any', 'none', 'title', 'text', 'url', 'sites', 'nosites', 'after', 'before'];
+let C = Object.assign(emptyC(), store.get('cons', {}));
+function emptyC() { return {words: '', exact: '', any: '', none: '', title: '', text: '', url: '', types: [], sites: '', nosites: '', after: '', before: '', tab: '', lang: ''}; }
+const resC = Result($('#resC'), () => 'Constructor');
+resC.emptyHTML = '<li><span>Rellena algún campo y aquí verás qué hace cada parte.</span></li>';
+$('#c-types').innerHTML = Object.keys(TYPES).map(k => '<button type="button" data-v="' + k + '"><b>' + esc(TYPES[k].label) + '</b><small>' + TYPES[k].ext.join(' · ') + '</small></button>').join('');
+$('#c-tab').innerHTML = Object.keys(GTABS).map(k => '<button type="button" data-v="' + k + '"><b>' + esc(GTABS[k]) + '</b></button>').join('');
+$('#c-lang').innerHTML = Object.keys(LANGS).map(k => '<option value="' + k + '">' + esc(LANGS[k]) + '</option>').join('');
+const SITECHIPS = ['boe.es', '.es', 'gob.es', 'youtube.com', 'wikipedia.org', 'archive.org', 'reddit.com'];
+$('#c-sitechips').innerHTML = SITECHIPS.map(s => '<button type="button" class="chip" data-v="' + s + '">' + esc(s) + '</button>').join('');
+const splitList = s => { s = String(s || '').trim(); if (!s) return []; return (/[,;]/.test(s) ? s.split(/[,;]/) : s.split(/\s+/)).map(x => x.trim()).filter(Boolean); };
+const splitPhr = s => String(s || '').split(/[,;]/).map(x => x.trim().replace(/^"+|"+$/g, '')).filter(Boolean);
+const cleanSite = s => domainOf(s) || s.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '');
+function c2F(c) {
+  const F = emptyF();
+  if (c.words.trim()) F.words = [c.words.trim()];
+  F.exact = splitPhr(c.exact); F.any = splitList(c.any); F.none = splitList(c.none);
+  F.title = splitPhr(c.title); F.text = splitPhr(c.text); F.url = splitList(c.url);
+  F.types = c.types.filter(k => TYPES[k]);
+  splitList(c.sites).map(cleanSite).forEach(s => addU(F.sites, s));
+  splitList(c.nosites).map(cleanSite).forEach(s => addU(F.nosites, s));
+  F.after = c.after || ''; F.before = c.before || ''; F.tab = c.tab || ''; F.lang = c.lang || '';
+  return F;
+}
+function paintC() {
+  CF.forEach(k => { const el = $('#c-' + k); if (el.value !== C[k]) el.value = C[k] || ''; });
+  $$('#c-types button').forEach(b => b.setAttribute('aria-pressed', String(C.types.indexOf(b.dataset.v) >= 0)));
+  $$('#c-tab button').forEach(b => b.setAttribute('aria-pressed', String((C.tab || '') === b.dataset.v)));
+  $('#c-lang').value = C.lang || '';
+  const ss = splitList(C.sites).map(cleanSite);
+  $$('#c-sitechips button').forEach(b => b.setAttribute('aria-pressed', String(ss.indexOf(b.dataset.v) >= 0)));
+}
+function updateC() { store.set('cons', C); resC.set(c2F(C), '', []); }
+function setC(c) { C = Object.assign(emptyC(), c); paintC(); updateC(); }
+CF.forEach(k => $('#c-' + k).addEventListener('input', e => { C[k] = e.target.value; if (k === 'sites') paintC(); updateC(); }));
+$('#c-types').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const v = b.dataset.v, i = C.types.indexOf(v); if (i >= 0) C.types.splice(i, 1); else C.types.push(v); paintC(); updateC(); });
+$('#c-tab').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; C.tab = b.dataset.v; paintC(); updateC(); });
+$('#c-lang').addEventListener('change', e => { C.lang = e.target.value; updateC(); });
+$('#c-sitechips').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const v = b.dataset.v, list = splitList(C.sites).map(cleanSite), i = list.indexOf(v);
+  if (i >= 0) list.splice(i, 1); else list.push(v);
+  C.sites = list.join(' '); paintC(); updateC();
+});
+let clearArm = 0;
+$('#c-clear').addEventListener('click', e => {
+  const b = e.currentTarget;
+  if (Date.now() - clearArm > 3000) { clearArm = Date.now(); b.textContent = '¿Seguro? Toca otra vez'; setTimeout(() => { b.textContent = 'Vaciar el constructor'; }, 3000); return; }
+  clearArm = 0; b.textContent = 'Vaciar el constructor'; setC(emptyC());
+});
+
+/* ================= Pestaña Historial ================= */
+const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+function fmtT(t) { const d = new Date(t); return d.getDate() + ' ' + MES[d.getMonth()] + ' ' + d.getFullYear() + ' · ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+function renderHist() {
+  const ul = $('#hist');
+  if (!HIST.length) { ul.innerHTML = '<li class="empty">Todavía no has buscado nada en este iPad.</li>'; return; }
+  ul.innerHTML = HIST.map((h, k) => {
+    const extra = [h.tab ? 'Pestaña ' + GTABS[h.tab] : '', h.lang ? 'Páginas ' + LANGS_IN[h.lang] : ''].filter(Boolean).join(' · ');
+    const src = h.src && h.src !== h.code ? (h.src === 'Constructor' ? 'Hecha con el Constructor' : 'Escribiste: «' + h.src + '»') : '';
+    return '<li class="h-item" data-k="' + k + '"><div class="h-top"><span>' + fmtT(h.t) + (extra ? ' · ' + esc(extra) : '') + '</span>' + (h.pending ? '<span class="badge">Pendiente</span>' : '') + '</div>' +
+      '<code class="h-code">' + esc(h.code) + '</code>' + (src ? '<p class="h-src">' + esc(src) + '</p>' : '') +
+      '<div class="h-act"><button type="button" class="go" data-a="go">Buscar en Google</button><button type="button" data-a="copy">Copiar</button><button type="button" data-a="use">Editar en Buscar</button><button type="button" class="del" data-a="del" aria-label="Borrar esta búsqueda">×</button></div></li>';
+  }).join('');
+}
+$('#hist').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-a]'); if (!b) return;
+  const k = +b.closest('.h-item').dataset.k, h = HIST[k]; if (!h) return;
+  if (b.dataset.a === 'go') {
+    if (navigator.onLine === false) { toast('Sigues sin internet. Ábrela cuando tengas conexión.', '#56605B', 4000); return; }
+    h.pending = false; h.t = Date.now(); HIST.splice(k, 1); HIST.unshift(h); saveHist(); renderHist(); openURL(h.url);
+  } else if (b.dataset.a === 'copy') { toast(await copyText(h.code) ? '✓ Código copiado' : 'No se pudo copiar', '#17703F'); }
+  else if (b.dataset.a === 'use') { nl.value = h.code; updateNL(); showTab('buscar'); focusEnd(nl); }
+  else if (b.dataset.a === 'del') { HIST.splice(k, 1); saveHist(); renderHist(); }
+});
+let histArm = 0;
+$('#h-clear').addEventListener('click', e => {
+  const b = e.currentTarget;
+  if (!HIST.length) return;
+  if (Date.now() - histArm > 3000) { histArm = Date.now(); b.textContent = '¿Seguro? Toca otra vez'; setTimeout(() => { b.textContent = 'Borrar historial'; }, 3000); return; }
+  histArm = 0; b.textContent = 'Borrar historial'; HIST = []; saveHist(); renderHist();
+});
+
+/* ================= Pestaña Chuleta ================= */
+const SAY = [
+  ['pdf · word · excel · powerpoint · dwg · epub', 'filetype:pdf …'],
+  ['libro de electricidad básica en pdf', '"electricidad básica" filetype:pdf'],
+  ['manual de… · ficha técnica de… · catálogo · tarifa · apuntes', 'añade la palabra y PDF'],
+  ['una referencia: qse-ci-wci, itc-bt-25, 6mm2', '"qse-ci-wci" (tal cual)'],
+  ['en el boe · en youtube · en wikipedia · en reddit', 'site:boe.es …'],
+  ['en la web de lutron · lutron.com · en la web de hager', 'site:lutron.com …'],
+  ['webs españolas · webs oficiales', 'site:.es · site:gob.es'],
+  ['excepto scribd · salvo amazon y wallapop', '-site:scribd.com …'],
+  ['excepto comprar · que no salga precio', '-comprar · -precio'],
+  ['sin youtube · sin pinterest', '-site:youtube.com …'],
+  ['en el título guía técnica', 'intitle:"guía técnica"'],
+  ['que contenga tabla de secciones', 'intext:"tabla de secciones"'],
+  ['del autor José Ramírez', '"José Ramírez"'],
+  ['desde 2020 · antes de 2015 · hasta 2018', 'after: · before:'],
+  ['del año 2023 · entre 2018 y 2020', 'after:… before:…'],
+  ['recientes · este año · últimos 2 años · última semana', 'after:(fecha)'],
+  ['imágenes · fotos · vídeos · noticias · google libros', 'Pestaña de Google'],
+  ['en inglés · en francés · en español', 'Idioma de las páginas'],
+  ['contactor o relé', 'contactor OR relé'],
+  ['"frase entre comillas"', '"frase entre comillas"'],
+  ['frase exacta · tal cual', 'pone el tema entre comillas']
+];
+$('#sayRows').innerHTML = SAY.map(r => '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td></tr>').join('');
+const CHEAT = [
+  ['"frase"', 'Las palabras juntas y en ese orden.', '"electricidad básica"'],
+  ['-palabra', 'Quita los resultados que tienen esa palabra.', 'diferencial superinmunizado -comprar'],
+  ['OR', 'Vale una u otra. En mayúsculas.', 'contactor OR telerruptor esquema'],
+  ['( )', 'Agrupa para combinar con OR.', '(manual OR instrucciones) "QSE-CI-WCI"'],
+  ['*', 'Comodín: cualquier palabra en ese hueco.', '"cómo conectar * diferencial"'],
+  ['site:', 'Solo una web o un tipo de dominio.', 'site:boe.es "baja tensión"'],
+  ['filetype:', 'Solo un tipo de archivo (también ext:).', '"guía técnica" REBT filetype:pdf'],
+  ['intitle:', 'La palabra en el título de la página.', 'intitle:"esquema unifilar" vivienda'],
+  ['allintitle:', 'Todas las palabras en el título.', 'allintitle: manual telerruptor'],
+  ['inurl:', 'La palabra en la dirección web.', 'inurl:catalogo iluminación led filetype:pdf'],
+  ['intext:', 'La palabra en el texto de la página.', 'intext:"caída de tensión" cálculo'],
+  ['after: / before:', 'Publicado después o antes de una fecha (año-mes-día).', 'tarifa material eléctrico after:2025-01-01'],
+  ['-site:', 'Quita una web entera.', 'libro instalaciones eléctricas filetype:pdf -site:scribd.com'],
+  ['define:', 'La definición de una palabra.', 'define:luminancia']
+];
+$('#cheat').innerHTML = CHEAT.map((c, k) => '<div class="op"><b>' + esc(c[0]) + '</b><p>' + esc(c[1]) + '</p><div class="ex"><code>' + esc(c[2]) + '</code><button type="button" data-k="' + k + '">Probar</button></div></div>').join('');
+$('#cheat').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  nl.value = CHEAT[+b.dataset.k][2]; updateNL(); showTab('buscar');
+});
+
+/* ================= Pestañas y conexión ================= */
+function showTab(id) {
+  $$('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === id)));
+  ['buscar', 'cons', 'hist', 'chuleta'].forEach(k => { $('#p-' + k).hidden = k !== id; });
+  store.set('tab', id);
+  if (id === 'buscar') { grow(nl); resNL.refit(); }
+  if (id === 'cons') resC.refit();
+  window.scrollTo(0, 0);
+}
+$('.tabs').addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) showTab(t.dataset.tab); });
+function paintNet() {
+  const off = navigator.onLine === false;
+  const n = $('#net');
+  n.classList.toggle('off', off);
+  $('span', n).textContent = off ? 'Sin internet' : 'Con internet';
+  n.setAttribute('aria-label', off ? 'Sin internet: el código se crea igual' : 'Con internet');
+}
+window.addEventListener('online', () => {
+  paintNet();
+  const n = HIST.filter(h => h.pending).length;
+  if (n) toast('Vuelve a haber internet: tienes ' + n + (n === 1 ? ' búsqueda pendiente' : ' búsquedas pendientes') + ' en Historial', '#17703F', 5000);
+});
+window.addEventListener('offline', paintNet);
+window.addEventListener('resize', () => { grow(nl); resNL.refit(); resC.refit(); });
+
+/* ================= Arranque ================= */
+nl.value = store.get('nl', '');
+paintC(); updateC();
+updateNL();
+renderHist();
+paintNet();
+showTab(store.get('tab', 'buscar'));
+</script>
+</body>
+</html>
