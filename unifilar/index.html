@@ -100,6 +100,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .banner .bb{min-height:40px;padding:4px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.35);background:transparent;color:inherit;font-weight:600}
 .banner .bb.on{background:var(--surface);color:var(--ink);border-color:var(--surface)}
 .banner .bb.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.banner .dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:6px;vertical-align:-2px;box-shadow:0 0 0 1.5px rgba(255,255,255,.7)}
+.bpal{flex:1 0 100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;padding:4px 0 2px}
+.bpal-n{flex:1 0 100%;text-align:center;font-size:.85rem;opacity:.85}
+.sw{width:38px;height:38px;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);padding:0;position:relative;overflow:hidden;flex:none;cursor:pointer}
+.sw.on{border-color:var(--sel);outline:2px solid var(--surface);outline-offset:-4px}
+.banner .sw.on{border-color:#fff;outline-color:var(--ink)}
+.sw-any{background:conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}
+.sw-any input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+.pal{display:flex;flex-wrap:wrap;gap:7px}
+.linkbtn{border:0;background:none;padding:0;color:var(--sel);font:inherit;text-decoration:underline;cursor:pointer}
 .zoom{position:absolute;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:4px;padding:4px;border-radius:14px;background:var(--surface);border:1px solid var(--line);box-shadow:0 4px 14px rgba(0,0,0,.14);z-index:2}
 .zoom button{min-width:44px;height:44px;border:0;border-radius:10px;background:transparent;display:inline-flex;align-items:center;justify-content:center;gap:4px;font-weight:600;font-size:.9rem;padding:0 8px}
 .zoom button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
@@ -185,6 +195,20 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
 .crow-h{font-size:.76rem;color:var(--muted);font-family:var(--f-display);letter-spacing:.06em;text-transform:uppercase}
 @media (max-width:720px){ .crow{grid-template-columns:84px 1fr 44px} .crow .c-in{grid-column:1} .crow .c-cable{grid-column:2} .crow-h{display:none} }
 
+.rsum{margin:0;font-family:var(--f-display);font-weight:700;font-size:1.3rem}
+.rsum.ko{color:var(--ko)} .rsum.ok{color:var(--ok)}
+.rchip{display:inline-flex;align-items:center;min-height:32px;padding:2px 12px;border-radius:999px;font-weight:600;font-size:.88rem;border:1px solid var(--line)}
+.rchip.ko{color:var(--ko)} .rchip.warn{color:#9A6400} .rchip.ok{color:var(--ok)}
+.rl{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.ri{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.ri p{margin:0}
+.ri small{color:var(--muted);font-size:.8rem}
+.ri .btn{min-height:40px;padding:4px 14px}
+.rico{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:#fff;background:var(--muted)}
+.ri.ko{border-left:4px solid var(--ko)} .ri.ko .rico{background:var(--ko)}
+.ri.warn{border-left:4px solid #E0A100} .ri.warn .rico{background:#E0A100;color:#1A170A}
+.ri.ok .rico{background:var(--ok)}
+@media (prefers-color-scheme: dark){ .rchip.warn{color:#F0B840} }
 .toast{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(74px + env(safe-area-inset-bottom,0px));z-index:50;background:var(--ink);color:var(--surface);padding:12px 18px;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.28);font-weight:600;max-width:calc(100% - 32px);text-align:center;display:flex;gap:12px;align-items:center}
 .toast button{min-height:40px;padding:4px 14px;border-radius:10px;border:0;background:var(--accent);color:var(--accent-ink);font-weight:700}
 .dragghost{position:fixed;z-index:60;width:64px;height:64px;margin:-32px 0 0 -32px;pointer-events:none;background:#fff;border:2px solid var(--sel);border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,.25)}
@@ -233,6 +257,7 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
     <button class="tb" data-tool="text" type="button" title="Texto (T)"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7V4h14v3M12 4v16M9 20h6"/></svg>Texto</button>
     <button class="tb" data-tool="frame" type="button" title="Recuadro"><svg class="ico" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="1" stroke-dasharray="3 2.4"/></svg>Recuadro</button>
     <button class="tb sim" id="b-sim" type="button" aria-pressed="false" title="Simular"><svg class="ico" viewBox="0 0 24 24"><path d="M13 2L5 13.5h6L10 22l8-11.5h-6z"/></svg>Simular</button>
+    <button class="tb" id="b-rebt" type="button" title="Revisar REBT (viviendas, ITC-BT-25)"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6z"/><path d="M8.5 12l2.4 2.4 4.6-4.8"/></svg>REBT</button>
     <span class="sep"></span>
     <button class="tb" id="b-undo" type="button" title="Deshacer"><svg class="ico" viewBox="0 0 24 24"><path d="M4 9h11a5 5 0 0 1 0 10H9"/><path d="M8 5L4 9l4 4"/></svg><span class="nl">Deshacer</span></button>
     <button class="tb" id="b-redo" type="button" title="Rehacer"><svg class="ico" viewBox="0 0 24 24"><path d="M20 9H9a5 5 0 0 0 0 10h6"/><path d="M16 5l4 4-4 4"/></svg><span class="nl">Rehacer</span></button>
@@ -304,6 +329,14 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
       <button class="opt" type="button" id="x-png"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/></svg><div><b>Imagen PNG</b><span>Para WhatsApp o para pegarla en un documento.</span></div></button>
       <button class="opt" type="button" id="x-json"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M5 19h14"/></svg><div><b>Archivo del esquema</b><span>Para abrirlo en otro iPad y seguir editándolo.</span></div></button>
       <p class="hint" id="x-msg" hidden></p>
+    </div>
+  </div>
+
+  <!-- Revisión REBT -->
+  <div class="modal" id="m-rebt" hidden>
+    <div class="mbox wide" role="dialog" aria-modal="true" aria-labelledby="mr-t">
+      <div class="mhead"><h2 id="mr-t">Revisión REBT · viviendas</h2><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+      <div id="rebt-body" style="display:grid;gap:12px"></div>
     </div>
   </div>
 
@@ -972,22 +1005,37 @@ function wireMid(pts){
   const a = pts[bi], b = pts[bi + 1] || a;
   return {x:(a[0] + b[0]) / 2, y:(a[1] + b[1]) / 2, vert:near(a[0], b[0]) && !near(a[1], b[1]), len:best};
 }
+/* Colores de los conductores (ITC-BT-19: fases marrón, negro y gris; neutro azul claro; protección amarillo-verde) */
+const WCOL = {
+  negro:{n:'Negro', u:'fase L2', c:'#111111'}, marron:{n:'Marrón', u:'fase L1', c:'#7B4A26'}, gris:{n:'Gris', u:'fase L3', c:'#8C9196'},
+  azul:{n:'Azul claro', u:'neutro', c:'#2F80ED'}, pe:{n:'Amarillo-verde', u:'tierra', c:'#2E9E44'}, rojo:{n:'Rojo', u:'', c:'#C62828'},
+  naranja:{n:'Naranja', u:'', c:'#F57C00'}, amarillo:{n:'Amarillo', u:'', c:'#E8B800'}, verde:{n:'Verde', u:'', c:'#2E9E44'},
+  azuloscuro:{n:'Azul oscuro', u:'', c:'#1F3A93'}, turquesa:{n:'Turquesa', u:'', c:'#0FA3A3'}, violeta:{n:'Violeta', u:'', c:'#7E3FB8'},
+  rosa:{n:'Rosa', u:'', c:'#E0559B'}, blanco:{n:'Blanco', u:'', c:'#FFFFFF'}, beige:{n:'Beige', u:'', c:'#C9AE84'}
+};
+const wireColor = k => !k ? '#111111' : k[0] === '#' ? k : (WCOL[k] ? WCOL[k].c : '#111111');
+const wireColName = k => !k ? 'Negro' : k[0] === '#' ? 'Otro color' : (WCOL[k] ? WCOL[k].n + (WCOL[k].u ? ' (' + WCOL[k].u + ')' : '') : 'Negro');
 function wirePrims(el, c, out){
   c = c || {};
-  const col = c.live ? C_LIVE : '#000';
+  const key = el.col || 'negro';
+  const col = c.live ? C_LIVE : wireColor(key);
   const bus = el.k === 'barra';
-  const w = bus ? 0.9 : (c.live ? LW + 0.15 : LW);
-  out.push({t:'p', pts:el.pts, w, c:col, dash: el.k === 'disc' ? [1.6, 1] : null});
+  const w = bus ? 0.9 : (c.live ? LW + 0.15 : (key === 'negro' ? LW : LW + 0.1));
+  const dash = el.k === 'disc' ? [1.6, 1] : null;
+  if (!c.live && key === 'pe') { out.push({t:'p', pts:el.pts, w, c:'#2E9E44', dash}); if (!dash) out.push({t:'p', pts:el.pts, w, c:'#F2C200', dash:[1.3, 1.3]}); }
+  else if (!c.live && key === 'blanco') { out.push({t:'p', pts:el.pts, w:w + 0.3, c:'#111111', dash}); out.push({t:'p', pts:el.pts, w:Math.max(0.15, w - 0.12), c:'#FFFFFF', dash}); }
+  else out.push({t:'p', pts:el.pts, w, c:col, dash});
+  const mark = c.live ? C_LIVE : key === 'blanco' ? '#111111' : key === 'pe' ? '#2E9E44' : col;
   const m = wireMid(el.pts);
   const n = parseInt(el.n, 10) || 0;
   if (n > 0 && m.len > 6) {
     const k = Math.min(n, 4);
     for (let i = 0; i < k; i++) {
       const o = (i - (k - 1) / 2) * 1.0;
-      if (m.vert) out.push({t:'p', pts:[[m.x - 1, m.y + o + 0.8], [m.x + 1, m.y + o - 0.8]], w:LW, c:col});
-      else out.push({t:'p', pts:[[m.x + o - 0.8, m.y + 1], [m.x + o + 0.8, m.y - 1]], w:LW, c:col});
+      if (m.vert) out.push({t:'p', pts:[[m.x - 1, m.y + o + 0.8], [m.x + 1, m.y + o - 0.8]], w:LW, c:mark});
+      else out.push({t:'p', pts:[[m.x + o - 0.8, m.y + 1], [m.x + o + 0.8, m.y - 1]], w:LW, c:mark});
     }
-    if (n > 4) out.push({t:'x', x:m.vert ? m.x - 1.6 : m.x, y:m.vert ? m.y : m.y + 2.4, s:String(n), size:2.2, anchor:m.vert ? 'end' : 'middle', bold:false, rot:0, base:'mid', c:col});
+    if (n > 4) out.push({t:'x', x:m.vert ? m.x - 1.6 : m.x, y:m.vert ? m.y : m.y + 2.4, s:String(n), size:2.2, anchor:m.vert ? 'end' : 'middle', bold:false, rot:0, base:'mid', c:mark});
   }
   if (el.txt) {
     const lines = String(el.txt).split('\n');
@@ -1279,7 +1327,7 @@ let tool = 'sel', placeKind = null, placeRot = 0;
 let sim = false; const simAct = new Set(), simPress = new Set();
 let simOut = {}, simT = {}, simLatch = {}, simPrevE = {}, simWake = 0;
 let multi = false;
-let wireKind = 'linea', wireDraft = null, hoverPt = null;
+let wireKind = 'linea', wireDraft = null, hoverPt = null, wirePal = false;
 let view = {x:-10, y:-10, s:3};
 let undoS = [], redoS = [], lastSnap = '';
 let clip = null, pasteN = 0;
@@ -1589,7 +1637,7 @@ function reattach(before, after){
 function addWire(pts){
   pts = simplify(pts);
   if (pts.length < 2) return null;
-  const el = {type:'wire', id:uid(), pts, k:wireKind, n:'', txt:''};
+  const el = {type:'wire', id:uid(), pts, k:wireKind, n:'', txt:'', col:prefs.wireCol || 'negro'};
   doc.els.push(el);
   commit(); renderEls(); renderOverlay();
   return el;
@@ -1909,7 +1957,7 @@ function updateBanner(){
     h = `<p>${sources ? 'Simulación: toca un aparato para abrirlo o cerrarlo; los pulsadores, mantenlos pulsados. Lo que tiene tensión se ve en rojo.' : 'Pon una «Red / acometida» o un generador para que haya tensión.'}</p><button class="bb" data-b="simreset" type="button">Reiniciar</button><button class="bb on" data-b="simoff" type="button">Salir</button>`;
   } else if (tool === 'wire') {
     if (wireDraft) h = `<p>Toca para hacer esquinas. Toca un borne o un cable para terminar.</p><button class="bb pri" data-b="wfinish" type="button">Terminar</button><button class="bb" data-b="wcancel" type="button">Cancelar</button>`;
-    else h = `<p>Arrastra de un borne a otro, o tócalos uno tras otro. Con dos dedos mueves la hoja.</p><button class="bb${wireKind === 'linea' ? ' on' : ''}" data-b="wk-linea" type="button">Línea</button><button class="bb${wireKind === 'barra' ? ' on' : ''}" data-b="wk-barra" type="button">Barra</button><button class="bb" data-b="done" type="button">Listo</button>`;
+    else h = `<p>Arrastra de un borne a otro, o tócalos uno tras otro. Con dos dedos mueves la hoja.</p><button class="bb${wireKind === 'linea' ? ' on' : ''}" data-b="wk-linea" type="button">Línea</button><button class="bb${wireKind === 'barra' ? ' on' : ''}" data-b="wk-barra" type="button">Barra</button><button class="bb${wirePal ? ' on' : ''}" data-b="wcol" type="button"><span class="dot" style="${swStyle(prefs.wireCol || 'negro')}"></span>Color</button><button class="bb" data-b="done" type="button">Listo</button>` + (wirePal ? `<div class="bpal">${Object.keys(WCOL).map(k => `<button type="button" class="sw${(prefs.wireCol || 'negro') === k ? ' on' : ''}" data-b="wc-${k}" style="${swStyle(k)}" title="${hesc(wireColName(k))}" aria-label="${hesc(wireColName(k))}"></button>`).join('')}<label class="sw sw-any" title="Otro color"><input type="color" id="wc-any" value="${/^#/.test(prefs.wireCol || '') ? prefs.wireCol : '#ff00aa'}" aria-label="Otro color"></label><span class="bpal-n">${hesc(wireColName(prefs.wireCol || 'negro'))}</span></div>` : '');
   } else if (tool === 'place') {
     h = `<p>Toca la hoja para colocar «${hesc(SYM[placeKind].n)}». Sigue tocando para poner más.</p><button class="bb" data-b="prot" type="button">Girar ↻</button><button class="bb on" data-b="done" type="button">Listo</button>`;
   } else if (tool === 'text') {
@@ -1920,6 +1968,8 @@ function updateBanner(){
   b.className = 'banner ' + cls;
   b.innerHTML = h; b.hidden = !h;
 }
+$('#banner').addEventListener('input', e => { if (e.target.id === 'wc-any') { prefs.wireCol = e.target.value; savePrefs(); const n = $('#banner .bpal-n'); if (n) n.textContent = 'Otro color'; const d = $('#banner .dot'); if (d) d.setAttribute('style', swStyle(prefs.wireCol)); } });
+$('#banner').addEventListener('change', e => { if (e.target.id === 'wc-any') { wirePal = false; updateBanner(); } });
 $('#banner').addEventListener('click', e => {
   const t = e.target.closest('[data-b]'); if (!t) return;
   const k = t.dataset.b;
@@ -1928,6 +1978,8 @@ $('#banner').addEventListener('click', e => {
   else if (k === 'wfinish') finishDraft();
   else if (k === 'wcancel') { wireDraft = null; hoverPt = null; renderOverlay(); updateBanner(); }
   else if (k === 'wk-linea' || k === 'wk-barra') { wireKind = k.slice(3); updateBanner(); }
+  else if (k === 'wcol') { wirePal = !wirePal; updateBanner(); }
+  else if (k.startsWith('wc-')) { prefs.wireCol = k.slice(3); savePrefs(); wirePal = false; updateBanner(); toast('Los cables nuevos serán ' + wireColName(prefs.wireCol).toLowerCase()); }
   else if (k === 'prot') { placeRot = (placeRot + 1) % 4; toast('Se colocará girado ' + placeRot * 90 + '°'); }
   else if (k === 'done') setTool('sel');
 });
@@ -2046,6 +2098,14 @@ $('#props-x').addEventListener('click', () => {
 });
 window.matchMedia('(max-width:1050px)').addEventListener('change', updatePanels);
 
+function swStyle(k){
+  if (k === 'pe') return 'background:repeating-linear-gradient(135deg,#2E9E44 0 6px,#F2C200 6px 12px)';
+  return 'background:' + wireColor(k) + (k === 'blanco' ? ';box-shadow:inset 0 0 0 1px #888' : '');
+}
+function paletteHTML(scope, cur){
+  cur = cur || 'negro';
+  return `<div class="f"><span class="fl">Color del cable</span><div class="pal">${Object.keys(WCOL).map(k => `<button type="button" class="sw${cur === k ? ' on' : ''}" data-scope="${scope}" data-k="col" data-v="${k}" style="${swStyle(k)}" title="${hesc(wireColName(k))}" aria-label="${hesc(wireColName(k))}"></button>`).join('')}<label class="sw sw-any${/^#/.test(cur) ? ' on' : ''}" title="Otro color"${/^#/.test(cur) ? ` style="background:${cur}"` : ''}><input type="color" data-scope="${scope}" data-k="col" value="${/^#/.test(cur) ? cur : '#ff00aa'}" aria-label="Otro color"></label></div><p class="hint" style="margin:0">${hesc(wireColName(cur))}${scope === 'el' ? ' · <button type="button" class="linkbtn" data-act="wcdef">Usar este color en los cables nuevos</button>' : ''}</p></div>`;
+}
 function chipsHTML(scope, k, val, chips, labels){
   return `<div class="chips">${chips.map((c, i) => `<button class="chip" type="button" data-scope="${scope}" data-k="${k}" data-v="${hesc(c)}" aria-pressed="${String(val) === String(c)}">${hesc(labels ? labels[i] : c)}</button>`).join('')}</div>`;
 }
@@ -2091,7 +2151,8 @@ function renderProps(){
         + ACTS(true);
     } else if (el.type === 'wire') {
       title.textContent = el.k === 'barra' ? 'Barra' : 'Cable';
-      h = segHTML('Tipo de línea', 'el', 'k', el.k || 'linea', ['linea', 'barra', 'disc'], ['Línea', 'Barra', 'Discontinua'])
+      h = paletteHTML('el', el.col)
+        + segHTML('Tipo de línea', 'el', 'k', el.k || 'linea', ['linea', 'barra', 'disc'], ['Línea', 'Barra', 'Discontinua'])
         + segHTML('Marcas de conductores', 'el', 'n', String(el.n || ''), ['', '2', '3', '4', '5'], ['No', '2', '3', '4', '5'])
         + fieldHTML('el', 'txt', 'Texto junto al cable', el.txt || '', {chips:CABLES, ph:'2×2,5+T mm²'})
         + '<p class="hint">Arrastra un tramo del cable para moverlo. Si mueves un símbolo, sus cables le siguen.</p>'
@@ -2113,7 +2174,8 @@ function renderProps(){
     }
   } else {
     title.textContent = sel.size + ' elementos';
-    h = '<p class="hint">Arrastra cualquiera de ellos para moverlos juntos.</p>' + ACTS(true);
+    const nw = doc.els.filter(e => sel.has(e.id) && e.type === 'wire');
+    h = '<p class="hint">Arrastra cualquiera de ellos para moverlos juntos.</p>' + (nw.length ? paletteHTML('wires', nw.every(w => (w.col || 'negro') === (nw[0].col || 'negro')) ? nw[0].col : '').replace('Color del cable', 'Color de los ' + nw.length + ' cables') : '') + ACTS(true);
   }
   body.innerHTML = h;
   updatePanels();
@@ -2130,20 +2192,23 @@ function setVal(scope, k, v, el){
   else if (scope === 'doc') { doc.name = v || 'Esquema'; updateHeader(); }
   else if (scope === 'page') doc.page[k] = k === 'cajetin' ? v === 'true' : v;
   else if (scope === 'pref') { prefs[k] = v === 'true'; savePrefs(); }
+  else if (scope === 'wires') doc.els.forEach(w => { if (w.type === 'wire' && sel.has(w.id)) w[k] = v; });
 }
 $('#props-body').addEventListener('input', e => {
   const t = e.target; if (!t.dataset || !t.dataset.scope) return;
   const el = sel.size === 1 ? byId([...sel][0]) : null;
   setVal(t.dataset.scope, t.dataset.k, t.value, el);
   if (el) { rerenderEl(el); renderOverlay(); if (t.dataset.k === 'txt' || el.type === 'sym') renderDots(); }
+  else if (t.dataset.scope === 'wires') { renderEls(); renderOverlay(); }
   else renderSheet();
+  if (t.type === 'color') { const lab = t.closest('.sw'); if (lab) { lab.style.background = t.value; lab.parentNode.querySelectorAll('.sw').forEach(x => x.classList.toggle('on', x === lab)); } }
   const chips = t.closest('.f') && t.closest('.f').nextElementSibling;
   if (chips && chips.classList.contains('chips')) chips.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.v === t.value)));
   commitSoon();
 });
 $('#props-body').addEventListener('change', () => commit());
 $('#props-body').addEventListener('click', e => {
-  const c = e.target.closest('.chip');
+  const c = e.target.closest('.chip') || e.target.closest('button.sw');
   if (c) {
     const el = sel.size === 1 ? byId([...sel][0]) : null;
     setVal(c.dataset.scope, c.dataset.k, c.dataset.v, el);
@@ -2154,6 +2219,7 @@ $('#props-body').addEventListener('click', e => {
   }
   const b = e.target.closest('[data-act]'); if (!b) return;
   const a = b.dataset.act;
+  if (a === 'wcdef') { const w = byId([...sel][0]); if (w) { prefs.wireCol = w.col || 'negro'; savePrefs(); toast('Los cables nuevos serán ' + wireColName(prefs.wireCol).toLowerCase()); } return; }
   if (a === 'del') deleteSel();
   else if (a === 'dup') duplicateSel();
   else if (a === 'rotl') rotateSel(-1);
@@ -2236,6 +2302,165 @@ $('#x-json').addEventListener('click', () => { closeModals(); commit(); exportJS
 $('#b-name').addEventListener('click', () => {
   const n = prompt('Nombre del esquema', doc.name);
   if (n != null && n.trim()) { doc.name = n.trim(); commit(); updateHeader(); renderSheet(); renderProps(); }
+});
+
+
+/* ---------- Revisar REBT (viviendas, ITC-BT-25) ----------
+   Recorre el esquema siguiendo los cables: de cada circuito busca hacia arriba su magnetotérmico y su diferencial,
+   y de cada diferencial cuenta los circuitos que cuelgan de él. Solo revisa lo que está dibujado. */
+const TAB1 = {C1:[10, 1.5], C2:[16, 2.5], C3:[25, 6], C4:[20, 4], C5:[16, 2.5], C6:[10, 1.5], C7:[16, 2.5], C8:[25, 6], C9:[25, 6], C10:[16, 2.5], C11:[10, 1.5], C13:[null, 2.5]};
+const PROT = new Set(['iga', 'pia', 'icp', 'mtdif', 'magnetico', 'mccb', 'guardamotor', 'fusible', 'fusec']);
+const DIFS = new Set(['dif', 'mtdif', 'difrearme', 'reledif']);
+const numOf = v => { const m = /(\d+(?:[.,]\d+)?)/.exec(String(v == null ? '' : v)); return m ? parseFloat(m[1].replace(',', '.')) : NaN; };
+function secOf(t){
+  t = String(t || '');
+  let m = /\d+\s*[x×G]\s*(\d+(?:[.,]\d+)?)/i.exec(t);
+  if (!m) m = /(\d+(?:[.,]\d+)?)\s*mm/i.exec(t);
+  return m ? parseFloat(m[1].replace(',', '.')) : NaN;
+}
+const fmtN = v => String(v).replace('.', ',');
+const isIGA = s => s.k === 'iga' || ((s.k === 'pia' || s.k === 'icp') && /IGA/i.test(s.p.tipo || ''));
+const nameOf = s => {
+  const base = SYM[s.k].n.replace(/ \(.*\)$/, '');
+  if (s.p.ref) return s.p.ref + ' (' + base.toLowerCase() + ')';
+  const same = doc.els.filter(e => e.type === 'sym' && e.k === s.k && !e.p.ref);
+  return same.length > 1 ? base + ' ' + (same.indexOf(s) + 1) : base;
+};
+function rebtCheck(){
+  const out = [];
+  const add = (lvl, msg, ref, ids) => out.push({lvl, msg, ref:ref || '', ids:ids || []});
+  const syms = doc.els.filter(e => e.type === 'sym' && SYM[e.k]), wires = doc.els.filter(e => e.type === 'wire');
+  const par = {};
+  const find = x => { if (par[x] === undefined) par[x] = x; while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+  const uni = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) par[ra] = rb; };
+  const T = [];
+  syms.forEach(s => symTerms(s).forEach((t, i) => T.push({k:'t:' + s.id + ':' + i, p:[t.x, t.y]})));
+  const byKey = {};
+  T.forEach(t => { const key = t.p[0].toFixed(2) + ',' + t.p[1].toFixed(2); find(t.k); if (byKey[key]) uni(t.k, byKey[key]); else byKey[key] = t.k; });
+  T.forEach(t => wires.forEach(w => { if (onWire(t.p, w.pts)) uni(t.k, 'w:' + w.id); }));
+  wires.forEach(w1 => { find('w:' + w1.id); [w1.pts[0], w1.pts[w1.pts.length - 1]].forEach(p => wires.forEach(w2 => { if (w2 !== w1 && onWire(p, w2.pts)) uni('w:' + w1.id, 'w:' + w2.id); })); });
+  const rem = {};
+  syms.forEach(s => {
+    if (s.k === 'remision') { const k = String(s.p.txt || '').trim().toUpperCase(); if (k) { if (rem[k]) uni('t:' + s.id + ':0', rem[k]); else rem[k] = 't:' + s.id + ':0'; } }
+    if (s.k === 'derivacion' || s.k === 'borne') SYM[s.k].t.forEach((_, i) => uni('t:' + s.id + ':0', 't:' + s.id + ':' + i));
+  });
+  const tn = (s, i) => find('t:' + s.id + ':' + i);
+  const ins = s => SYM[s.k].t.map((t, i) => t[2] === 'n' ? tn(s, i) : null).filter(Boolean);
+  const outs = s => SYM[s.k].t.map((t, i) => t[2] === 's' ? tn(s, i) : null).filter(Boolean);
+  const upOf = {}, downOf = {};
+  syms.forEach(s => { if (SYM[s.k].t.length < 2 || s.k === 'derivacion' || s.k === 'borne') return; outs(s).forEach(n => (upOf[n] = upOf[n] || []).push(s)); ins(s).forEach(n => (downOf[n] = downOf[n] || []).push(s)); });
+  const loadsOf = {};
+  syms.forEach(s => { if (SYM[s.k].t.length === 1 && SYM[s.k].t[0][2] === 'n') (loadsOf[tn(s, 0)] = loadsOf[tn(s, 0)] || []).push(s); });
+  /* Sube por los cables hasta el primer aparato que cumpla stop (null si llega a la red sin encontrarlo). */
+  const up = (nets, stop) => {
+    const seen = new Set(), q = nets.slice();
+    while (q.length) { const n = q.shift(); if (seen.has(n)) continue; seen.add(n); for (const s of upOf[n] || []) { if (stop(s)) return s; ins(s).forEach(x => q.push(x)); } }
+    return null;
+  };
+  /* Baja desde un aparato y devuelve los circuitos que cuelgan de él (protecciones o salidas directas). */
+  const down = (d) => {
+    const seen = new Set(), q = outs(d), found = [];
+    while (q.length) {
+      const n = q.shift(); if (seen.has(n)) continue; seen.add(n);
+      for (const s of downOf[n] || []) { if (PROT.has(s.k) || DIFS.has(s.k)) found.push(s); else outs(s).forEach(x => q.push(x)); }
+      for (const s of loadsOf[n] || []) if (s.k === 'salida') found.push(s);
+    }
+    return found;
+  };
+  const salidas = syms.filter(s => s.k === 'salida');
+  const breakers = syms.filter(s => (s.k === 'pia' || s.k === 'mtdif' || s.k === 'magnetico' || s.k === 'mccb') && !isIGA(s));
+  const igas = syms.filter(isIGA), difs = syms.filter(s => DIFS.has(s.k));
+  if (!salidas.length && !breakers.length) add('info', 'No hay circuitos que revisar. Esta revisión es para cuadros de vivienda: pon magnetotérmicos y «Salidas a circuito» (o genera un cuadro desde «Esquemas»).', 'ITC-BT-25');
+
+  /* IGA */
+  if (!igas.length) { if (breakers.length || salidas.length) add('ko', 'No hay interruptor general automático (IGA). Pon el símbolo «IGA» o escribe IGA en el nombre del magnetotérmico general.', 'ITC-BT-25, 2.1'); }
+  igas.forEach(g => {
+    const In = numOf(g.p.In);
+    if (isNaN(In)) add('warn', `${nameOf(g)}: no tiene intensidad indicada (mínimo 25 A).`, 'ITC-BT-25, 2.1', [g.id]);
+    else if (In < 25) add('ko', `${nameOf(g)}: ${fmtN(In)} A. El IGA tiene que ser de 25 A como mínimo.`, 'ITC-BT-25, 2.1', [g.id]);
+    else add('ok', `${nameOf(g)}: ${fmtN(In)} A, por encima del mínimo de 25 A.`, 'ITC-BT-25, 2.1', [g.id]);
+    if (String(g.p.polos || '').toUpperCase().replace(/\s/g, '') === '1P') add('ko', `${nameOf(g)}: es de 1 polo. El IGA tiene que ser de corte omnipolar (fase y neutro).`, 'ITC-BT-25, 2.1', [g.id]);
+  });
+
+  /* Diferenciales */
+  difs.forEach(d => {
+    const sens = numOf(d.p.sens);
+    if (!isNaN(sens) && sens > 30) add('ko', `${nameOf(d)}: ${fmtN(sens)} mA. En viviendas, todos los circuitos con diferencial de 30 mA como máximo.`, 'ITC-BT-25, 2.1', [d.id]);
+    if (d.k === 'mtdif') return;
+    const circ = down(d);
+    if (circ.length > 5) add('ko', `${nameOf(d)}: tiene ${circ.length} circuitos. Hace falta un diferencial por cada 5 circuitos como máximo.`, 'ITC-BT-25, 2.1', [d.id].concat(circ.map(c => c.id)));
+    else if (circ.length) add('ok', `${nameOf(d)}: ${circ.length} circuito${circ.length > 1 ? 's' : ''} (máximo 5).`, 'ITC-BT-25, 2.1', [d.id]);
+    if (!isNaN(sens) && sens <= 30) add('ok', `${nameOf(d)}: ${fmtN(sens)} mA.`, 'ITC-BT-25, 2.1', [d.id]);
+  });
+  const unprot = breakers.filter(b => !DIFS.has(b.k) && !up(ins(b), s => DIFS.has(s.k)));
+  if (unprot.length) add('ko', `${unprot.length === 1 ? 'Un magnetotérmico no tiene' : unprot.length + ' magnetotérmicos no tienen'} diferencial por encima: ${unprot.map(nameOf).join(', ')}.`, 'ITC-BT-25, 2.1', unprot.map(b => b.id));
+  else if (breakers.length && difs.length) add('ok', 'Todos los magnetotérmicos tienen un diferencial por encima.', 'ITC-BT-25, 2.1');
+
+  /* Circuitos: calibre y sección según la Tabla 1 */
+  const cname = s => String(s.p.circ || '').trim().toUpperCase().replace(/\s/g, '');
+  salidas.forEach(s => {
+    const c = cname(s), lab = sp(s.p.circ, s.p.desc) || 'Salida sin nombre';
+    const b = up([tn(s, 0)], x => PROT.has(x.k));
+    if (!b) { add('ko', `${lab}: no tiene magnetotérmico (ni fusible) que lo proteja.`, 'ITC-BT-25, 2.3', [s.id]); return; }
+    const tab = TAB1[c];
+    if (!tab) return;
+    const In = numOf(b.p.In), sec = secOf(s.p.cable), errs = [], ids = [s.id, b.id];
+    if (tab[0] && !isNaN(In) && In > tab[0]) errs.push(`magnetotérmico de ${fmtN(In)} A y la tabla da ${tab[0]} A`);
+    if (tab[0] && isNaN(In)) add('warn', `${lab}: el magnetotérmico no tiene intensidad indicada (la tabla da ${tab[0]} A).`, 'ITC-BT-25, Tabla 1', ids);
+    if (!isNaN(sec) && sec < tab[1]) errs.push(`cable de ${fmtN(sec)} mm² y el mínimo es ${fmtN(tab[1])} mm²`);
+    if (isNaN(sec)) add('warn', `${lab}: no se indica la sección del cable (mínimo ${fmtN(tab[1])} mm²).`, 'ITC-BT-25, Tabla 1', ids);
+    if (errs.length) add('ko', `${lab}: ${errs.join('; ')}.`, 'ITC-BT-25, Tabla 1', ids);
+    else if (!isNaN(sec) && (!tab[0] || !isNaN(In))) add('ok', `${lab}: ${tab[0] ? fmtN(In) + ' A y ' : ''}${fmtN(sec)} mm², cumple la tabla.`, 'ITC-BT-25, Tabla 1', ids);
+    if (c === 'C13') {
+      const d = DIFS.has(b.k) ? b : up(ins(b), x => DIFS.has(x.k));
+      if (d && d.k !== 'mtdif' && down(d).length > 1) add('ko', `${lab}: la recarga del vehículo tiene que llevar su propio diferencial, y ${nameOf(d)} protege más circuitos.`, 'ITC-BT-52', [s.id, d.id]);
+    }
+  });
+  const named = salidas.map(cname).filter(c => /^C\d+$/.test(c));
+  if (named.length) {
+    const miss = ['C1', 'C2', 'C3', 'C4', 'C5'].filter(c => !named.includes(c));
+    if (miss.length) add('warn', `Faltan circuitos de la electrificación básica: ${miss.join(', ')}. Si están, pon su nombre en la «Salida a circuito».`, 'ITC-BT-25, 2.3.1');
+    else add('ok', 'Están los circuitos mínimos C1 a C5.', 'ITC-BT-25, 2.3.1');
+    const dup = named.filter((c, i) => named.indexOf(c) !== i && c !== 'C12');
+    if (dup.length) add('warn', `Hay circuitos con el mismo nombre: ${[...new Set(dup)].join(', ')}.`, '');
+  }
+
+  /* Dibujo: cables sueltos */
+  const loose = [];
+  wires.forEach(w => [w.pts[0], w.pts[w.pts.length - 1]].forEach(p => {
+    const onT = T.some(t => eqp(t.p, p)), onW = wires.some(v => v !== w && onWire(p, v.pts));
+    if (!onT && !onW) loose.push(w.id);
+  }));
+  if (loose.length) add('warn', `Hay ${loose.length} extremo${loose.length > 1 ? 's' : ''} de cable sin conectar a nada. Revisa que el cable llegue al borne.`, 'Dibujo', [...new Set(loose)]);
+  return out;
+}
+function focusEls(ids){
+  const els = ids.map(byId).filter(Boolean); if (!els.length) return;
+  const b = els.map(elBox).reduce((a, c) => [Math.min(a[0], c[0]), Math.min(a[1], c[1]), Math.max(a[2], c[2]), Math.max(a[3], c[3])]);
+  const r = svg.getBoundingClientRect(), pad = 30;
+  const s = clamp(Math.min((r.width - 2 * pad) / Math.max(20, b[2] - b[0]), (r.height - 2 * pad) / Math.max(20, b[3] - b[1])), 1.5, 9);
+  view.s = s; view.x = (b[0] + b[2]) / 2 - r.width / 2 / s; view.y = (b[1] + b[3]) / 2 - r.height / 2 / s;
+  sel = new Set(els.map(e => e.id)); renderProps(); applyView();
+}
+let rebtRes = [];
+function showRebt(){
+  if (sim) setSim(false);
+  if (wireDraft) finishDraft();
+  rebtRes = rebtCheck();
+  const n = l => rebtRes.filter(r => r.lvl === l).length, ko = n('ko'), wa = n('warn'), ok = n('ok');
+  const ico = {ko:'✕', warn:'!', ok:'✓', info:'i'};
+  const grp = (l, t) => { const it = rebtRes.map((r, i) => [r, i]).filter(([r]) => r.lvl === l); return it.length ? `<p class="sect">${t}</p><ul class="rl">${it.map(([r, i]) => `<li class="ri ${l}"><span class="rico">${ico[l]}</span><div><p>${hesc(r.msg)}</p>${r.ref ? `<small>${hesc(r.ref)}</small>` : ''}</div>${r.ids.length ? `<button class="btn" type="button" data-ri="${i}">Ver</button>` : ''}</li>`).join('')}</ul>` : ''; };
+  const head = ko ? `<p class="rsum ko">${ko} cosa${ko > 1 ? 's' : ''} no cumple${ko > 1 ? 'n' : ''}</p>` : (wa ? '<p class="rsum warn">Nada incumple, pero hay cosas que revisar</p>' : (ok ? '<p class="rsum ok">Todo lo revisado cumple</p>' : ''));
+  $('#rebt-body').innerHTML = head + `<div class="row"><span class="rchip ko">✕ ${ko} no cumple${ko === 1 ? '' : 'n'}</span><span class="rchip warn">! ${wa} a revisar</span><span class="rchip ok">✓ ${ok} cumple${ok === 1 ? '' : 'n'}</span></div>`
+    + grp('ko', 'No cumple') + grp('warn', 'Revisar') + grp('info', 'Aviso') + grp('ok', 'Cumple')
+    + '<p class="hint">Revisa lo dibujado según la ITC-BT-25 (viviendas): IGA, diferenciales, circuitos, calibres y secciones de la Tabla 1, y el diferencial propio de la recarga del vehículo (ITC-BT-52). No sustituye al cálculo de secciones por caída de tensión ni a la documentación de la instalación.</p>';
+  openModal('#m-rebt');
+}
+$('#b-rebt').addEventListener('click', showRebt);
+$('#rebt-body').addEventListener('click', e => {
+  const b = e.target.closest('[data-ri]'); if (!b) return;
+  const r = rebtRes[+b.dataset.ri]; closeModals(); setTool('sel');
+  requestAnimationFrame(() => focusEls(r.ids));
 });
 
 /* ---------- Mis esquemas ---------- */
