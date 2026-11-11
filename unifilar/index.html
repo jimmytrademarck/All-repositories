@@ -139,22 +139,35 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .sect{margin:4px 0 -4px;font-family:var(--f-display);font-weight:600;font-size:.76rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
-@media (max-width:1050px){
+@media (max-width:1180px){
   .lib{width:164px}
+  .props{width:272px}
   .tiles{grid-template-columns:minmax(0,1fr)}
   .tile{flex-direction:row;min-height:58px;padding:4px 6px;justify-content:flex-start;gap:8px}
   .tile svg{width:46px;height:44px;flex:none}
   .tile span{text-align:left}
-  .props{position:absolute;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(400px,calc(100% - 20px));max-height:52%;border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:4;overflow:hidden}
-  .props-body{padding-bottom:16px}
+}
+@media (max-width:1050px){
   .tb{min-width:46px;padding:4px 5px}
-  .lbl-long,.tb .nl{display:none}
+  .tb .nl{display:none}
   .tb.home{padding:4px 10px}
   .tb.exp{padding:4px 12px}
   .bar{gap:3px}
 }
+@media (max-width:999px){
+  .props{position:absolute;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(400px,calc(100% - 20px));max-height:44%;border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:4;overflow:hidden;transition:opacity .15s}
+  .props-body{padding-bottom:16px}
+  .props-head{cursor:pointer}
+  .props .mini{display:inline-flex}
+  .props.min .props-body{display:none}
+  .props.min .props-head{border-bottom:0}
+}
+.props .mini{display:none;width:40px;height:40px;border:0;border-radius:10px;background:transparent;color:var(--muted);align-items:center;justify-content:center}
+.props .mini svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}
+.props.min .mini svg{transform:rotate(180deg)}
+#app.dragging .props,#app.dragging .zoom,#app.dragging .banner{opacity:.12;pointer-events:none}
 @media (max-width:900px){ .docname,.bar .sep{display:none} }
-@media (max-width:700px){ .lib{width:140px} .tb.exp .nl2{display:none} }
+@media (max-width:700px){ .lib{width:140px} .tb.exp .nl2{display:none} .lbl-long{display:none} }
 
 /* Pantallas y ventanas */
 .screen{position:absolute;inset:0;z-index:20;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
@@ -291,12 +304,13 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
         <button type="button" id="z-out" aria-label="Alejar"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
         <button type="button" class="zl" id="z-fit" title="Ajustar la hoja a la pantalla">100 %</button>
         <button type="button" id="z-in" aria-label="Acercar"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button>
+        <button type="button" id="b-caj" title="Datos de la hoja y del cajetín"><svg class="ico" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="1"/><path d="M11 19v-5h9.5M11 14v0M3.5 14H11"/></svg><span class="lbl-long">Cajetín</span></button>
         <button type="button" id="b-multi" aria-pressed="false" title="Seleccionar varios arrastrando un recuadro"><svg class="ico" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="13" height="13" rx="1" stroke-dasharray="3 2.4"/><path d="M13 13l7 3.2-3.1 1-1 3.1z"/></svg><span class="lbl-long">Varios</span></button>
       </div>
     </div>
 
     <aside class="props" id="props" aria-label="Propiedades">
-      <div class="props-head"><h2 id="props-title">Hoja</h2><button class="x" id="props-x" type="button" aria-label="Cerrar propiedades">×</button></div>
+      <div class="props-head" id="props-head"><h2 id="props-title">Hoja</h2><button class="mini" id="props-min" type="button" aria-label="Plegar o desplegar propiedades"><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg></button><button class="x" id="props-x" type="button" aria-label="Cerrar propiedades">×</button></div>
       <div class="props-body" id="props-body"></div>
     </aside>
   </div>
@@ -1323,7 +1337,7 @@ function normDoc(d){
 /* ---------- Estado ---------- */
 let doc = null;
 let sel = new Set();
-let tool = 'sel', placeKind = null, placeRot = 0;
+let tool = 'sel', placeKind = null, placeRot = 0, placeMulti = false;
 let sim = false; const simAct = new Set(), simPress = new Set();
 let simOut = {}, simT = {}, simLatch = {}, simPrevE = {}, simWake = 0;
 let multi = false;
@@ -1380,8 +1394,11 @@ function applyView(){
 function fit(){
   const [W, H] = pageSize(doc.page), r = svg.getBoundingClientRect();
   if (!r.width) return;
-  const pad = 22, s = clamp(Math.min((r.width - 2 * pad) / W, (r.height - 2 * pad) / H), 0.4, 40);
-  view.s = s; view.x = W / 2 - r.width / 2 / s; view.y = H / 2 - r.height / 2 / s;
+  /* En vertical se deja libre la parte de abajo, donde sale el panel de propiedades, para que no tape el cajetín. */
+  const cover = isNarrow() ? r.height * 0.44 + 12 : 0;
+  const h = Math.max(160, r.height - cover);
+  const pad = 22, s = clamp(Math.min((r.width - 2 * pad) / W, (h - 2 * pad) / H), 0.4, 40);
+  view.s = s; view.x = W / 2 - r.width / 2 / s; view.y = H / 2 - h / 2 / s;
   applyView();
 }
 function zoomAt(f, cx, cy){
@@ -1720,9 +1737,10 @@ function moveDrag(w){
   act.att.forEach(a => { attCur(a, dx, dy); rerenderEl(Object.assign({}, a.w, {pts:a.cur})); });
   gOvl.setAttribute('transform', `translate(${dx} ${dy})`);
   gDots.style.opacity = '0';
+  $('#app').classList.add('dragging');
 }
 function endDrag(){
-  gOvl.removeAttribute('transform'); gDots.style.opacity = '';
+  gOvl.removeAttribute('transform'); gDots.style.opacity = ''; $('#app').classList.remove('dragging');
   if (act.dx || act.dy) {
     act.moving.concat(act.trans).forEach(e => translateEl(e, act.dx, act.dy));
     act.att.forEach(a => { attCur(a, act.dx, act.dy); a.w.pts = simplify(a.cur); });
@@ -1775,7 +1793,7 @@ function duplicateSel(){
 /* ---------- Gestos sobre la hoja ---------- */
 function cancelAct(){
   if (!act) return;
-  if (act.type === 'drag') { gOvl.removeAttribute('transform'); gDots.style.opacity = ''; renderEls(); }
+  if (act.type === 'drag') { gOvl.removeAttribute('transform'); gDots.style.opacity = ''; $('#app').classList.remove('dragging'); renderEls(); }
   if (act.type === 'seg') { act.el.pts = act.orig; renderEls(); }
   if (act.type === 'resize') { act.el.w = act.ow; act.el.h = act.oh; renderEls(); }
   act = null; renderOverlay();
@@ -1815,7 +1833,7 @@ function onDown(e){
     return;
   }
   if (tool === 'wire') { act = Object.assign(base, {type:'wire', s0:wireSnap(w)}); return; }
-  if (tool === 'place') { act = Object.assign(base, {type:'place'}); return; }
+  if (tool === 'place' && !target) { act = Object.assign(base, {type:'place'}); return; }
   if (tool === 'text') { act = Object.assign(base, {type:'textplace'}); return; }
   if (tool === 'frame') { act = Object.assign(base, {type:'framedraw'}); return; }
   if (hEl && hEl.dataset.h === 'resize') { const f = byId([...sel][0]); if (f) { act = Object.assign(base, {type:'resize', el:f, ow:f.w, oh:f.h}); return; } }
@@ -1880,7 +1898,7 @@ function onUp(e){
         renderEls();
       }
       break;
-    case 'place': if (!a.moved) placeSymbol(placeKind, w); break;
+    case 'place': if (!a.moved) { const k = placeKind; placeSymbol(k, w); if (!placeMulti) setTool('sel'); } break;
     case 'textplace': if (!a.moved) addText(w); break;
     case 'framedraw':
       if (a.moved && a.box) { const b = a.box.map(v => snapG(v)); addFrame(Math.min(b[0], b[2]), Math.min(b[1], b[3]), Math.abs(b[2] - b[0]), Math.abs(b[3] - b[1])); }
@@ -1907,10 +1925,20 @@ function onUp(e){
         const x0 = Math.min(a.box[0], a.box[2]), x1 = Math.max(a.box[0], a.box[2]), y0 = Math.min(a.box[1], a.box[3]), y1 = Math.max(a.box[1], a.box[3]);
         if (!a.add) sel.clear();
         doc.els.forEach(el => { const b = elBox(el); if (b[0] >= x0 && b[2] <= x1 && b[1] >= y0 && b[3] <= y1) sel.add(el.id); });
-      } else if (!a.add) sel.clear();
+      } else {
+        const cb = cajetinBox(doc);
+        if (cb && w[0] >= cb[0] && w[0] <= cb[2] && w[1] >= cb[1] && w[1] <= cb[3]) { openCajetin(); break; }
+        if (!a.add) sel.clear();
+      }
       renderProps();
       break;
-    case 'pan': if (!a.moved && sel.size) { sel.clear(); renderProps(); } break;
+    case 'pan': case 'boxsel-tap':
+      if (!a.moved) {
+        const cb = cajetinBox(doc);
+        if (cb && w[0] >= cb[0] && w[0] <= cb[2] && w[1] >= cb[1] && w[1] <= cb[3]) { openCajetin(); break; }
+        if (sel.size) { sel.clear(); renderProps(); }
+      }
+      break;
   }
   renderOverlay();
 }
@@ -1959,7 +1987,7 @@ function updateBanner(){
     if (wireDraft) h = `<p>Toca para hacer esquinas. Toca un borne o un cable para terminar.</p><button class="bb pri" data-b="wfinish" type="button">Terminar</button><button class="bb" data-b="wcancel" type="button">Cancelar</button>`;
     else h = `<p>Arrastra de un borne a otro, o tócalos uno tras otro. Con dos dedos mueves la hoja.</p><button class="bb${wireKind === 'linea' ? ' on' : ''}" data-b="wk-linea" type="button">Línea</button><button class="bb${wireKind === 'barra' ? ' on' : ''}" data-b="wk-barra" type="button">Barra</button><button class="bb${wirePal ? ' on' : ''}" data-b="wcol" type="button"><span class="dot" style="${swStyle(prefs.wireCol || 'negro')}"></span>Color</button><button class="bb" data-b="done" type="button">Listo</button>` + (wirePal ? `<div class="bpal">${Object.keys(WCOL).map(k => `<button type="button" class="sw${(prefs.wireCol || 'negro') === k ? ' on' : ''}" data-b="wc-${k}" style="${swStyle(k)}" title="${hesc(wireColName(k))}" aria-label="${hesc(wireColName(k))}"></button>`).join('')}<label class="sw sw-any" title="Otro color"><input type="color" id="wc-any" value="${/^#/.test(prefs.wireCol || '') ? prefs.wireCol : '#ff00aa'}" aria-label="Otro color"></label><span class="bpal-n">${hesc(wireColName(prefs.wireCol || 'negro'))}</span></div>` : '');
   } else if (tool === 'place') {
-    h = `<p>Toca la hoja para colocar «${hesc(SYM[placeKind].n)}». Sigue tocando para poner más.</p><button class="bb" data-b="prot" type="button">Girar ↻</button><button class="bb on" data-b="done" type="button">Listo</button>`;
+    h = `<p>Toca la hoja donde quieras «${hesc(SYM[placeKind].n)}». Después podrás arrastrarlo para ajustarlo.</p><button class="bb" data-b="prot" type="button">Girar ↻</button><button class="bb${placeMulti ? ' on' : ''}" data-b="pmulti" type="button">${placeMulti ? '✓ ' : ''}Poner varios</button><button class="bb" data-b="done" type="button">Cancelar</button>`;
   } else if (tool === 'text') {
     h = `<p>Toca la hoja donde quieras el texto.</p><button class="bb on" data-b="done" type="button">Cancelar</button>`;
   } else if (tool === 'frame') {
@@ -1980,6 +2008,7 @@ $('#banner').addEventListener('click', e => {
   else if (k === 'wk-linea' || k === 'wk-barra') { wireKind = k.slice(3); updateBanner(); }
   else if (k === 'wcol') { wirePal = !wirePal; updateBanner(); }
   else if (k.startsWith('wc-')) { prefs.wireCol = k.slice(3); savePrefs(); wirePal = false; updateBanner(); toast('Los cables nuevos serán ' + wireColName(prefs.wireCol).toLowerCase()); }
+  else if (k === 'pmulti') { placeMulti = !placeMulti; updateBanner(); }
   else if (k === 'prot') { placeRot = (placeRot + 1) % 4; toast('Se colocará girado ' + placeRot * 90 + '°'); }
   else if (k === 'done') setTool('sel');
 });
@@ -1990,6 +2019,7 @@ $('#b-redo').addEventListener('click', redo);
 $('#z-in').addEventListener('click', () => zoomAt(1.25));
 $('#z-out').addEventListener('click', () => zoomAt(0.8));
 $('#z-fit').addEventListener('click', fit);
+$('#b-caj').addEventListener('click', () => { if (sim) setSim(false); openCajetin(); });
 $('#b-multi').addEventListener('click', () => { multi = !multi; $('#b-multi').setAttribute('aria-pressed', String(multi)); if (multi) toast('Arrastra un recuadro o toca elementos para seleccionar varios'); });
 
 /* ---------- Biblioteca de símbolos ---------- */
@@ -2050,6 +2080,7 @@ $('#lib-q').addEventListener('input', e => buildLib(e.target.value));
     if (!tp.moved && Math.hypot(dx, dy) > 10 && Math.abs(dx) > Math.abs(dy) * 0.8) {
       tp.moved = true;
       ghost = document.createElement('div'); ghost.className = 'dragghost'; ghost.innerHTML = ICONS[tp.k];
+      $('#app').classList.add('dragging');
       document.body.appendChild(ghost);
     }
     if (ghost) { ghost.style.left = e.clientX + 'px'; ghost.style.top = e.clientY + 'px'; }
@@ -2057,7 +2088,7 @@ $('#lib-q').addEventListener('input', e => buildLib(e.target.value));
   const end = (e, cancel) => {
     if (!tp || e.pointerId !== tp.id) return;
     const k = tp.k, moved = tp.moved; tp = null;
-    if (ghost) { ghost.remove(); ghost = null; }
+    if (ghost) { ghost.remove(); ghost = null; $('#app').classList.remove('dragging'); }
     if (cancel) return;
     if (moved) {
       const r = stage.getBoundingClientRect();
@@ -2075,7 +2106,15 @@ $('#lib-q').addEventListener('input', e => buildLib(e.target.value));
 })();
 
 /* ---------- Panel de propiedades ---------- */
-const isNarrow = () => window.matchMedia('(max-width:1050px)').matches;
+function openCajetin(){
+  sel.clear(); renderOverlay();
+  if (isNarrow()) propsManual = true; else if (!prefs.props) { prefs.props = true; savePrefs(); }
+  setPropsMin(false);
+  renderProps();
+  const f = document.querySelector('#props-body [data-scope="info"][data-k="titulo"]');
+  if (f) { f.closest('.f').previousElementSibling.scrollIntoView({block:'start'}); }
+}
+const isNarrow = () => window.matchMedia('(max-width:999px)').matches;
 let propsManual = false;
 function updatePanels(){
   $('#lib').hidden = !prefs.lib;
@@ -2096,7 +2135,11 @@ $('#props-x').addEventListener('click', () => {
   else { prefs.props = false; savePrefs(); }
   updatePanels();
 });
-window.matchMedia('(max-width:1050px)').addEventListener('change', updatePanels);
+window.matchMedia('(max-width:999px)').addEventListener('change', updatePanels);
+/* En vertical, el panel de propiedades se pliega tocando su cabecera para ver la hoja entera. */
+let propsMin = false;
+function setPropsMin(v){ propsMin = v; $('#props').classList.toggle('min', v); }
+$('#props-head').addEventListener('click', e => { if (!isNarrow() || e.target.closest('#props-x')) return; setPropsMin(!propsMin); });
 
 function swStyle(k){
   if (k === 'pe') return 'background:repeating-linear-gradient(135deg,#2E9E44 0 6px,#F2C200 6px 12px)';
@@ -2133,7 +2176,7 @@ function renderProps(){
       + segHTML('Orientación', 'page', 'orient', P.orient, ['l', 'p'], ['Horizontal', 'Vertical'])
       + segHTML('Cajetín', 'page', 'cajetin', String(P.cajetin !== false), ['true', 'false'], ['Sí', 'No'])
       + segHTML('Rejilla en pantalla', 'pref', 'grid', String(prefs.grid), ['true', 'false'], ['Sí', 'No'])
-      + `<p class="sect">Datos del cajetín</p>`
+      + `<p class="sect">Datos del cajetín</p><p class="hint">El cajetín está abajo a la derecha de la hoja. Lo que escribas aquí aparece en él y en el PDF.</p>`
       + fieldHTML('info', 'titulo', 'Título', I.titulo, {ph:doc.name})
       + fieldHTML('info', 'emplazamiento', 'Emplazamiento', I.emplazamiento, {ph:'Calle, número, localidad'})
       + fieldHTML('info', 'titular', 'Titular', I.titular)
