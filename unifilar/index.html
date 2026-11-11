@@ -104,6 +104,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .banner .bb{min-height:40px;padding:4px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.35);background:transparent;color:inherit;font-weight:600}
 .banner .bb.on{background:var(--surface);color:var(--ink);border-color:var(--surface)}
 .banner .bb.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.banner.mini{left:10px;top:10px;transform:none;padding:4px;gap:6px;border-radius:12px;font-size:.88rem;max-width:calc(100% - 20px)}
+.banner.mini .bb{min-height:36px;padding:2px 12px}
+.banner .bx{min-width:40px;padding:2px 8px}
+.banner .mtag{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:2px 10px;border:0;border-radius:9px;background:transparent;color:inherit;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
+button.mtag{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
 .banner .dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:6px;vertical-align:-2px;box-shadow:0 0 0 1.5px rgba(255,255,255,.7)}
 .bpal{flex:1 0 100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;padding:4px 0 2px}
 .bpal-n{flex:1 0 100%;text-align:center;font-size:.85rem;opacity:.85}
@@ -284,6 +289,7 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
     <button class="docname" id="b-name" type="button" title="Cambiar nombre"><b id="docname">Esquema</b><small id="docsave">Guardado en este iPad</small></button>
     <span class="sep"></span>
     <button class="tb" data-tool="sel" type="button" title="Seleccionar y mover (V)"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3l12 8.5-5.2 1.2L10 18z"/></svg>Mover</button>
+    <button class="tb" data-tool="hand" type="button" title="Solo mover y ampliar la hoja, sin tocar nada del esquema (H)"><svg class="ico" viewBox="0 0 24 24"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11M11 10.5V4.2a1.5 1.5 0 0 1 3 0v6.3M14 10.8V5.8a1.5 1.5 0 0 1 3 0v8c0 3.9-2.5 6.7-6 6.7-2.6 0-4.1-1.2-5.5-3.5L3.7 13.6a1.4 1.4 0 0 1 2.3-1.6L8 14.5"/></svg>Solo mover</button>
     <button class="tb" data-tool="wire" type="button" title="Cable (W)"><svg class="ico" viewBox="0 0 24 24"><path d="M5 19v-8h14V5"/><circle cx="5" cy="19" r="1.8"/><circle cx="19" cy="5" r="1.8"/></svg>Cable</button>
     <button class="tb" data-tool="text" type="button" title="Texto (T)"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7V4h14v3M12 4v16M9 20h6"/></svg>Texto</button>
     <button class="tb" data-tool="frame" type="button" title="Recuadro"><svg class="ico" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="1" stroke-dasharray="3 2.4"/></svg>Recuadro</button>
@@ -1266,6 +1272,16 @@ const MM = 96 / 25.4;
 const svg = $('#cv'), gSheet = $('#g-sheet'), gEls = $('#g-els'), gDots = $('#g-dots'), gOvl = $('#g-ovl');
 const pageRect = $('#page'), pgrid = $('#pgrid'), stage = $('#stage');
 
+/* ---------- Si algo falla, la app se recupera: suelta el gesto a medias y vuelve a dibujar ---------- */
+let errAt = 0;
+function recover(){
+  try { act = null; ptrs.clear(); simPress.clear(); $('#app').classList.remove('dragging'); gOvl.removeAttribute('transform'); gDots.style.opacity = ''; } catch (e) {}
+  try { if (doc) { renderAll(); renderProps(); } } catch (e) {}
+  if (Date.now() - errAt > 8000) { errAt = Date.now(); try { toast('Algo ha fallado, pero la app se ha recuperado. Tu esquema sigue guardado.', 5000); } catch (e) {} }
+}
+window.addEventListener('error', () => recover());
+window.addEventListener('unhandledrejection', () => recover());
+
 /* ---------- Avisos ---------- */
 let toastT = 0;
 function toast(msg, ms, btn){
@@ -1318,8 +1334,21 @@ const safeName = s => String(s || 'esquema').replace(/[\\/:*?"<>|]+/g, '-').trim
 /* ---------- Almacenamiento en el iPad ---------- */
 const K_IDX = 'unifilar:index', K_DOC = 'unifilar:doc:', K_LAST = 'unifilar:last', K_PREF = 'unifilar:prefs';
 const Store = {
-  idx(){ try { const a = JSON.parse(localStorage.getItem(K_IDX) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } },
-  load(id){ try { return JSON.parse(localStorage.getItem(K_DOC + id)); } catch (e) { return null; } },
+  idx(){ try { const a = JSON.parse(localStorage.getItem(K_IDX) || '[]'); return Array.isArray(a) ? a.filter(x => x && typeof x.id === 'string') : []; } catch (e) { return []; } },
+  /* Lee un esquema y lo comprueba: si está dañado devuelve null en vez de romper la app. */
+  load(id){
+    try {
+      const d = normDoc(JSON.parse(localStorage.getItem(K_DOC + id)));
+      if (d) d.id = id;
+      return d;
+    } catch (e) { return null; }
+  },
+  /* Todos los esquemas guardados, aunque se haya perdido el índice. */
+  ids(){
+    const set = new Set(Store.idx().map(x => x.id));
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.indexOf(K_DOC) === 0) set.add(k.slice(K_DOC.length)); } } catch (e) {}
+    return [...set];
+  },
   save(d){
     try {
       localStorage.setItem(K_DOC + d.id, JSON.stringify(d));
@@ -1330,7 +1359,7 @@ const Store = {
     } catch (e) { return false; }
   },
   del(id){ try { localStorage.removeItem(K_DOC + id); localStorage.setItem(K_IDX, JSON.stringify(Store.idx().filter(x => x.id !== id))); } catch (e) {} },
-  all(){ return Store.idx().map(x => Store.load(x.id)).filter(Boolean); }
+  all(){ return Store.ids().map(id => Store.load(id)).filter(Boolean); }
 };
 const prefs = Object.assign({grid:true, lib:true, props:true}, (() => { try { return JSON.parse(localStorage.getItem(K_PREF) || '{}'); } catch (e) { return {}; } })());
 const savePrefs = () => { try { localStorage.setItem(K_PREF, JSON.stringify(prefs)); } catch (e) {} };
@@ -1341,14 +1370,41 @@ function newDoc(name){
     info:{titulo:'', emplazamiento:'', titular:'', autor:'', fecha:today(), plano:'', hoja:'1/1'},
     els:[]};
 }
+/* Comprueba y limpia un esquema leído del iPad o de un archivo: lo que esté roto se descarta en vez de romper la app. */
+const isNum = v => typeof v === 'number' && isFinite(v);
+const cleanP = p => { const o = {}; if (p && typeof p === 'object') Object.keys(p).forEach(k => { const v = p[k]; if (v == null || typeof v === 'object') return; o[k] = String(v).slice(0, 300); }); return o; };
 function normDoc(d){
   if (!d || typeof d !== 'object' || !Array.isArray(d.els)) return null;
   d.app = 'unifilar'; d.v = 1;
-  d.id = d.id || uid(); d.name = d.name || 'Esquema';
-  d.page = Object.assign({fmt:'a4', orient:'l', cajetin:true}, d.page || {});
-  d.info = Object.assign({titulo:'', emplazamiento:'', titular:'', autor:'', fecha:'', plano:'', hoja:'1/1'}, d.info || {});
-  d.els = d.els.filter(e => e && e.id && ((e.type === 'sym' && SYM[e.k]) || (e.type === 'wire' && Array.isArray(e.pts) && e.pts.length > 1) || e.type === 'text' || e.type === 'frame'));
-  d.els.forEach(e => { if (e.type === 'sym') e.p = Object.assign(defaults(e.k), e.p || {}); });
+  d.id = typeof d.id === 'string' && d.id ? d.id.slice(0, 40) : uid();
+  d.name = String(d.name || 'Esquema').trim().slice(0, 120) || 'Esquema';
+  d.created = isNum(d.created) ? d.created : Date.now();
+  d.updated = isNum(d.updated) ? d.updated : Date.now();
+  const pg = d.page && typeof d.page === 'object' ? d.page : {};
+  d.page = {fmt: pg.fmt === 'a3' ? 'a3' : 'a4', orient: pg.orient === 'p' ? 'p' : 'l', cajetin: pg.cajetin !== false};
+  const inf = d.info && typeof d.info === 'object' ? d.info : {};
+  d.info = {};
+  ['titulo', 'emplazamiento', 'titular', 'autor', 'fecha', 'plano', 'hoja'].forEach(k => { d.info[k] = inf[k] == null || typeof inf[k] === 'object' ? (k === 'hoja' ? '1/1' : '') : String(inf[k]).slice(0, 300); });
+  const ids = new Set(), out = [];
+  d.els.forEach(e => {
+    if (!e || typeof e !== 'object') return;
+    const id = typeof e.id === 'string' && e.id && !ids.has(e.id) ? e.id.slice(0, 40) : uid();
+    const x = +e.x, y = +e.y;
+    let n = null;
+    if (e.type === 'sym' && typeof e.k === 'string' && SYM[e.k] && isNum(x) && isNum(y)) {
+      n = {type:'sym', id, k:e.k, x, y, r:(((parseInt(e.r, 10) || 0) % 4) + 4) % 4, p:Object.assign(defaults(e.k), cleanP(e.p))};
+      if (e.ls === 1 || e.ls === -1 || e.ls === 0) n.ls = e.ls;
+    } else if (e.type === 'wire' && Array.isArray(e.pts)) {
+      const pts = simplify(e.pts.filter(q => Array.isArray(q) && isNum(+q[0]) && isNum(+q[1])).map(q => [+q[0], +q[1]]));
+      if (pts.length >= 2) n = {type:'wire', id, pts, k:['linea', 'barra', 'disc'].indexOf(e.k) >= 0 ? e.k : 'linea', n:String(e.n == null ? '' : e.n).replace(/[^0-9]/g, '').slice(0, 2), txt:String(e.txt == null ? '' : e.txt).slice(0, 300), col:typeof e.col === 'string' && (WCOL[e.col] || /^#[0-9a-f]{6}$/i.test(e.col)) ? e.col : 'negro'};
+    } else if (e.type === 'text' && isNum(x) && isNum(y)) {
+      n = {type:'text', id, x, y, s:e.s == null || typeof e.s === 'object' ? 'Texto' : String(e.s).slice(0, 2000), size:clamp(+e.size || 3.5, 1, 40), b:!!e.b, rot:e.rot === -90 ? -90 : 0};
+    } else if (e.type === 'frame' && isNum(x) && isNum(y) && isNum(+e.w) && isNum(+e.h)) {
+      n = {type:'frame', id, x, y, w:clamp(+e.w, 5, 2000), h:clamp(+e.h, 5, 2000), s:String(e.s == null ? '' : e.s).slice(0, 200), dash:e.dash !== false};
+    }
+    if (n) { ids.add(n.id); out.push(n); }
+  });
+  d.els = out;
   return d;
 }
 
@@ -1370,8 +1426,17 @@ const byId = id => doc.els.find(e => e.id === id);
 /* ---------- Deshacer y guardar ---------- */
 const snapOf = () => JSON.stringify({els:doc.els, page:doc.page, info:doc.info, name:doc.name});
 let saveT = 0, commitT = 0;
+function pruneWires(){
+  const bad = doc.els.filter(e => e.type === 'wire' && (!Array.isArray(e.pts) || simplify(e.pts).length < 2));
+  if (!bad.length) return;
+  const ids = new Set(bad.map(e => e.id));
+  doc.els = doc.els.filter(e => !ids.has(e.id));
+  ids.forEach(id => sel.delete(id));
+}
 function commit(){
   clearTimeout(commitT);
+  if (!doc) return;
+  pruneWires();
   const now = snapOf();
   if (now === lastSnap) return;
   undoS.push(lastSnap); if (undoS.length > 150) undoS.shift();
@@ -1853,6 +1918,7 @@ function onDown(e){
     if (target && target.type === 'sym' && /^p/.test(SYM[target.k].mode || '')) { act.pressed = target.id; simPress.add(target.id); renderEls(); }
     return;
   }
+  if (tool === 'hand') { act = Object.assign(base, {type:'pan', hand:true}); return; }
   if (tool === 'wire') { act = Object.assign(base, {type:'wire', s0:wireSnap(w)}); return; }
   if (tool === 'place' && !target) { act = Object.assign(base, {type:'place'}); return; }
   if (tool === 'text') { act = Object.assign(base, {type:'textplace'}); return; }
@@ -1957,7 +2023,7 @@ function onUp(e){
       renderProps();
       break;
     case 'pan': case 'boxsel-tap':
-      if (!a.moved) {
+      if (!a.moved && !a.hand) {
         if (sel.size) { sel.clear(); renderProps(); break; }
         const cb = cajetinBox(doc);
         if (cb && w[0] >= cb[0] && w[0] <= cb[2] && w[1] >= cb[1] && w[1] <= cb[3]) openCajetin();
@@ -1974,10 +2040,11 @@ function onCancel(e){
   if (act) cancelAct();
   if (!ptrs.size) act = null;
 }
-svg.addEventListener('pointerdown', onDown);
-svg.addEventListener('pointermove', onMove);
-svg.addEventListener('pointerup', onUp);
-svg.addEventListener('pointercancel', onCancel);
+const safe = fn => e => { try { fn(e); } catch (er) { recover(); } };
+svg.addEventListener('pointerdown', safe(onDown));
+svg.addEventListener('pointermove', safe(onMove));
+svg.addEventListener('pointerup', safe(onUp));
+svg.addEventListener('pointercancel', safe(onCancel));
 svg.addEventListener('pointerleave', e => { if (e.pointerType !== 'touch' && hoverPt) { hoverPt = null; renderOverlay(); } });
 svg.addEventListener('wheel', e => {
   e.preventDefault();
@@ -1985,7 +2052,7 @@ svg.addEventListener('wheel', e => {
   else { view.x += e.deltaX / view.s; view.y += e.deltaY / view.s; applyView(); }
 }, {passive:false});
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive:false}));
-svg.addEventListener('lostpointercapture', e => { if (ptrs.has(e.pointerId)) onCancel(e); });
+svg.addEventListener('lostpointercapture', safe(e => { if (ptrs.has(e.pointerId)) onCancel(e); }));
 if (window.visualViewport) window.visualViewport.addEventListener('resize', () => requestAnimationFrame(applyView));
 let lastPType = 'mouse';
 svg.addEventListener('pointerdown', e => { lastPType = e.pointerType; }, true);
@@ -1996,6 +2063,8 @@ svg.addEventListener('contextmenu', e => e.preventDefault());
 function setTool(t, kind){
   if (wireDraft && t !== 'wire') finishDraft();
   if (sim && t !== 'sim') setSim(false);
+  if (t !== tool || kind !== placeKind) bannerMin = false;
+  if (t === 'hand' && sel.size) { sel.clear(); renderProps(); }
   tool = t; placeKind = t === 'place' ? kind : null;
   if (t !== 'place') placeRot = 0;
   document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === t)));
@@ -2003,31 +2072,51 @@ function setTool(t, kind){
   updateBanner(); renderOverlay();
 }
 function setSim(on){
-  sim = on;
+  sim = on; bannerMin = false;
   if (on) { simReset(); if (wireDraft) finishDraft(); tool = 'sel'; placeKind = null; sel.clear(); document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', 'false')); document.querySelectorAll('.tile').forEach(b => b.setAttribute('aria-pressed', 'false')); }
   else { simReset(); document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === tool))); }
   $('#b-sim').setAttribute('aria-pressed', String(on));
   renderEls(); renderOverlay(); renderProps(); updateBanner();
 }
+/* Cuadro de opciones de la herramienta. Con «OK» se recoge en una etiqueta pequeña arriba a la izquierda
+   y la herramienta sigue activa; tocando la etiqueta se vuelve a abrir. */
+let bannerMin = false;
 function updateBanner(){
   const b = $('#banner');
-  let h = '', cls = '';
+  let h = '', cls = '', mini = '';
+  const ok = '<button class="bb pri" data-b="ok" type="button">OK</button>';
+  const exit = '<button class="bb" data-b="done" type="button" aria-label="Salir de la herramienta">Salir</button>';
+  const x = '<button class="bb bx" data-b="done" type="button" aria-label="Salir de la herramienta">✕</button>';
   if (sim) {
     cls = 'sim';
     const sources = doc.els.some(e => e.type === 'sym' && SYM[e.k].kind === 'source');
-    h = `<p>${sources ? 'Simulación: toca un aparato para abrirlo o cerrarlo; los pulsadores, mantenlos pulsados. Lo que tiene tensión se ve en rojo.' : 'Pon una «Red / acometida» o un generador para que haya tensión.'}</p><button class="bb" data-b="simreset" type="button">Reiniciar</button><button class="bb on" data-b="simoff" type="button">Salir</button>`;
+    h = `<p>${sources ? 'Simulación: toca un aparato para abrirlo o cerrarlo; los pulsadores, mantenlos pulsados. Lo que tiene tensión se ve en rojo.' : 'Pon una «Red / acometida» o un generador para que haya tensión.'}</p>${ok}<button class="bb" data-b="simreset" type="button">Reiniciar</button><button class="bb on" data-b="simoff" type="button">Salir</button>`;
+    mini = `<button class="mtag" data-b="open" type="button">⚡ Simulación</button><button class="bb" data-b="simreset" type="button">Reiniciar</button><button class="bb bx" data-b="simoff" type="button" aria-label="Salir de la simulación">✕</button>`;
+  } else if (tool === 'hand') {
+    mini = `<span class="mtag">✋ Solo mover la hoja</span><button class="bb bx" data-b="done" type="button" aria-label="Volver a editar">✕</button>`;
   } else if (tool === 'wire') {
-    if (wireDraft) h = `<p>Toca para hacer esquinas. Toca un borne o un cable para terminar.</p><button class="bb pri" data-b="wfinish" type="button">Terminar</button><button class="bb" data-b="wcancel" type="button">Cancelar</button>`;
-    else h = `<p>Arrastra de un borne a otro, o tócalos uno tras otro. Con dos dedos mueves la hoja.</p><button class="bb${wireKind === 'linea' ? ' on' : ''}" data-b="wk-linea" type="button">Línea</button><button class="bb${wireKind === 'barra' ? ' on' : ''}" data-b="wk-barra" type="button">Barra</button><button class="bb${wirePal ? ' on' : ''}" data-b="wcol" type="button"><span class="dot" style="${swStyle(prefs.wireCol || 'negro')}"></span>Color</button><button class="bb" data-b="done" type="button">Listo</button>` + (wirePal ? `<div class="bpal">${Object.keys(WCOL).map(k => `<button type="button" class="sw${(prefs.wireCol || 'negro') === k ? ' on' : ''}" data-b="wc-${k}" style="${swStyle(k)}" title="${hesc(wireColName(k))}" aria-label="${hesc(wireColName(k))}"></button>`).join('')}<label class="sw sw-any" title="Otro color"><input type="color" id="wc-any" value="${/^#/.test(prefs.wireCol || '') ? prefs.wireCol : '#ff00aa'}" aria-label="Otro color"></label><span class="bpal-n">${hesc(wireColName(prefs.wireCol || 'negro'))}</span></div>` : '');
+    const dot = `<span class="dot" style="${swStyle(prefs.wireCol || 'negro')}"></span>`;
+    if (wireDraft) {
+      h = `<p>Toca para hacer esquinas. Toca un borne o un cable para terminar.</p><button class="bb pri" data-b="wfinish" type="button">Terminar</button><button class="bb" data-b="wcancel" type="button">Cancelar</button>`;
+      mini = `<button class="mtag" data-b="open" type="button">${dot}${wireKind === 'barra' ? 'Barra' : 'Cable'}</button><button class="bb pri" data-b="wfinish" type="button">Terminar</button><button class="bb" data-b="wcancel" type="button">Cancelar</button>`;
+    } else {
+      h = `<p>Elige cómo será el cable y pulsa OK. Luego arrastra de un borne a otro, o tócalos uno tras otro.</p><button class="bb${wireKind === 'linea' ? ' on' : ''}" data-b="wk-linea" type="button">Línea</button><button class="bb${wireKind === 'barra' ? ' on' : ''}" data-b="wk-barra" type="button">Barra</button><button class="bb${wirePal ? ' on' : ''}" data-b="wcol" type="button">${dot}Color</button>${ok}${exit}` + (wirePal ? `<div class="bpal">${Object.keys(WCOL).map(k => `<button type="button" class="sw${(prefs.wireCol || 'negro') === k ? ' on' : ''}" data-b="wc-${k}" style="${swStyle(k)}" title="${hesc(wireColName(k))}" aria-label="${hesc(wireColName(k))}"></button>`).join('')}<label class="sw sw-any" title="Otro color"><input type="color" id="wc-any" value="${/^#/.test(prefs.wireCol || '') ? prefs.wireCol : '#ff00aa'}" aria-label="Otro color"></label><span class="bpal-n">${hesc(wireColName(prefs.wireCol || 'negro'))}</span></div>` : '');
+      mini = `<button class="mtag" data-b="open" type="button">${dot}${wireKind === 'barra' ? 'Barra' : 'Cable'} · opciones</button>${x}`;
+    }
   } else if (tool === 'place') {
-    h = `<p>Toca la hoja donde quieras «${hesc(SYM[placeKind].n)}». Después podrás arrastrarlo para ajustarlo.</p><button class="bb" data-b="prot" type="button">Girar ↻</button><button class="bb${placeMulti ? ' on' : ''}" data-b="pmulti" type="button">${placeMulti ? '✓ ' : ''}Poner varios</button><button class="bb" data-b="done" type="button">Cancelar</button>`;
+    h = `<p>Toca la hoja donde quieras «${hesc(SYM[placeKind].n)}». Después podrás arrastrarlo para ajustarlo.</p><button class="bb" data-b="prot" type="button">Girar ↻</button><button class="bb${placeMulti ? ' on' : ''}" data-b="pmulti" type="button">${placeMulti ? '✓ ' : ''}Poner varios</button>${ok}${exit}`;
+    mini = `<button class="mtag" data-b="open" type="button">Colocar: ${hesc(SYM[placeKind].n)}${placeMulti ? ' (varios)' : ''}</button>${x}`;
   } else if (tool === 'text') {
-    h = `<p>Toca la hoja donde quieras el texto.</p><button class="bb on" data-b="done" type="button">Cancelar</button>`;
+    h = `<p>Toca la hoja donde quieras el texto.</p>${ok}${exit}`;
+    mini = `<button class="mtag" data-b="open" type="button">Texto: toca la hoja</button>${x}`;
   } else if (tool === 'frame') {
-    h = `<p>Arrastra para dibujar el recuadro, o toca para poner uno.</p><button class="bb on" data-b="done" type="button">Cancelar</button>`;
+    h = `<p>Arrastra para dibujar el recuadro, o toca para poner uno.</p>${ok}${exit}`;
+    mini = `<button class="mtag" data-b="open" type="button">Recuadro: arrastra</button>${x}`;
   }
-  b.className = 'banner ' + cls;
-  b.innerHTML = h; b.hidden = !h;
+  const useMini = (bannerMin || !h) && mini;
+  b.className = 'banner ' + cls + (useMini ? ' mini' : '');
+  b.innerHTML = useMini ? mini : h;
+  b.hidden = !(useMini || h);
 }
 $('#banner').addEventListener('input', e => { if (e.target.id === 'wc-any') { prefs.wireCol = e.target.value; savePrefs(); const n = $('#banner .bpal-n'); if (n) n.textContent = 'Otro color'; const d = $('#banner .dot'); if (d) d.setAttribute('style', swStyle(prefs.wireCol)); } });
 $('#banner').addEventListener('change', e => { if (e.target.id === 'wc-any') { wirePal = false; updateBanner(); } });
@@ -2044,6 +2133,8 @@ $('#banner').addEventListener('click', e => {
   else if (k === 'pmulti') { placeMulti = !placeMulti; updateBanner(); }
   else if (k === 'prot') { placeRot = (placeRot + 1) % 4; toast('Se colocará girado ' + placeRot * 90 + '°'); }
   else if (k === 'done') setTool('sel');
+  else if (k === 'ok') { bannerMin = true; wirePal = false; updateBanner(); }
+  else if (k === 'open') { bannerMin = false; updateBanner(); }
 });
 document.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
 $('#b-sim').addEventListener('click', () => setSim(!sim));
@@ -2271,7 +2362,7 @@ function setVal(scope, k, v, el){
     else el[k] = v;
   }
   else if (scope === 'info') doc.info[k] = v;
-  else if (scope === 'doc') { doc.name = v || 'Esquema'; updateHeader(); }
+  else if (scope === 'doc') { doc.name = String(v).slice(0, 120) || 'Esquema'; updateHeader(); }
   else if (scope === 'page') doc.page[k] = k === 'cajetin' ? v === 'true' : v;
   else if (scope === 'pref') { prefs[k] = v === 'true'; savePrefs(); }
   else if (scope === 'wires') doc.els.forEach(w => { if (w.type === 'wire' && sel.has(w.id)) w[k] = v; });
@@ -2327,6 +2418,7 @@ document.addEventListener('keydown', e => {
   else if (k === 'r') { if (tool === 'place') placeRot = (placeRot + 1) % 4; else rotateSel(e.shiftKey ? -1 : 1); }
   else if (k === 'w') setTool('wire');
   else if (k === 'v') setTool('sel');
+  else if (k === 'h') setTool(tool === 'hand' ? 'sel' : 'hand');
   else if (k === 't') setTool('text');
   else if (k === 's' && !mod) setSim(!sim);
   else if (k === '+' || k === '=') zoomAt(1.25);
@@ -2383,7 +2475,7 @@ $('#x-png').addEventListener('click', () => { closeModals(); exportPNG(); });
 $('#x-json').addEventListener('click', () => { closeModals(); commit(); exportJSON(doc); });
 $('#b-name').addEventListener('click', () => {
   const n = prompt('Nombre del esquema', doc.name);
-  if (n != null && n.trim()) { doc.name = n.trim(); commit(); updateHeader(); renderSheet(); renderProps(); }
+  if (n != null && n.trim()) { doc.name = n.trim().slice(0, 120); commit(); updateHeader(); renderSheet(); renderProps(); }
 });
 
 
@@ -2595,7 +2687,9 @@ $('#h-backup').addEventListener('click', () => {
 $('#h-import').addEventListener('click', () => { const f = $('#file-in'); f.value = ''; f.click(); });
 $('#file-in').addEventListener('change', e => {
   const f = e.target.files && e.target.files[0]; if (!f) return;
+  if (f.size > 30 * 1024 * 1024) { toast('Ese archivo es demasiado grande para ser un esquema de esta app.', 5000); return; }
   const rd = new FileReader();
+  rd.onerror = () => toast('No se pudo leer el archivo.', 4000);
   rd.onload = () => {
     let o; try { o = JSON.parse(rd.result); } catch (er) { toast('Ese archivo no es un esquema de esta app.', 4000); return; }
     const list = (o && Array.isArray(o.docs)) ? o.docs : (o && o.doc) ? [o.doc] : (o && Array.isArray(o.els)) ? [o] : [];
@@ -2703,6 +2797,7 @@ function generate(cfg){
   const lastCx = groups.reduce((m, g, i) => Math.max(m, gx[i] + Math.max(0, g.circ.length - 1) * P), gx[0]);
   const needW = lastCx + 45;
   d.page.fmt = needW <= 297 ? 'a4' : 'a3';
+  if (needW > 420) setTimeout(() => toast('Hay tantos circuitos que el cuadro se sale de la hoja A3. Muévelo o repártelo en dos esquemas.', 7000), 3800);
   const ix = gx[0];
   sym('red', ix, Y.red, {tension: tri ? '400/230 V ~ 50 Hz' : '230 V ~ 50 Hz', sistema: tri ? '3L+N+PE' : 'L+N+PE'});
   wire([[ix, Y.red + 10], [ix, Y.iga - 10]], cfg.di || '');
@@ -2728,6 +2823,13 @@ function generate(cfg){
   });
   return d;
 }
+
+/* ---------- Versión nueva de la app ---------- */
+try {
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.addEventListener('controllerchange', () => toast('Hay una versión nueva de la app.', 30000, {label:'Actualizar', fn:() => { persist(); location.reload(); }}));
+  }
+} catch (e) {}
 
 /* ---------- Arranque ---------- */
 new ResizeObserver(() => applyView()).observe(stage);
