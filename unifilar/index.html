@@ -67,7 +67,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .lib-search{padding:8px;border-bottom:1px solid var(--line)}
 .lib-search input{width:100%;height:42px;border:1px solid var(--line-strong);border-radius:10px;background:var(--bg);padding:0 12px;font-size:16px}
 .lib-list{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 8px 24px;flex:1 1 auto;min-height:0}
-.cat{margin:12px 2px 6px;font-family:var(--f-display);font-weight:600;font-size:.76rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.cat{display:flex;align-items:center;gap:6px;width:100%;min-height:44px;margin:6px 0 4px;padding:6px 4px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--muted);text-align:left;font-family:var(--f-display);font-weight:600;font-size:.78rem;letter-spacing:.07em;text-transform:uppercase;line-height:1.15}
+.cat span{flex:1 1 auto}
+.cat small{font-family:var(--f-body);font-weight:600;letter-spacing:0;font-size:.74rem;background:var(--sunk);border:1px solid var(--line);border-radius:999px;padding:1px 7px}
+.cat .chev{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transform:rotate(-90deg);flex:none}
+.cat[aria-expanded="true"] .chev{transform:none}
+.cat[aria-expanded="true"]{color:var(--ink)}
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .tile{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px 7px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);min-height:92px;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .tile svg{width:56px;height:52px;background:#fff;border-radius:6px;pointer-events:none}
@@ -538,24 +543,300 @@ SYM.borne = {n:'Borne', cat:'con', kind:'cond', pre:'X', t:[[0,-5,'n'],[0,5,'s']
   draw(g){ g.l(0, -5, 0, -1); g.c(0, 0, 1); g.l(0, 1, 0, 5); },
   lines: p => [[p.ref, 1]]};
 
-const CATS = [
-  {k:'prot', n:'Protección'},
-  {k:'ali', n:'Alimentación'},
-  {k:'man', n:'Maniobra'},
-  {k:'rec', n:'Receptores'},
-  {k:'med', n:'Medida'},
-  {k:'con', n:'Conexión'}
-];
 function defaults(k){
   const d = SYM[k]; const p = {};
   (d.props || []).forEach(f => { p[f.k] = f.d == null ? '' : f.d; });
   return p;
 }
 
+/* ===================== Biblioteca ampliada =====================
+   mode (aparatos que abren y cierran en la simulación):
+   brk = cerrado salvo que lo abras · no = abierto salvo que lo actúes · nc = cerrado salvo que lo actúes
+   pno / pnc = pulsador (solo mientras lo mantienes pulsado) · cno / cnc = contacto de la bobina con la misma referencia
+   tno / tnc = contacto temporizado de la bobina con la misma referencia · chg = conmutador (posición 1 / posición 2) */
+const T2 = [[0,-10,'n'],[0,10,'s']], T1 = [[0,-10,'n']], TB = [[0,10,'s']];
+const C_COIL = '#FFD9D4';
+
+/* Contactos */
+function cNO(g, c){ g.l(0, -10, 0, -4); if (c.sim && c.on) g.l(0, 4, 0, -4); else g.l(0, 4, -4.2, -4.3); g.l(0, 4, 0, 10); }
+function cNC(g, c){ g.l(0, -10, 0, -4); g.l(0, -4, -4, -4); if (c.sim && !c.on) g.l(0, 4, -4.6, -1.4); else g.l(0, 4, -5.2, -4.8); g.l(0, 4, 0, 10); }
+const link = (g, x) => g.l(-2.3, 0, x, 0, {dash:[0.8, 0.6]});
+const actPush = g => { link(g, -6.4); g.p([[-5.4,-1.8],[-6.4,-1.8],[-6.4,1.8],[-5.4,1.8]]); };
+const actSeta = g => { link(g, -6.4); g.l(-6.4, -2.4, -6.4, 2.4); g.a(-6.4, 0, 2.4, 90, 270); };
+const actRot = g => { link(g, -6.4); g.p([[-5.6,-1.8],[-6.6,-1.8],[-6.6,1.8],[-7.6,1.8]]); };
+const actFC = g => { link(g, -5.8); g.p([[-5.8,0],[-8.2,-1.6],[-8.2,1.6]], {close:true}); };
+const actBox = (g, txt, size) => { link(g, -6.4); g.r(-11, -2.6, 4.6, 5.2); if (txt) g.t(-8.7, 0, txt, {size:size || 2.2, bold:true}); };
+const actProx = g => { link(g, -6.4); g.p([[-8.6,-2.4],[-6.4,0],[-8.6,2.4],[-10.8,0]], {close:true}); };
+const actFloat = g => { link(g, -6.4); g.c(-8.6, 0, 1.8); g.l(-11.4, 0, -10.4, 0); g.l(-6.8, 0, -6.4, 0); };
+const actTimer = (g, off) => { link(g, -6); g.l(-6, -2, -6, 2); if (off) g.a(-6, 0, 2, 270, 450); else g.a(-6, 0, 2, 90, 270); };
+const linesContact = p => [[p.ref, 1], [p.nombre]];
+const mkContact = (n, nc, act, mode, extra) => Object.assign({n, cat:'mando', kind:'switch', mode, pre:'', t:T2, bb:[-11.4,-10,2,10],
+  props:[P_REF(''), {k:'nombre', l:'Texto', d:'', ph:'Marcha'}],
+  draw(g, p, c){ (nc ? cNC : cNO)(g, c); if (act) act(g, p); }, lines:linesContact}, extra || {});
+
+SYM.pulNA = mkContact('Pulsador NA (marcha)', false, actPush, 'pno', {pre:'S', props:[P_REF(''), {k:'nombre', l:'Texto', d:'Marcha', chips:['Marcha','Paro','Rearme','Prueba']}]});
+SYM.pulNC = mkContact('Pulsador NC (paro)', true, actPush, 'pnc', {pre:'S', props:[P_REF(''), {k:'nombre', l:'Texto', d:'Paro', chips:['Paro','Marcha','Rearme']}]});
+SYM.seta = mkContact('Seta de emergencia', true, actSeta, 'nc', {pre:'S', props:[P_REF(''), {k:'nombre', l:'Texto', d:'Emergencia'}]});
+SYM.selector = mkContact('Selector / mando giratorio', false, actRot, 'no', {pre:'S', props:[P_REF(''), {k:'nombre', l:'Texto', d:'Man / Auto', chips:['Man / Auto','0 - 1','Local / Remoto']}]});
+SYM.cNA = mkContact('Contacto NA (bobina)', false, null, 'cno', {bb:[-5,-10,2,10], props:[P_REF('KM1'), {k:'nombre', l:'Texto', d:'', ph:'13-14'}]});
+SYM.cNC = mkContact('Contacto NC (bobina)', true, null, 'cnc', {bb:[-5.4,-10,2,10], props:[P_REF('KM1'), {k:'nombre', l:'Texto', d:'', ph:'21-22'}]});
+SYM.ctNA = mkContact('Contacto temporizado NA', false, g => actTimer(g, false), 'tno', {bb:[-8.2,-10,2,10], props:[P_REF('KT1'), {k:'nombre', l:'Texto', d:'', ph:'67-68'}]});
+SYM.ctNC = mkContact('Contacto temporizado NC', true, g => actTimer(g, false), 'tnc', {bb:[-8.2,-10,2,10], props:[P_REF('KT1'), {k:'nombre', l:'Texto', d:'', ph:'55-56'}]});
+SYM.fcNA = mkContact('Final de carrera NA', false, actFC, 'no', {pre:'S', bb:[-8.4,-10,2,10]});
+SYM.fcNC = mkContact('Final de carrera NC', true, actFC, 'nc', {pre:'S', bb:[-8.4,-10,2,10]});
+SYM.prox = mkContact('Detector de proximidad', false, actProx, 'no', {pre:'B'});
+SYM.presostato = mkContact('Presostato', false, g => actBox(g, 'p', 2.6), 'no', {pre:'B'});
+SYM.termostato = mkContact('Termostato', false, g => actBox(g, 'θ', 2.6), 'no', {pre:'B'});
+SYM.flotador = mkContact('Interruptor de nivel (boya)', false, actFloat, 'no', {pre:'B'});
+SYM.presencia = mkContact('Detector de presencia', false, g => actBox(g, 'PIR', 1.5), 'no', {pre:'B'});
+SYM.fotocelula = mkContact('Fotocélula', false, g => actBox(g, 'λ', 2.6), 'no', {pre:'B'});
+
+/* Bobinas: activan los contactos con la misma referencia */
+const coilBody = (g, c) => { g.l(0, -10, 0, -2.5); g.r(-4.5, -2.5, 9, 5, {fill: c.sim && c.live ? C_COIL : null}); g.l(0, 2.5, 0, 10); };
+SYM.bobina = {n:'Bobina de contactor / relé', cat:'mando', kind:'coil', coil:'std', pre:'KM', t:T2, bb:[-4.5,-10,4.5,10],
+  props:[P_REF(''), {k:'nombre', l:'Texto', d:'', ph:'A1-A2'}, {k:'tension', l:'Tensión', u:'V', d:'230', chips:['24','230','400']}],
+  draw(g, p, c){ coilBody(g, c); }, lines: p => [[p.ref, 1], [p.nombre], [un(p.tension, 'V')]]};
+SYM.bobinaT = {n:'Bobina temporizada', cat:'mando', kind:'coil', coil:'timer', pre:'KT', t:T2, bb:[-8.5,-10,4.5,10],
+  props:[P_REF(''), {k:'tiempo', l:'Tiempo', u:'s', d:'5', chips:['1','3','5','10','30','60']}, {k:'modo', l:'Retardo', d:'A la conexión', chips:['A la conexión','A la desconexión']}],
+  draw(g, p, c){ coilBody(g, c); g.r(-8.5, -2.5, 4, 5, {fill: c.sim && c.live ? C_COIL : null}); if (/desc/i.test(p.modo || '')) g.p([[-8.5,-2.5],[-6.5,0],[-8.5,2.5]], {close:true, fill:'#000'}); else { g.l(-8.5, -2.5, -4.5, 2.5); g.l(-8.5, 2.5, -4.5, -2.5); } },
+  lines: p => [[p.ref, 1], [un(p.tiempo, 's')], [/desc/i.test(p.modo || '') ? 'A la desconexión' : 'A la conexión']]};
+SYM.bobinaTR = {n:'Bobina de telerruptor', cat:'mando', kind:'coil', coil:'impulse', pre:'KA', t:T2, bb:[-8.5,-10,4.5,10],
+  props:[P_REF(''), {k:'nombre', l:'Texto', d:''}],
+  draw(g, p, c){ coilBody(g, c); g.r(-8.5, -2.5, 4, 5, {fill: c.sim && c.live ? C_COIL : null}); g.p([[-7.8,1.2],[-7,1.2],[-7,-1.2],[-6,-1.2],[-6,1.2],[-5.2,1.2]]); },
+  lines: p => [[p.ref, 1], [p.nombre]]};
+
+/* ---------- Señalización ---------- */
+const PIL = {verde:'#3FCB6B', rojo:'#FF4D3D', 'ámbar':'#FFB020', blanco:'#FFFFFF', azul:'#4C8DFF'};
+SYM.piloto = {n:'Piloto de señalización', cat:'senal', kind:'load', pre:'H', t:T1, bb:[-4,-10,4,4],
+  props:[P_REF(''), {k:'color', l:'Color', d:'verde', chips:['verde','rojo','ámbar','blanco','azul']}, {k:'nombre', l:'Texto', d:'', ph:'Marcha'}],
+  draw(g, p, c){ g.l(0, -10, 0, -4); g.c(0, 0, 4, {fill: c.sim && c.live ? (PIL[String(p.color || '').toLowerCase()] || C_LAMP) : null}); g.l(-2.83, -2.83, 2.83, 2.83); g.l(-2.83, 2.83, 2.83, -2.83); },
+  lines: p => [[p.ref, 1], [p.nombre], [p.color]]};
+SYM.timbre = {n:'Timbre', cat:'senal', kind:'load', pre:'H', t:T1, bb:[-4,-10,4,3.6],
+  props:[P_REF(''), {k:'nombre', l:'Texto', d:''}],
+  draw(g, p, c){ g.l(0, -10, 0, -3); g.a(0, 1, 4, 180, 360, {fill: c.sim && c.live ? C_LAMP : null}); g.l(-4, 1, 4, 1); g.c(0, 2.6, 0.9); },
+  lines: p => [[p.ref, 1], [p.nombre]]};
+SYM.zumbador = {n:'Zumbador', cat:'senal', kind:'load', pre:'H', t:T1, bb:[-3.6,-10,3.6,0.6],
+  props:[P_REF(''), {k:'nombre', l:'Texto', d:''}],
+  draw(g, p, c){ g.l(0, -10, 0, -3); g.a(0, -3, 3.6, 0, 180, {fill: c.sim && c.live ? C_LAMP : null}); g.l(-3.6, -3, 3.6, -3); },
+  lines: p => [[p.ref, 1], [p.nombre]]};
+SYM.sirena = {n:'Sirena / bocina', cat:'senal', kind:'load', pre:'H', t:T1, bb:[-4.2,-10,4.2,3],
+  props:[P_REF(''), {k:'nombre', l:'Texto', d:''}],
+  draw(g, p, c){ g.l(0, -10, 0, -3); g.p([[-1.6,-3],[1.6,-3],[4.2,3],[-4.2,3]], {close:true, fill: c.sim && c.live ? C_LAMP : null}); },
+  lines: p => [[p.ref, 1], [p.nombre]]};
+
+/* ---------- Alumbrado ---------- */
+SYM.lineal = {n:'Luminaria lineal / fluorescente', cat:'alum', kind:'load', pre:'E', t:T1, bb:[-7,-10,7,2.6],
+  props:[P_REF(''), P_POT('W', '', ['18','36','58'])],
+  draw(g, p, c){ g.l(0, -10, 0, -1.2); g.r(-7, -1.2, 14, 2.4, {fill: c.sim && c.live ? C_LAMP : null}); g.l(-7, -2.6, -7, 2.6); g.l(7, -2.6, 7, 2.6); },
+  lines: p => [[p.ref, 1], [un(p.pot, 'W')]]};
+SYM.downlight = {n:'Empotrable / downlight', cat:'alum', kind:'load', pre:'E', t:T1, bb:[-4,-10,4,4],
+  props:[P_REF(''), P_POT('W', '')],
+  draw(g, p, c){ g.l(0, -10, 0, -4); g.c(0, 0, 4, {fill: c.sim && c.live ? C_LAMP : null}); g.c(0, 0, 1.4, {fill:'#000', w:0}); },
+  lines: p => [[p.ref, 1], [un(p.pot, 'W')]]};
+SYM.proyector = {n:'Proyector', cat:'alum', kind:'load', pre:'E', t:T1, bb:[-3,-10,6.4,4],
+  props:[P_REF(''), P_POT('W', '')],
+  draw(g, p, c){ g.l(0, -10, 0, -3); g.c(0, 0, 3, {fill: c.sim && c.live ? C_LAMP : null}); g.l(2.6, -1.5, 6.4, -3.8); g.l(2.6, 1.5, 6.4, 3.8); g.l(3, 0, 6.4, 0); },
+  lines: p => [[p.ref, 1], [un(p.pot, 'W')]]};
+SYM.emergencia = {n:'Alumbrado de emergencia', cat:'alum', kind:'load', pre:'E', t:T1, bb:[-5,-10,5,3],
+  props:[P_REF(''), {k:'lum', l:'Flujo', u:'lm', d:'', chips:['100','200','300']}],
+  draw(g, p, c){ g.l(0, -10, 0, -3); g.r(-5, -3, 10, 6, {fill: c.sim && c.live ? '#E8F7EC' : null}); g.l(-5, 3, 5, -3); g.c(0, 0, 1, {fill:'#000', w:0}); },
+  lines: p => [[p.ref, 1], [un(p.lum, 'lm')]]};
+SYM.lampara.cat = 'alum';
+
+/* ---------- Receptores (más) ---------- */
+SYM.bomba = {n:'Bomba', cat:'rec', kind:'load', pre:'M', t:T1, bb:[-5,-10,5,5],
+  props:[P_REF(''), P_POT('kW', '')],
+  draw(g, p, c){ g.l(0, -10, 0, -5); g.c(0, 0, 5, {fill: c.sim && c.live ? '#CFEFD6' : null}); g.p([[0,-5],[4.33,2.5],[-4.33,2.5]], {close:true}); },
+  lines: p => [[p.ref, 1], [un(p.pot, 'kW')]]};
+SYM.ventilador = {n:'Ventilador / extractor', cat:'rec', kind:'load', pre:'M', t:T1, bb:[-5,-10,5,5],
+  props:[P_REF(''), P_POT('W', '')],
+  draw(g, p, c){ g.l(0, -10, 0, -5); g.c(0, 0, 5, {fill: c.sim && c.live ? '#CFEFD6' : null}); g.a(-1.6, 0, 1.6, 180, 360); g.a(1.6, 0, 1.6, 0, 180); },
+  lines: p => [[p.ref, 1], [un(p.pot, 'W')]]};
+const inlineBox = (txt, size, extra) => (g, p, c) => { g.l(0, -10, 0, -5); g.r(-5, -5, 10, 10, {fill: c.sim && c.live ? '#FFF1C2' : null}); if (txt) g.t(0, 0, txt, {size:size || 2.4, bold:true}); if (extra) extra(g, p, c); g.l(0, 5, 0, 10); };
+SYM.variador = {n:'Variador de frecuencia', cat:'rec', kind:'cond', pre:'U', t:T2, bb:[-5,-10,5,10],
+  props:[P_REF(''), P_POT('kW', '')],
+  draw: inlineBox('', 0, g => { g.l(-5, 5, 5, -5); g.t(-2.4, -1.8, '~', {size:3}); g.t(2.6, 2.2, 'f~', {size:2.2}); }),
+  lines: p => [[p.ref, 1], [un(p.pot, 'kW')]]};
+SYM.arrsuave = {n:'Arrancador suave', cat:'rec', kind:'cond', pre:'U', t:T2, bb:[-5,-10,5,10],
+  props:[P_REF(''), P_POT('kW', '')],
+  draw: inlineBox('', 0, g => { g.p([[-3.4,3],[1,-3],[3.4,-3]]); g.l(-3.4, 3, 3.4, 3); }),
+  lines: p => [[p.ref, 1], [un(p.pot, 'kW')]]};
+SYM.estrella = {n:'Arrancador estrella-triángulo', cat:'rec', kind:'cond', pre:'U', t:T2, bb:[-5,-10,5,10],
+  props:[P_REF(''), P_POT('kW', '')],
+  draw: inlineBox('Y/Δ', 2.6), lines: p => [[p.ref, 1], [un(p.pot, 'kW')]]};
+[['cocina','Cocina / placa','COC','Cocina'], ['horno','Horno','HORNO','Horno'], ['lavadora','Lavadora','LAV','Lavadora'], ['lavavajillas','Lavavajillas','LVV','Lavavajillas'],
+ ['secadora','Secadora','SEC','Secadora'], ['frigorifico','Frigorífico','FRIG','Frigorífico'], ['bombacalor','Bomba de calor','BC','Bomba de calor'], ['emisor','Emisor térmico / radiador','EMIS','Emisor térmico'],
+ ['sradiante','Suelo radiante','SR','Suelo radiante'], ['ascensor','Ascensor','ASC','Ascensor'], ['gpresion','Grupo de presión','GP','Grupo de presión'], ['piscina','Depuradora piscina','PISC','Depuradora'],
+ ['plc','Autómata (PLC)','PLC','Autómata'], ['domotica','Módulo de domótica','DOM','Domótica'], ['alarma','Central de alarma','ALR','Alarma'], ['portero','Videoportero','VP','Videoportero']
+].forEach(([k, n, s, d]) => { SYM[k] = {n, cat:'rec', kind:'load', pre:'', t:T1, bb:[-6,-10,6,4], props:propsCarga(s, d), draw:drawCarga, lines:linesCarga}; });
+
+/* ---------- Medida (más) ---------- */
+const meter = (txt, size, inline) => (g, p, c) => { g.l(0, -10, 0, -4); g.c(0, 0, 4); g.t(0, 0, txt, {size:size || 3.2, bold:true}); if (inline) g.l(0, 4, 0, 10); };
+SYM.vatimetro = {n:'Vatímetro', cat:'med', kind:'cond', pre:'P', t:T2, bb:[-4,-10,4,10], props:[P_REF('')], draw:meter('W', 3.2, true), lines:p => [[p.ref, 1]]};
+SYM.frecuencimetro = {n:'Frecuencímetro', cat:'med', kind:'load', pre:'P', t:T1, bb:[-4,-10,4,4], props:[P_REF('')], draw:meter('Hz', 2.6), lines:p => [[p.ref, 1]]};
+SYM.cosfimetro = {n:'Cosfímetro', cat:'med', kind:'load', pre:'P', t:T1, bb:[-4,-10,4,4], props:[P_REF('')], draw:meter('cos φ', 1.7), lines:p => [[p.ref, 1]]};
+SYM.horas = {n:'Contador de horas', cat:'med', kind:'load', pre:'P', t:T1, bb:[-4,-10,4,4], props:[P_REF('')], draw(g){ g.l(0, -10, 0, -4); g.r(-4, -4, 8, 8); g.t(0, 0, 'h', {size:3.2, bold:true}); }, lines:p => [[p.ref, 1]]};
+SYM.tt = {n:'Trafo de tensión', cat:'med', kind:'load', pre:'T', t:T1, bb:[-3,-10,3,5.4],
+  props:[P_REF(''), {k:'rel', l:'Relación', d:'', ph:'400/110 V'}],
+  draw(g){ g.l(0, -10, 0, -5.4); g.c(0, -2.4, 3); g.c(0, 2.4, 3); }, lines:p => [[p.ref, 1], [p.rel]]};
+
+/* ---------- Protección (más) ---------- */
+SYM.magnetico = {n:'Interruptor magnético', cat:'prot', kind:'switch', pre:'Q', t:T2, bb:[-9.4,-10,2,10],
+  props:[P_REF(''), P_IN('', ['10','16','25','40','63']), P_POL('', ['1P','2P','3P','4P'])],
+  draw(g, p, c){ drawMagneto(g, p, c); g.r(-9.4, -2, 3.8, 4); g.t(-7.5, 0, 'I>', {size:1.8, bold:true}); link(g, -5.6); },
+  lines: p => [[p.ref, 1], [un(p.In, 'A')], [p.polos]]};
+SYM.mccb = {n:'Automático regulable (caja moldeada)', cat:'prot', kind:'switch', pre:'Q', t:T2, bb:[-9.4,-10,2,10],
+  props:[P_REF(''), P_IN('160', ['100','125','160','250','400','630']), {k:'ir', l:'Regulación térmica', u:'A', d:''}, P_POL('4P', ['3P','4P']), {k:'icu', l:'Poder de corte', u:'kA', d:'', chips:['25','36','50']}],
+  draw(g, p, c){ drawMagneto(g, p, c); g.r(-9.4, -2, 3.8, 4); g.t(-7.5, 0, 'Ir', {size:1.8, bold:true}); link(g, -5.6); },
+  lines: p => [[p.ref, 1], [un(p.In, 'A')], [p.ir ? 'Ir ' + un(p.ir, 'A') : ''], [jn(p.polos, un(p.icu, 'kA'))]]};
+SYM.fusec = {n:'Fusible seccionador', cat:'prot', kind:'switch', pre:'F', t:T2, bb:[-5,-10,2,10],
+  props:[P_REF(''), P_IN('', ['10','16','25','32','63','125','160']), {k:'tipo', l:'Clase', d:'gG', chips:['gG','aM','gPV']}, P_POL('', ['1P','2P','3P','4P'])],
+  draw(g, p, c){
+    g.l(0, -10, 0, -4); g.l(-1.6, -4, 1.6, -4); g.l(0, 4, 0, 10);
+    const tip = c.sim && c.on ? [0, -4] : [-4.2, -4.3], v = [tip[0], tip[1] - 4], L = Math.hypot(v[0], v[1]), u = [v[0] / L, v[1] / L], nrm = [-u[1], u[0]];
+    g.l(0, 4, tip[0], tip[1]);
+    const m = [tip[0] / 2, (4 + tip[1]) / 2], h = 2.6, w = 0.9;
+    g.p([[m[0] - u[0] * h + nrm[0] * w, m[1] - u[1] * h + nrm[1] * w], [m[0] + u[0] * h + nrm[0] * w, m[1] + u[1] * h + nrm[1] * w], [m[0] + u[0] * h - nrm[0] * w, m[1] + u[1] * h - nrm[1] * w], [m[0] - u[0] * h - nrm[0] * w, m[1] - u[1] * h - nrm[1] * w]], {close:true});
+    poleMarks(g, p.polos, 7.3);
+  },
+  lines: p => [[p.ref, 1], [jn(un(p.In, 'A'), p.tipo)], [p.polos]]};
+SYM.difrearme = {n:'Diferencial con rearme automático', cat:'prot', kind:'switch', pre:'Q', t:T2, bb:[-10.6,-10,3,10],
+  props:[P_REF(''), P_IN('40', ['25','40','63']), P_SENS, P_POL('2P', ['2P','4P']), P_CLASE],
+  draw(g, p, c){ SYM.dif.draw(g, p, c); g.r(-10.6, -3, 3.6, 4); g.t(-8.8, -1, 'R', {size:2.2, bold:true}); g.l(-7, -1, -5.6, -1); },
+  lines: p => [[p.ref, 1], [un(p.In, 'A')], [un(p.sens, 'mA')], [jn(p.polos, p.clase ? 'tipo ' + p.clase : '')]]};
+SYM.releU = {n:'Relé de máxima / mínima tensión', cat:'prot', kind:'load', pre:'F', t:T1, bb:[-4,-10,4,4],
+  props:[P_REF(''), {k:'tipo', l:'Tipo', d:'U>', chips:['U>','U<','U<>']}],
+  draw(g, p){ g.l(0, -10, 0, -4); g.r(-4, -4, 8, 8); g.t(0, 0, p.tipo || 'U', {size:2.4, bold:true}); },
+  lines: p => [[p.ref, 1]]};
+SYM.vigilante = {n:'Vigilante de aislamiento', cat:'prot', kind:'load', pre:'F', t:T1, bb:[-4,-10,4,8.4],
+  props:[P_REF(''), {k:'aj', l:'Ajuste', u:'kΩ', d:''}],
+  draw(g){ g.l(0, -10, 0, -4); g.r(-4, -4, 8, 8); g.t(0, 0, 'R<', {size:2.4, bold:true}); g.l(0, 4, 0, 6); earth(g, 6); },
+  lines: p => [[p.ref, 1], [un(p.aj, 'kΩ')]]};
+SYM.descargador = {n:'Descargador tipo 1 (rayo)', cat:'prot', kind:'load', pre:'F', t:T1, bb:[-3,-10,3,8.4],
+  props:[P_REF(''), {k:'iimp', l:'Iimp', u:'kA', d:'', chips:['12,5','25','50']}],
+  draw(g){ g.l(0, -10, 0, -5); g.r(-2.5, -5, 5, 9); g.p([[0,-0.4],[-1.2,-2.4],[1.2,-2.4]], {close:true, fill:'#000', w:0}); g.p([[0,1.2],[-1.2,3.2],[1.2,3.2]], {close:true, fill:'#000', w:0}); g.l(0, 4, 0, 6); earth(g, 6); },
+  lines: p => [[p.ref, 1], [p.iimp ? 'Iimp ' + un(p.iimp, 'kA') : '']]};
+
+/* ---------- Alimentación (más) ---------- */
+SYM.trafo3 = {n:'Transformador trifásico', cat:'ali', kind:'cond', pre:'T', t:T2, bb:[-4,-10,4,10],
+  props:[P_REF('T1'), P_POT('kVA', '', ['50','100','250','400','630']), {k:'rel', l:'Relación', d:'', ph:'20 kV / 400 V'}, {k:'grupo', l:'Grupo de conexión', d:'Dyn11', chips:['Dyn11','Yyn0','Yzn11']}],
+  draw(g){ g.l(0, -10, 0, -7); g.c(0, -3, 4); g.c(0, 3, 4); g.t(0, -4.2, 'Δ', {size:2}); g.t(0, 4.4, 'Y', {size:2}); g.l(0, 7, 0, 10); },
+  lines: p => [[p.ref, 1], [un(p.pot, 'kVA')], [p.rel], [p.grupo]]};
+SYM.autotrafo = {n:'Autotransformador', cat:'ali', kind:'cond', pre:'T', t:T2, bb:[-4,-10,4,10],
+  props:[P_REF(''), P_POT('kVA', '')],
+  draw(g){ g.l(0, -10, 0, -4); g.c(0, 0, 4); g.a(4, -4, 4, 90, 180); g.l(0, 4, 0, 10); },
+  lines: p => [[p.ref, 1], [un(p.pot, 'kVA')]]};
+SYM.trafoseg = {n:'Transformador de seguridad', cat:'ali', kind:'cond', pre:'T', t:T2, bb:[-3.6,-10,3.6,10],
+  props:[P_REF(''), P_POT('VA', ''), {k:'rel', l:'Relación', d:'230/24 V'}],
+  draw(g){ g.l(0, -10, 0, -7.8); g.c(0, -4.2, 3.6); g.l(-3.6, 0, 3.6, 0); g.c(0, 4.2, 3.6); g.l(0, 7.8, 0, 10); },
+  lines: p => [[p.ref, 1], [un(p.pot, 'VA')], [p.rel]]};
+SYM.fuente = {n:'Fuente de alimentación', cat:'ali', kind:'cond', pre:'U', t:T2, bb:[-5,-10,5,10],
+  props:[P_REF(''), {k:'sal', l:'Salida', d:'24 V DC', chips:['12 V DC','24 V DC','48 V DC']}],
+  draw: inlineBox('', 0, g => { g.l(-5, 5, 5, -5); g.t(-2.4, -1.8, '~', {size:3}); g.t(2.4, 2.2, '=', {size:3}); }),
+  lines: p => [[p.ref, 1], [p.sal]]};
+SYM.rectificador = {n:'Rectificador', cat:'ali', kind:'cond', pre:'U', t:T2, bb:[-5,-10,5,10],
+  props:[P_REF('')],
+  draw: inlineBox('', 0, g => { g.p([[-2,-1.6],[2,-1.6],[0,1.4]], {close:true}); g.l(-2, 1.4, 2, 1.4); }),
+  lines: p => [[p.ref, 1]]};
+SYM.cpm = {n:'Caja de protección y medida', cat:'ali', kind:'cond', pre:'', t:T2, bb:[-6,-7,6,7],
+  props:[{k:'nombre', l:'Texto', d:'CPM'}, {k:'In', l:'Fusibles', u:'A', d:'63', chips:['40','63','80','100']}],
+  draw(g){ g.r(-6, -7, 12, 14); g.l(0, -10, 0, -3.4); g.r(-1, -5.6, 2, 3.8); g.l(-6, -1, 6, -1); g.t(0, 2.8, 'kWh', {size:2, bold:true}); g.l(0, 7, 0, 10); },
+  lines: p => [[p.nombre, 1], [p.In ? 'Fus. ' + un(p.In, 'A') : '']]};
+SYM.conmutacion = {n:'Conmutación red - grupo', cat:'ali', kind:'switch', mode:'chg', pre:'Q', t:[[-5,-10,'n'],[5,-10,'n'],[0,10,'s']], bb:[-7,-10,7,10],
+  conn: on => on ? [[2,0]] : [[2,1]],
+  props:[P_REF(''), P_IN('', ['40','63','100','160']), {k:'nombre', l:'Texto', d:'Red / Grupo'}],
+  draw(g, p, c){ g.r(-7, -6, 14, 12); g.l(-5, -10, -5, -3); g.l(5, -10, 5, -3); g.l(0, 3.4, 0, 10); g.l(0, 3.4, (!c.sim || c.on) ? -4.6 : 4.6, -2.6); g.t(-5, -7.6, '1', {size:1.6}); g.t(5, -7.6, '2', {size:1.6}); },
+  lines: p => [[p.ref, 1], [p.nombre], [un(p.In, 'A')]]};
+SYM.eolico = {n:'Aerogenerador', cat:'ali', kind:'source', pre:'G', t:TB, bb:[-5,-5,5,10],
+  props:[P_REF(''), P_POT('kW', '')],
+  draw(g){ g.c(0, 0, 5); [270, 30, 150].forEach(a => { const r = a * Math.PI / 180; g.l(0, 0, 3.6 * Math.cos(r), 3.6 * Math.sin(r)); }); g.c(0, 0, 0.6, {fill:'#000', w:0}); g.l(0, 5, 0, 10); },
+  lines: p => [[p.ref, 1], [un(p.pot, 'kW')]]};
+
+/* ---------- Maniobra (más) ---------- */
+SYM.conmutador = {n:'Conmutador 1-2', cat:'man', kind:'switch', mode:'chg', pre:'S', t:[[-5,-10,'n'],[5,-10,'n'],[0,10,'s']], bb:[-5,-10,5,10],
+  conn: on => on ? [[2,0]] : [[2,1]],
+  props:[P_REF(''), {k:'nombre', l:'Texto', d:''}],
+  draw(g, p, c){ g.l(-5, -10, -5, -4); g.l(5, -10, 5, -4); g.l(0, 4, 0, 10); g.l(0, 4, (!c.sim || c.on) ? -4.8 : 4.8, -3.6); },
+  lines: p => [[p.ref, 1], [p.nombre]]};
+SYM.contactor.mode = 'cno';
+SYM.telerruptor.mode = 'cno';
+
+/* ---------- Componentes ---------- */
+SYM.condensador = {n:'Condensador', cat:'comp', kind:'load', pre:'C', t:T2, bb:[-4,-10,4,10],
+  props:[P_REF(''), {k:'val', l:'Valor', d:'', ph:'10 µF'}],
+  draw(g){ g.l(0, -10, 0, -1); g.l(-4, -1, 4, -1); g.l(-4, 1, 4, 1); g.l(0, 1, 0, 10); }, lines:p => [[p.ref, 1], [p.val]]};
+SYM.batcond = {n:'Batería de condensadores', cat:'comp', kind:'load', pre:'C', t:T1, bb:[-6,-10,6,5],
+  props:[P_REF(''), {k:'kvar', l:'Potencia', u:'kvar', d:'', chips:['10','20','50','100']}],
+  draw(g){ g.l(0, -10, 0, -5); g.r(-6, -5, 12, 10); g.l(0, -5, 0, -0.8); g.l(-3, -0.8, 3, -0.8); g.l(-3, 0.8, 3, 0.8); g.l(0, 0.8, 0, 2.6); g.l(-4, 3.6, 4, -3.6); g.p([[4,-3.6],[2.4,-3.2],[3.4,-2.2]], {close:true, fill:'#000', w:0}); },
+  lines: p => [[p.ref, 1], [un(p.kvar, 'kvar')]]};
+SYM.inductancia = {n:'Bobina / reactancia', cat:'comp', kind:'cond', pre:'L', t:T2, bb:[-1,-10,2,10],
+  props:[P_REF(''), {k:'val', l:'Valor', d:''}],
+  draw(g){ g.l(0, -10, 0, -4.5); [-3, 0, 3].forEach(y => g.a(0, y, 1.5, -90, 90)); g.l(0, 4.5, 0, 10); }, lines:p => [[p.ref, 1], [p.val]]};
+SYM.resLinea = {n:'Resistencia', cat:'comp', kind:'cond', pre:'R', t:T2, bb:[-1.8,-10,1.8,10],
+  props:[P_REF(''), {k:'val', l:'Valor', u:'Ω', d:''}],
+  draw(g){ g.l(0, -10, 0, -5); g.r(-1.8, -5, 3.6, 10); g.l(0, 5, 0, 10); }, lines:p => [[p.ref, 1], [un(p.val, 'Ω')]]};
+SYM.diodo = {n:'Diodo', cat:'comp', kind:'cond', pre:'V', t:T2, bb:[-2.4,-10,2.4,10],
+  props:[P_REF('')],
+  draw(g){ g.l(0, -10, 0, -2); g.p([[-2.4,-2],[2.4,-2],[0,2]], {close:true}); g.l(-2.4, 2, 2.4, 2); g.l(0, 2, 0, 10); }, lines:p => [[p.ref, 1]]};
+SYM.led = {n:'LED', cat:'comp', kind:'load', pre:'V', t:T2, bb:[-2.4,-10,6,10],
+  props:[P_REF('')],
+  draw(g, p, c){ g.l(0, -10, 0, -2); g.p([[-2.4,-2],[2.4,-2],[0,2]], {close:true, fill: c.sim && c.live ? C_LAMP : null}); g.l(-2.4, 2, 2.4, 2); g.l(0, 2, 0, 10); g.l(2.6, -0.6, 5, -2.4); g.l(3.2, 1, 5.6, -0.8); },
+  lines:p => [[p.ref, 1]]};
+
+/* ---------- Conexión (más) ---------- */
+SYM.derivacion = {n:'Caja de derivación (4 vías)', cat:'con', kind:'cond', pre:'', t:[[0,-5,'n'],[0,5,'s'],[5,0,'e'],[-5,0,'w']], bb:[-5,-5,5,5],
+  props:[{k:'nombre', l:'Texto', d:''}],
+  draw(g){ g.c(0, 0, 2); g.l(0, -5, 0, -2); g.l(0, 2, 0, 5); g.l(2, 0, 5, 0); g.l(-5, 0, -2, 0); }, lines:p => [[p.nombre, 1]]};
+SYM.conector = {n:'Base y clavija (conector)', cat:'con', kind:'cond', pre:'X', t:T2, bb:[-2,-10,2,10],
+  props:[P_REF('')],
+  draw(g){ g.l(0, -10, 0, -2.6); g.a(0, -0.6, 2, 180, 360); g.r(-0.5, -0.4, 1, 2.6, {fill:'#000', w:0}); g.l(0, 2.2, 0, 10); }, lines:p => [[p.ref, 1]]};
+SYM.masa = {n:'Masa', cat:'con', kind:'earth', pre:'', t:T1, bb:[-5,-10,3.5,1.4],
+  props:[{k:'nombre', l:'Texto', d:''}],
+  draw(g){ g.l(0, -10, 0, -1); g.l(-3.5, -1, 3.5, -1); [-3.5, 0, 3.5].forEach(x => g.l(x, -1, x - 1.5, 1.4)); }, lines:p => [[p.nombre, 1]]};
+SYM.tierraPE = {n:'Tierra de protección (PE)', cat:'con', kind:'earth', pre:'', t:T1, bb:[-4,-10,4,4],
+  props:[{k:'nombre', l:'Texto', d:''}],
+  draw(g){ g.l(0, -10, 0, -4); g.c(0, 0, 4); g.l(0, -4, 0, -1); g.l(-2.6, -1, 2.6, -1); g.l(-1.7, 0.5, 1.7, 0.5); g.l(-0.8, 2, 0.8, 2); }, lines:p => [[p.nombre, 1]]};
+SYM.barra = {n:'Barra de tierra / neutro', cat:'con', kind:'earth', pre:'', t:T1, bb:[-10,-10,10,1],
+  props:[{k:'nombre', l:'Texto', d:'Barra de tierra', chips:['Barra de tierra','Barra de neutro','Barra equipotencial']}],
+  draw(g){ g.l(0, -10, 0, -1); g.r(-10, -1, 20, 2, {fill:'#000', w:0}); }, lines:p => [[p.nombre, 1]]};
+SYM.remision = {n:'Llegada / salida a otra hoja', cat:'con', kind:'cond', pre:'', t:T1, bb:[-4,-10,4,5],
+  props:[{k:'txt', l:'Texto dentro', d:'1', chips:['1','2','3','A','B']}, {k:'dest', l:'Destino', d:'Hoja 2', ph:'Hoja 2 · C3'}],
+  draw(g, p){ g.l(0, -10, 0, -3); g.p([[-4,-3],[4,-3],[4,2],[0,5],[-4,2]], {close:true}); g.t(0, 0.4, p.txt || '', {size:2.4, bold:true}); },
+  lines: p => [[p.dest, 1]]};
+
+/* ---------- Planos de vivienda ---------- */
+const mech = (lines, inner) => (g) => { g.l(0, -10, 0, -1.6); g.c(0, 0, 1.6, {fill: inner ? null : '#000'}); if (inner) g.c(0, 0, 0.6, {fill:'#000', w:0}); lines.forEach(([a, tick]) => { const r = a * Math.PI / 180, x = 1.6 * Math.cos(r), y = 1.6 * Math.sin(r), X = 6 * Math.cos(r), Y = 6 * Math.sin(r); g.l(x, y, X, Y); if (tick) { const r2 = r + Math.PI / 2; g.l(X, Y, X + 1.6 * Math.cos(r2), Y + 1.6 * Math.sin(r2)); } }); };
+SYM.mInt = {n:'Interruptor (plano)', cat:'plano', kind:'load', pre:'', t:T1, bb:[-6,-10,6,6], props:[{k:'nombre', l:'Texto', d:''}], draw:mech([[-30, 1]]), lines:p => [[p.nombre, 1]]};
+SYM.mConm = {n:'Conmutador (plano)', cat:'plano', kind:'load', pre:'', t:T1, bb:[-6,-10,6,6], props:[{k:'nombre', l:'Texto', d:''}], draw:mech([[-30, 1], [150, 1]]), lines:p => [[p.nombre, 1]]};
+SYM.mCruz = {n:'Cruzamiento (plano)', cat:'plano', kind:'load', pre:'', t:T1, bb:[-6,-10,6,6], props:[{k:'nombre', l:'Texto', d:''}], draw:mech([[-30, 1], [150, 1], [30, 1], [210, 1]]), lines:p => [[p.nombre, 1]]};
+SYM.mPuls = {n:'Pulsador (plano)', cat:'plano', kind:'load', pre:'', t:T1, bb:[-2.4,-10,2.4,2.4], props:[{k:'nombre', l:'Texto', d:''}], draw(g){ g.l(0, -10, 0, -2.4); g.c(0, 0, 2.4); g.c(0, 0, 1, {fill:'#000', w:0}); }, lines:p => [[p.nombre, 1]]};
+SYM.mReg = {n:'Regulador (plano)', cat:'plano', kind:'load', pre:'', t:T1, bb:[-6,-10,6,6], props:[{k:'nombre', l:'Texto', d:''}], draw(g){ mech([[-30, 1]])(g); g.l(-3, 4, 3, -1); g.p([[3,-1],[1.4,-0.6],[2.4,0.6]], {close:true, fill:'#000', w:0}); }, lines:p => [[p.nombre, 1]]};
+const outletBox = txt => (g) => { g.l(0, -10, 0, -2.5); g.r(-4, -2.5, 8, 5); g.t(0, 0, txt, {size:2.2, bold:true}); };
+SYM.mTV = {n:'Toma de TV / SAT', cat:'plano', kind:'load', pre:'', t:T1, bb:[-4,-10,4,2.5], props:[{k:'nombre', l:'Texto', d:''}], draw:outletBox('TV'), lines:p => [[p.nombre, 1]]};
+SYM.mDatos = {n:'Toma de datos (RJ45)', cat:'plano', kind:'load', pre:'', t:T1, bb:[-4,-10,4,2.5], props:[{k:'nombre', l:'Texto', d:''}], draw:outletBox('RJ45'), lines:p => [[p.nombre, 1]]};
+SYM.mTel = {n:'Toma de teléfono', cat:'plano', kind:'load', pre:'', t:T1, bb:[-4,-10,4,2.5], props:[{k:'nombre', l:'Texto', d:''}], draw:outletBox('TF'), lines:p => [[p.nombre, 1]]};
+SYM.mTermo = {n:'Termostato de ambiente', cat:'plano', kind:'load', pre:'', t:T1, bb:[-3,-10,3,3], props:[{k:'nombre', l:'Texto', d:''}], draw(g){ g.l(0, -10, 0, -3); g.c(0, 0, 3); g.t(0, 0, 'θ', {size:2.6}); }, lines:p => [[p.nombre, 1]]};
+SYM.mCuadro = {n:'Cuadro de distribución (plano)', cat:'plano', kind:'load', pre:'', t:T1, bb:[-6,-10,6,3], props:[{k:'nombre', l:'Texto', d:'CGMP'}], draw(g){ g.l(0, -10, 0, -3); g.r(-6, -3, 12, 6); g.p([[-6,-3],[6,-3],[-6,3]], {close:true, fill:'#000', w:0}); }, lines:p => [[p.nombre, 1]]};
+SYM.mRegistro = {n:'Caja de registro (plano)', cat:'plano', kind:'load', pre:'', t:T1, bb:[-3,-10,3,3], props:[{k:'nombre', l:'Texto', d:''}], draw(g){ g.l(0, -10, 0, -3); g.r(-3, -3, 6, 6); }, lines:p => [[p.nombre, 1]]};
+
+const CATS = [
+  {k:'prot', n:'Protección'},
+  {k:'ali', n:'Alimentación'},
+  {k:'man', n:'Maniobra'},
+  {k:'mando', n:'Mando y bobinas'},
+  {k:'senal', n:'Señalización'},
+  {k:'alum', n:'Alumbrado'},
+  {k:'rec', n:'Receptores'},
+  {k:'med', n:'Medida'},
+  {k:'comp', n:'Componentes'},
+  {k:'con', n:'Conexión y tierra'},
+  {k:'plano', n:'Planos de vivienda'}
+];
+
 /* ===================== Dibujo: primitivas → SVG (pantalla) y PDF (vectorial) ===================== */
 /* Anchos de Helvetica (1/1000 em) para medir textos igual en pantalla y en el PDF. */
 const HW=[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584,761,556,0,222,556,333,1000,556,556,333,1000,667,333,1000,0,611,0,0,222,222,333,333,350,556,1000,333,1000,500,333,944,0,500,667,278,333,556,556,556,556,260,556,333,737,370,556,584,333,737,333,400,584,333,333,333,556,537,278,333,333,365,556,834,834,834,611,667,667,667,667,667,667,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,500,556,556,556,556,278,278,278,278,556,556,556,556,556,556,556,584,611,556,556,556,556,500,556,500],HBW=[278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584,761,556,0,278,556,500,1000,556,556,333,1000,667,333,1000,0,611,0,0,278,278,500,500,350,556,1000,333,1000,556,333,944,0,500,667,278,333,556,556,556,556,280,556,333,737,370,556,584,333,737,333,400,584,333,333,333,611,556,278,333,333,365,556,834,834,834,611,722,722,722,722,722,722,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,556,556,556,556,556,278,278,278,278,611,611,611,611,611,611,611,584,611,611,611,611,611,556,611,556];
-const SYMF={"Ω":[87,768],"Δ":[68,612],"∆":[68,612],"≤":[163,549],"≥":[179,549],"μ":[109,576],"µ":[109,576],"→":[174,987],"←":[172,987],"↑":[173,603],"↓":[175,603],"≈":[187,549],"√":[214,549],"φ":[102,521],"Φ":[70,763],"−":[45,549],"≠":[185,549],"∅":[198,823]};
+const SYMF={"Ω":[87,768],"Δ":[68,612],"∆":[68,612],"≤":[163,549],"≥":[179,549],"μ":[109,576],"µ":[109,576],"→":[174,987],"←":[172,987],"↑":[173,603],"↓":[175,603],"≈":[187,549],"√":[214,549],"φ":[102,521],"Φ":[70,763],"−":[45,549],"≠":[185,549],"∅":[198,823],"θ":[113,521],"λ":[108,549]};
 const CP1252={"€":128,"‚":130,"„":132,"…":133,"‘":145,"’":146,"“":147,"”":148,"•":149,"–":150,"—":151,"™":153};
 const SYMW = {}; Object.keys(SYMF).forEach(k => { SYMW[SYMF[k][0]] = SYMF[k][1]; });
 
@@ -995,7 +1276,8 @@ function normDoc(d){
 let doc = null;
 let sel = new Set();
 let tool = 'sel', placeKind = null, placeRot = 0;
-let sim = false; const simOff = new Set();
+let sim = false; const simAct = new Set(), simPress = new Set();
+let simOut = {}, simT = {}, simLatch = {}, simPrevE = {}, simWake = 0;
 let multi = false;
 let wireKind = 'linea', wireDraft = null, hoverPt = null;
 let view = {x:-10, y:-10, s:3};
@@ -1079,33 +1361,91 @@ function junctions(els){
   }));
   return out;
 }
-function simulate(){
-  const wires = doc.els.filter(e => e.type === 'wire'), syms = doc.els.filter(e => e.type === 'sym');
-  const par = {};
-  const find = x => { if (par[x] === undefined) par[x] = x; while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
-  const uni = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) par[ra] = rb; };
+/* Simulación: cada aparato conduce según su estado. Los contactos siguen a la bobina con su misma referencia,
+   los temporizados esperan su tiempo y la bobina de telerruptor cambia en cada impulso. */
+const refKey = s => String((s.p && s.p.ref) || '').trim().toUpperCase();
+const simNum = v => { const n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isNaN(n) ? 0 : Math.max(0, n); };
+function simReset(){ simAct.clear(); simPress.clear(); simOut = {}; simT = {}; simLatch = {}; simPrevE = {}; clearTimeout(simWake); }
+function simulate(depth){
+  const now = Date.now();
+  const wires = doc.els.filter(e => e.type === 'wire'), syms = doc.els.filter(e => e.type === 'sym' && SYM[e.k]);
+  const gp = {};
+  const gfind = x => { if (gp[x] === undefined) gp[x] = x; while (gp[x] !== x) { gp[x] = gp[gp[x]]; x = gp[x]; } return x; };
+  const guni = (a, b) => { const ra = gfind(a), rb = gfind(b); if (ra !== rb) gp[ra] = rb; };
   const T = [];
   syms.forEach(s => symTerms(s).forEach((t, i) => T.push({k:'t:' + s.id + ':' + i, p:[t.x, t.y]})));
   const byKey = {};
-  T.forEach(t => { const key = t.p[0].toFixed(2) + ',' + t.p[1].toFixed(2); if (byKey[key]) uni(t.k, byKey[key]); else byKey[key] = t.k; find(t.k); });
-  T.forEach(t => wires.forEach(w => { if (onWire(t.p, w.pts)) uni(t.k, 'w:' + w.id); }));
-  wires.forEach(w1 => { find('w:' + w1.id); [w1.pts[0], w1.pts[w1.pts.length - 1]].forEach(p => wires.forEach(w2 => { if (w2 !== w1 && onWire(p, w2.pts)) uni('w:' + w1.id, 'w:' + w2.id); })); });
-  syms.forEach(s => {
-    const d = SYM[s.k]; if (!d) return;
-    if (d.kind === 'cond' || (d.kind === 'switch' && !simOff.has(s.id))) for (let i = 1; i < d.t.length; i++) uni('t:' + s.id + ':0', 't:' + s.id + ':' + i);
+  T.forEach(t => { const key = t.p[0].toFixed(2) + ',' + t.p[1].toFixed(2); gfind(t.k); if (byKey[key]) guni(t.k, byKey[key]); else byKey[key] = t.k; });
+  T.forEach(t => wires.forEach(w => { if (onWire(t.p, w.pts)) guni(t.k, 'w:' + w.id); }));
+  wires.forEach(w1 => { gfind('w:' + w1.id); [w1.pts[0], w1.pts[w1.pts.length - 1]].forEach(p => wires.forEach(w2 => { if (w2 !== w1 && onWire(p, w2.pts)) guni('w:' + w1.id, 'w:' + w2.id); })); });
+  const rem = {};
+  syms.forEach(s => { if (s.k === 'remision') { const k = String(s.p.txt || '').trim().toUpperCase(); if (k) { if (rem[k]) guni('t:' + s.id + ':0', rem[k]); else rem[k] = 't:' + s.id + ':0'; } } });
+  const coils = syms.filter(s => SYM[s.k].coil && refKey(s));
+  const ctype = {}, tcfg = {};
+  coils.forEach(c => { const r = refKey(c), t = SYM[c.k].coil; ctype[r] = ctype[r] === 'impulse' || t === 'impulse' ? 'impulse' : (ctype[r] === 'timer' || t === 'timer' ? 'timer' : 'std'); if (t === 'timer') tcfg[r] = {T:simNum(c.p.tiempo), off:/desc/i.test(c.p.modo || '')}; });
+  const closedOf = (s, out) => {
+    const d = SYM[s.k], m = d.mode || 'brk', a = simAct.has(s.id), r = refKey(s), has = r && (r in ctype);
+    if (m === 'no') return a;
+    if (m === 'pno') return simPress.has(s.id);
+    if (m === 'pnc') return !simPress.has(s.id);
+    if (m === 'cno' || m === 'tno') return has ? !!out[r] : a;
+    if (m === 'cnc' || m === 'tnc') return has ? !out[r] : !a;
+    return !a;
+  };
+  let out = Object.assign({}, simOut), find, roots, closed, energ = {};
+  for (let it = 0; it < 20; it++) {
+    const par = Object.assign({}, gp);
+    find = x => { if (par[x] === undefined) par[x] = x; while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+    const uni = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) par[ra] = rb; };
+    closed = new Map();
+    syms.forEach(s => {
+      const d = SYM[s.k], n = d.t.length;
+      let pairs = [];
+      if (d.kind === 'cond') for (let i = 1; i < n; i++) pairs.push([0, i]);
+      else if (d.kind === 'switch') { const cl = closedOf(s, out); closed.set(s.id, cl); pairs = d.conn ? d.conn(cl) : (cl ? Array.from({length:n - 1}, (_, i) => [0, i + 1]) : []); }
+      pairs.forEach(([i, j]) => uni('t:' + s.id + ':' + i, 't:' + s.id + ':' + j));
+    });
+    roots = new Set();
+    syms.forEach(s => { const d = SYM[s.k]; if (d.kind === 'source') d.t.forEach((_, i) => roots.add(find('t:' + s.id + ':' + i))); });
+    energ = {};
+    coils.forEach(c => { const r = refKey(c); energ[r] = !!energ[r] || roots.has(find('t:' + c.id + ':0')); });
+    const nout = {};
+    Object.keys(ctype).forEach(r => {
+      const e = !!energ[r];
+      if (ctype[r] === 'impulse') nout[r] = !!simLatch[r];
+      else if (ctype[r] === 'timer' && tcfg[r]) {
+        const st = simT[r], since = st ? (st.on === e ? st.t : now) : (e ? now : -Infinity), el = (now - since) / 1000, Tm = tcfg[r].T;
+        nout[r] = tcfg[r].off ? (e || (!!st && st.on !== e ? Tm > 0 : el < Tm)) : (e && el >= Tm);
+      } else nout[r] = e;
+    });
+    const same = Object.keys(nout).every(k => nout[k] === out[k]) && Object.keys(out).every(k => k in nout);
+    out = nout;
+    if (same) break;
+  }
+  let latched = false, next = Infinity;
+  Object.keys(ctype).forEach(r => {
+    const e = !!energ[r];
+    if (ctype[r] === 'impulse' && e && !simPrevE[r]) { simLatch[r] = !simLatch[r]; latched = true; }
+    if (ctype[r] === 'timer' && tcfg[r]) {
+      if (!simT[r]) simT[r] = {on:e, t: e ? now : -Infinity}; else if (simT[r].on !== e) simT[r] = {on:e, t:now};
+      const st = simT[r], end = st.t + tcfg[r].T * 1000;
+      if (end > now && (tcfg[r].off ? !e : e)) next = Math.min(next, end);
+    }
   });
-  const roots = new Set();
-  syms.forEach(s => { const d = SYM[s.k]; if (d && d.kind === 'source') d.t.forEach((_, i) => roots.add(find('t:' + s.id + ':' + i))); });
+  simPrevE = energ; simOut = out;
+  if (latched && !depth) return simulate(1);
+  clearTimeout(simWake);
+  if (next < Infinity) simWake = setTimeout(() => { if (sim) renderEls(); }, next - now + 40);
   const liveWires = new Set(wires.filter(w => roots.has(find('w:' + w.id))).map(w => w.id));
   const liveSyms = new Set(syms.filter(s => SYM[s.k].t.some((_, i) => roots.has(find('t:' + s.id + ':' + i)))).map(s => s.id));
-  return {liveWires, liveSyms};
+  return {liveWires, liveSyms, closed, coilRefs:new Set(Object.keys(ctype))};
 }
 
 /* ---------- Dibujo en pantalla ---------- */
 const ORDER = {frame:0, wire:1, sym:2, text:3};
 const sorted = els => els.map((e, i) => [e, i]).sort((a, b) => (ORDER[a[0].type] - ORDER[b[0].type]) || (a[1] - b[1])).map(x => x[0]);
 function elPrims(el, si, out){
-  if (el.type === 'sym') return symPrims(el, si ? {sim:true, on:!simOff.has(el.id), live:si.liveSyms.has(el.id)} : {}, out);
+  if (el.type === 'sym') return symPrims(el, si ? {sim:true, on:si.closed.has(el.id) ? si.closed.get(el.id) : true, live:si.liveSyms.has(el.id)} : {}, out);
   if (el.type === 'wire') return wirePrims(el, {live: !!(si && si.liveWires.has(el.id))}, out);
   if (el.type === 'text') return textPrims(el, out);
   if (el.type === 'frame') return framePrims(el, out);
@@ -1286,6 +1626,7 @@ function placeSymbol(k, w){
   if (k === 'salida') p.circ = nextCirc();
   const el = {type:'sym', id:uid(), k, x:snapG(w[0]), y:snapG(w[1]), r:placeRot, p};
   doc.els.push(el);
+  addRecent(k);
   sel = new Set([el.id]);
   commit(); renderEls(); renderOverlay(); renderProps();
 }
@@ -1412,7 +1753,7 @@ function onDown(e){
   if (ae && ae !== document.body && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) ae.blur();
   try { svg.setPointerCapture(e.pointerId); } catch (er) {}
   ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
-  if (ptrs.size === 2) { cancelAct(); startPinch(); return; }
+  if (ptrs.size === 2) { if (act && act.pressed) { simPress.delete(act.pressed); renderEls(); } cancelAct(); startPinch(); return; }
   if (ptrs.size > 2) return;
   const w = toWorld(e.clientX, e.clientY);
   const hEl = e.target.closest ? e.target.closest('[data-h]') : null;
@@ -1420,7 +1761,11 @@ function onDown(e){
   const target = tEl ? byId(tEl.dataset.id) : null;
   const base = {x0:e.clientX, y0:e.clientY, w0:w, moved:false, pid:e.pointerId, ptype:e.pointerType, target, vx:view.x, vy:view.y};
   if (e.button === 1 || e.altKey) { act = Object.assign(base, {type:'pan'}); return; }
-  if (sim) { act = Object.assign(base, {type:'simtap'}); return; }
+  if (sim) {
+    act = Object.assign(base, {type:'simtap'});
+    if (target && target.type === 'sym' && /^p/.test(SYM[target.k].mode || '')) { act.pressed = target.id; simPress.add(target.id); renderEls(); }
+    return;
+  }
   if (tool === 'wire') { act = Object.assign(base, {type:'wire', s0:wireSnap(w)}); return; }
   if (tool === 'place') { act = Object.assign(base, {type:'place'}); return; }
   if (tool === 'text') { act = Object.assign(base, {type:'textplace'}); return; }
@@ -1479,8 +1824,11 @@ function onUp(e){
   const w = toWorld(e.clientX, e.clientY);
   switch (a.type) {
     case 'simtap':
+      if (a.pressed) { simPress.delete(a.pressed); renderEls(); break; }
       if (!a.moved && a.target && a.target.type === 'sym' && SYM[a.target.k].kind === 'switch') {
-        if (simOff.has(a.target.id)) simOff.delete(a.target.id); else simOff.add(a.target.id);
+        const d = SYM[a.target.k], m = d.mode || 'brk', r = refKey(a.target);
+        if (/^[ct]n[oc]$/.test(m) && r && simInfo && simInfo.coilRefs.has(r)) { toast('Lo mueve la bobina ' + a.target.p.ref + '. Actúa sobre lo que la alimenta.'); break; }
+        if (simAct.has(a.target.id)) simAct.delete(a.target.id); else simAct.add(a.target.id);
         renderEls();
       }
       break;
@@ -1518,7 +1866,7 @@ function onUp(e){
   }
   renderOverlay();
 }
-function onCancel(e){ ptrs.delete(e.pointerId); if (act && act.type !== 'pinch') cancelAct(); if (!ptrs.size) act = null; }
+function onCancel(e){ ptrs.delete(e.pointerId); if (act && act.pressed) { simPress.delete(act.pressed); renderEls(); } if (act && act.type !== 'pinch') cancelAct(); if (!ptrs.size) act = null; }
 svg.addEventListener('pointerdown', onDown);
 svg.addEventListener('pointermove', onMove);
 svg.addEventListener('pointerup', onUp);
@@ -1547,8 +1895,8 @@ function setTool(t, kind){
 }
 function setSim(on){
   sim = on;
-  if (on) { if (wireDraft) finishDraft(); tool = 'sel'; placeKind = null; sel.clear(); document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', 'false')); document.querySelectorAll('.tile').forEach(b => b.setAttribute('aria-pressed', 'false')); }
-  else { simOff.clear(); document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === tool))); }
+  if (on) { simReset(); if (wireDraft) finishDraft(); tool = 'sel'; placeKind = null; sel.clear(); document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', 'false')); document.querySelectorAll('.tile').forEach(b => b.setAttribute('aria-pressed', 'false')); }
+  else { simReset(); document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === tool))); }
   $('#b-sim').setAttribute('aria-pressed', String(on));
   renderEls(); renderOverlay(); renderProps(); updateBanner();
 }
@@ -1558,7 +1906,7 @@ function updateBanner(){
   if (sim) {
     cls = 'sim';
     const sources = doc.els.some(e => e.type === 'sym' && SYM[e.k].kind === 'source');
-    h = `<p>${sources ? 'Simulación: toca un aparato para abrirlo o cerrarlo. Lo que tiene tensión se ve en rojo.' : 'Pon una «Red / acometida» o un generador para que haya tensión.'}</p><button class="bb" data-b="simreset" type="button">Cerrar todos</button><button class="bb on" data-b="simoff" type="button">Salir</button>`;
+    h = `<p>${sources ? 'Simulación: toca un aparato para abrirlo o cerrarlo; los pulsadores, mantenlos pulsados. Lo que tiene tensión se ve en rojo.' : 'Pon una «Red / acometida» o un generador para que haya tensión.'}</p><button class="bb" data-b="simreset" type="button">Reiniciar</button><button class="bb on" data-b="simoff" type="button">Salir</button>`;
   } else if (tool === 'wire') {
     if (wireDraft) h = `<p>Toca para hacer esquinas. Toca un borne o un cable para terminar.</p><button class="bb pri" data-b="wfinish" type="button">Terminar</button><button class="bb" data-b="wcancel" type="button">Cancelar</button>`;
     else h = `<p>Arrastra de un borne a otro, o tócalos uno tras otro. Con dos dedos mueves la hoja.</p><button class="bb${wireKind === 'linea' ? ' on' : ''}" data-b="wk-linea" type="button">Línea</button><button class="bb${wireKind === 'barra' ? ' on' : ''}" data-b="wk-barra" type="button">Barra</button><button class="bb" data-b="done" type="button">Listo</button>`;
@@ -1576,7 +1924,7 @@ $('#banner').addEventListener('click', e => {
   const t = e.target.closest('[data-b]'); if (!t) return;
   const k = t.dataset.b;
   if (k === 'simoff') setSim(false);
-  else if (k === 'simreset') { simOff.clear(); renderEls(); }
+  else if (k === 'simreset') { simReset(); renderEls(); }
   else if (k === 'wfinish') finishDraft();
   else if (k === 'wcancel') { wireDraft = null; hoverPt = null; renderOverlay(); updateBanner(); }
   else if (k === 'wk-linea' || k === 'wk-barra') { wireKind = k.slice(3); updateBanner(); }
@@ -1602,16 +1950,37 @@ function iconSVG(k){
   return `<svg viewBox="${f2(cx - s / 2)} ${f2(cy - s / 2)} ${f2(s)} ${f2(s)}" xmlns="${NS}" font-family="Helvetica,Arial,sans-serif" stroke-linecap="round" stroke-linejoin="round">${svgOf(prims.map(p => p.t === 'x' ? p : Object.assign({}, p, {w:p.w ? Math.max(p.w, 0.5) : p.w})))}</svg>`;
 }
 const ICONS = {};
+const CLOSED0 = ['mando', 'senal', 'alum', 'med', 'comp', 'con', 'plano'];
 function buildLib(q){
   q = String(q || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const closed = Array.isArray(prefs.closed) ? prefs.closed : CLOSED0;
+  const tile = k => { ICONS[k] = ICONS[k] || iconSVG(k); return `<button class="tile" type="button" data-k="${k}" aria-pressed="${tool === 'place' && placeKind === k}">${ICONS[k]}<span>${hesc(SYM[k].n)}</span></button>`; };
+  const sect = (key, name, ks, open) => `<button class="cat" type="button" data-cat="${key}" aria-expanded="${open}"><span>${hesc(name)}</span><small>${ks.length}</small><svg class="chev" viewBox="0 0 24 24"><path d="M8 10l4 4 4-4"/></svg></button>` + (open ? `<div class="tiles">${ks.map(tile).join('')}</div>` : '');
   let h = '';
+  const recent = (prefs.recent || []).filter(k => SYM[k]);
+  if (!q && recent.length) h += sect('_rec', 'Recientes', recent, !closed.includes('_rec'));
+  let total = 0;
   CATS.forEach(c => {
-    const ks = Object.keys(SYM).filter(k => SYM[k].cat === c.k && (!q || norm(SYM[k].n).includes(q) || k.includes(q)));
+    const ks = Object.keys(SYM).filter(k => SYM[k].cat === c.k && (!q || norm(SYM[k].n).includes(q) || norm(c.n).includes(q) || k.toLowerCase().includes(q)));
     if (!ks.length) return;
-    h += `<p class="cat">${c.n}</p><div class="tiles">` + ks.map(k => { ICONS[k] = ICONS[k] || iconSVG(k); return `<button class="tile" type="button" data-k="${k}" aria-pressed="${tool === 'place' && placeKind === k}">${ICONS[k]}<span>${hesc(SYM[k].n)}</span></button>`; }).join('') + '</div>';
+    total += ks.length;
+    h += sect(c.k, c.n, ks, !!q || !closed.includes(c.k));
   });
   $('#lib-list').innerHTML = h || '<p class="hint" style="padding:10px 4px">No hay ningún símbolo con ese nombre.</p>';
+  $('#lib-q').placeholder = 'Buscar (' + Object.keys(SYM).length + ' símbolos)';
+}
+$('#lib-list').addEventListener('click', e => {
+  const b = e.target.closest('[data-cat]'); if (!b || $('#lib-q').value.trim()) return;
+  const closed = (Array.isArray(prefs.closed) ? prefs.closed : CLOSED0).slice();
+  const k = b.dataset.cat, i = closed.indexOf(k);
+  if (i >= 0) closed.splice(i, 1); else closed.push(k);
+  prefs.closed = closed; savePrefs(); buildLib('');
+});
+function addRecent(k){
+  prefs.recent = [k].concat((prefs.recent || []).filter(x => x !== k)).slice(0, 8);
+  savePrefs();
+  if (!$('#lib-q').value.trim()) { const L = $('#lib-list'), top = L.scrollTop; buildLib(''); L.scrollTop = top; }
 }
 $('#lib-q').addEventListener('input', e => buildLib(e.target.value));
 (function(){
@@ -1695,7 +2064,7 @@ function renderProps(){
   let h = '';
   if (sim) {
     title.textContent = 'Simulación';
-    h = '<p class="hint">Toca un IGA, diferencial, magnetotérmico, interruptor o contactor para abrirlo o cerrarlo. Las líneas con tensión se ven en rojo, las lámparas se encienden y los motores se colorean.</p><p class="hint">La simulación no cambia el esquema: al salir, todo vuelve a quedar como estaba.</p>';
+    h = '<p class="hint">Toca un IGA, diferencial, magnetotérmico, interruptor, selector, final de carrera o detector para abrirlo o cerrarlo. Los pulsadores funcionan mientras los mantienes pulsados.</p><p class="hint">Las bobinas mueven los contactos, contactores y telerruptores que tienen su misma referencia (por ejemplo KM1). La bobina temporizada cambia sus contactos temporizados cuando pasa su tiempo, y la de telerruptor cambia en cada impulso.</p><p class="hint">Las llegadas y salidas a otra hoja con el mismo texto dentro se unen entre sí.</p><p class="hint">La simulación no cambia el esquema: al salir, todo vuelve a quedar como estaba.</p>';
   } else if (sel.size === 0) {
     title.textContent = 'Hoja';
     const I = doc.info, P = doc.page;
@@ -1872,7 +2241,7 @@ $('#b-name').addEventListener('click', () => {
 /* ---------- Mis esquemas ---------- */
 function openDoc(d){
   if (doc && doc.id !== d.id) commit();
-  doc = d; sel.clear(); undoS = []; redoS = []; lastSnap = snapOf(); wireDraft = null; simOff.clear();
+  doc = d; sel.clear(); undoS = []; redoS = []; lastSnap = snapOf(); wireDraft = null; simReset();
   if (sim) setSim(false);
   setTool('sel');
   try { localStorage.setItem(K_LAST, d.id); } catch (e) {}
