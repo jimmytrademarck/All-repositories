@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Esquemas unifilares</title>
 <meta name="description" content="Dibuja esquemas unifilares en el iPad sin conexión: biblioteca de símbolos, cables, simulación, cuadros de vivienda según la ITC-BT-25 y PDF.">
 <meta name="theme-color" content="#E2E5E1" media="(prefers-color-scheme: light)">
@@ -38,7 +38,9 @@
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
-body{position:fixed;inset:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.4;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+body{position:fixed;inset:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.4;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;touch-action:pan-x pan-y}
+/* Nada de la página se amplía con dos dedos: solo el dibujo, que lleva su propio zoom. */
+*{touch-action:pan-x pan-y}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--sel);outline-offset:2px}
@@ -62,7 +64,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .tb.exp{flex-direction:row;gap:6px;font-size:1rem;background:var(--accent);color:var(--accent-ink);font-weight:700;padding:4px 14px}
 
 /* Zona principal */
-.main{display:grid;grid-template-columns:auto minmax(0,1fr) auto;min-height:0;position:relative}
+.main{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr);min-height:0;position:relative}
+/* Cada panel en su columna, aunque otro esté oculto (si no, la hoja se quedaba sin ancho). */
+.main > .lib{grid-column:1;grid-row:1} .main > .stage{grid-column:2;grid-row:1} .main > .props{grid-column:3;grid-row:1}
 .lib{width:206px;display:flex;flex-direction:column;min-height:0;background:var(--surface);border-right:1px solid var(--line)}
 .lib-search{padding:8px;border-bottom:1px solid var(--line)}
 .lib-search input{width:100%;height:42px;border:1px solid var(--line-strong);border-radius:10px;background:var(--bg);padding:0 12px;font-size:16px}
@@ -156,6 +160,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 }
 @media (max-width:999px){
   .props{position:absolute;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(400px,calc(100% - 20px));max-height:44%;border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:4;overflow:hidden;transition:opacity .15s}
+  .main > .props{grid-column:auto;grid-row:auto}
   .props-body{padding-bottom:16px}
   .props-head{cursor:pointer}
   .props .mini{display:inline-flex}
@@ -167,7 +172,20 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .props.min .mini svg{transform:rotate(180deg)}
 #app.dragging .props,#app.dragging .zoom,#app.dragging .banner{opacity:.12;pointer-events:none}
 @media (max-width:900px){ .docname,.bar .sep{display:none} }
-@media (max-width:700px){ .lib{width:140px} .tb.exp .nl2{display:none} .lbl-long{display:none} }
+@media (max-width:700px){
+  .tb.exp .nl2{display:none} .lbl-long{display:none}
+  .lib{position:absolute;left:0;top:0;bottom:0;width:min(250px,78vw);z-index:6;box-shadow:6px 0 24px rgba(0,0,0,.25)}
+  .main > .lib{grid-column:auto;grid-row:auto}
+  .bar{gap:2px;padding:4px 6px}
+  .bar > *{order:2} .bar > #b-home{order:0} .bar > #b-lib{order:1} .bar > #b-export{order:1}
+  .tb{min-width:40px;min-height:44px;padding:2px 4px;font-size:.66rem}
+  .zoom{left:6px;bottom:calc(6px + env(safe-area-inset-bottom,0px))}
+  .zoom button{min-width:40px;height:40px}
+  #main:has(.props:not([hidden])) .zoom{display:none}
+  .banner{top:6px;font-size:.85rem}
+  .props{right:6px;width:calc(100% - 12px);bottom:calc(6px + env(safe-area-inset-bottom,0px))}
+}
+@media (max-width:480px){ .tb{font-size:0;gap:0} .tb.home{padding:4px 8px} }
 
 /* Pantallas y ventanas */
 .screen{position:absolute;inset:0;z-index:20;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
@@ -1817,6 +1835,9 @@ function onDown(e){
   e.preventDefault();
   const ae = document.activeElement;
   if (ae && ae !== document.body && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) ae.blur();
+  /* El primer dedo de un gesto nuevo: si quedaba algún dedo «recordado» de antes (el iPhone a veces no avisa
+     al levantarlo), se olvida. Así un dedo nunca se toma por dos ni la hoja se queda sin responder. */
+  if (e.isPrimary && ptrs.size) { if (act && act.pressed) simPress.delete(act.pressed); if (act && act.type !== 'pinch') cancelAct(); ptrs.clear(); act = null; }
   try { svg.setPointerCapture(e.pointerId); } catch (er) {}
   ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
   if (ptrs.size === 2) { if (act && act.pressed) { simPress.delete(act.pressed); renderEls(); } cancelAct(); startPinch(); return; }
@@ -1883,8 +1904,11 @@ function onMove(e){
 }
 function onUp(e){
   ptrs.delete(e.pointerId);
-  if (act && act.type === 'pinch') { if (ptrs.size < 2) act = {type:'pinch-end'}; return; }
-  if (act && act.type === 'pinch-end') { if (!ptrs.size) act = null; return; }
+  if (act && act.type === 'pinch') {
+    if (ptrs.size === 1) { const [id, p] = [...ptrs.entries()][0]; act = {type:'pan', pid:id, x0:p.x, y0:p.y, w0:toWorld(p.x, p.y), vx:view.x, vy:view.y, moved:true, ptype:'touch'}; }
+    else if (!ptrs.size) act = null;
+    return;
+  }
   if (!act || e.pointerId !== act.pid) return;
   const a = act; act = null;
   const w = toWorld(e.clientX, e.clientY);
@@ -1926,23 +1950,30 @@ function onUp(e){
         if (!a.add) sel.clear();
         doc.els.forEach(el => { const b = elBox(el); if (b[0] >= x0 && b[2] <= x1 && b[1] >= y0 && b[3] <= y1) sel.add(el.id); });
       } else {
-        const cb = cajetinBox(doc);
-        if (cb && w[0] >= cb[0] && w[0] <= cb[2] && w[1] >= cb[1] && w[1] <= cb[3]) { openCajetin(); break; }
+        const cb = cajetinBox(doc), had = sel.size;
         if (!a.add) sel.clear();
+        if (!had && cb && w[0] >= cb[0] && w[0] <= cb[2] && w[1] >= cb[1] && w[1] <= cb[3]) { openCajetin(); break; }
       }
       renderProps();
       break;
     case 'pan': case 'boxsel-tap':
       if (!a.moved) {
+        if (sel.size) { sel.clear(); renderProps(); break; }
         const cb = cajetinBox(doc);
-        if (cb && w[0] >= cb[0] && w[0] <= cb[2] && w[1] >= cb[1] && w[1] <= cb[3]) { openCajetin(); break; }
-        if (sel.size) { sel.clear(); renderProps(); }
+        if (cb && w[0] >= cb[0] && w[0] <= cb[2] && w[1] >= cb[1] && w[1] <= cb[3]) openCajetin();
       }
       break;
   }
   renderOverlay();
 }
-function onCancel(e){ ptrs.delete(e.pointerId); if (act && act.pressed) { simPress.delete(act.pressed); renderEls(); } if (act && act.type !== 'pinch') cancelAct(); if (!ptrs.size) act = null; }
+function onCancel(e){
+  if (!ptrs.has(e.pointerId)) return;
+  ptrs.delete(e.pointerId);
+  if (act && act.pressed) { simPress.delete(act.pressed); renderEls(); }
+  if (act && act.type === 'pinch') { if (ptrs.size === 1) { const [id, p] = [...ptrs.entries()][0]; act = {type:'pan', pid:id, x0:p.x, y0:p.y, w0:toWorld(p.x, p.y), vx:view.x, vy:view.y, moved:true, ptype:'touch'}; } else if (!ptrs.size) act = null; return; }
+  if (act) cancelAct();
+  if (!ptrs.size) act = null;
+}
 svg.addEventListener('pointerdown', onDown);
 svg.addEventListener('pointermove', onMove);
 svg.addEventListener('pointerup', onUp);
@@ -1953,7 +1984,9 @@ svg.addEventListener('wheel', e => {
   if (e.ctrlKey || e.metaKey) zoomAt(Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY);
   else { view.x += e.deltaX / view.s; view.y += e.deltaY / view.s; applyView(); }
 }, {passive:false});
-['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => e.preventDefault()));
+['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive:false}));
+svg.addEventListener('lostpointercapture', e => { if (ptrs.has(e.pointerId)) onCancel(e); });
+if (window.visualViewport) window.visualViewport.addEventListener('resize', () => requestAnimationFrame(applyView));
 let lastPType = 'mouse';
 svg.addEventListener('pointerdown', e => { lastPType = e.pointerType; }, true);
 svg.addEventListener('dblclick', e => { e.preventDefault(); if (tool === 'wire' && wireDraft && lastPType === 'mouse') finishDraft(); });
@@ -2095,10 +2128,12 @@ $('#lib-q').addEventListener('input', e => buildLib(e.target.value));
       if (e.clientX > r.left && e.clientX < r.right && e.clientY > r.top && e.clientY < r.bottom) {
         if (sim) setSim(false);
         setTool('sel'); placeSymbol(k, toWorld(e.clientX, e.clientY));
+        if (isPhone()) { libPhone = false; updatePanels(); }
       }
     } else {
       if (sim) setSim(false);
       if (tool === 'place' && placeKind === k) setTool('sel'); else setTool('place', k);
+      if (isPhone() && tool === 'place') { libPhone = false; updatePanels(); }
     }
   };
   list.addEventListener('pointerup', e => end(e, false));
@@ -2116,15 +2151,19 @@ function openCajetin(){
 }
 const isNarrow = () => window.matchMedia('(max-width:999px)').matches;
 let propsManual = false;
+const isPhone = () => window.matchMedia('(max-width:700px)').matches;
+let libPhone = false;
 function updatePanels(){
-  $('#lib').hidden = !prefs.lib;
-  $('#b-lib').setAttribute('aria-pressed', String(prefs.lib));
+  const libOn = isPhone() ? libPhone : prefs.lib;
+  $('#lib').hidden = !libOn;
+  $('#b-lib').setAttribute('aria-pressed', String(libOn));
   const show = isNarrow() ? (sel.size > 0 || propsManual) : prefs.props;
   $('#props').hidden = !show;
   $('#b-props').setAttribute('aria-pressed', String(show));
   requestAnimationFrame(applyView);
 }
-$('#b-lib').addEventListener('click', () => { prefs.lib = !prefs.lib; savePrefs(); updatePanels(); });
+$('#b-lib').addEventListener('click', () => { if (isPhone()) libPhone = !libPhone; else { prefs.lib = !prefs.lib; savePrefs(); } updatePanels(); });
+window.matchMedia('(max-width:700px)').addEventListener('change', updatePanels);
 $('#b-props').addEventListener('click', () => {
   if (isNarrow()) { const vis = !$('#props').hidden; if (vis) { propsManual = false; if (sel.size) { sel.clear(); renderOverlay(); renderProps(); } } else propsManual = true; }
   else { prefs.props = !prefs.props; savePrefs(); }
