@@ -1469,6 +1469,29 @@ if (typeof module !== 'undefined') module.exports = Core;
     var def = tipo === 'rectificativa' ? 'R' : 'F';
     return String((tipo === 'rectificativa' ? S.cfg.prefijoRect : S.cfg.prefijoFac) || def).trim() || def;
   }
+  /* Comprueba la letra de un DNI, NIE o CIF (solo avisa, no bloquea) */
+  function nifOk(v) {
+    var x = String(v || '').toUpperCase().replace(/^ES/, '').replace(/[\s.\-\/]/g, '');
+    var L = 'TRWAGMYFPDXBNJZSQVHLCKE', m;
+    if ((m = /^(\d{8})([A-Z])$/.exec(x))) return L[+m[1] % 23] === m[2];
+    if ((m = /^([XYZ])(\d{7})([A-Z])$/.exec(x))) return L[+('XYZ'.indexOf(m[1]) + m[2]) % 23] === m[3];
+    if ((m = /^([KLM])(\d{7})([A-Z])$/.exec(x))) return L[+m[2] % 23] === m[3];
+    if ((m = /^([ABCDEFGHJNPQRSUVW])(\d{7})([0-9A-J])$/.exec(x))) {
+      var d = m[2], sum = 0;
+      for (var i = 0; i < 7; i++) { var n = +d[i]; if (i % 2 === 0) { n *= 2; n = Math.floor(n / 10) + n % 10; } sum += n; }
+      var c = (10 - sum % 10) % 10;
+      return m[3] === String(c) || m[3] === 'JABCDEFGHI'[c];
+    }
+    return false;
+  }
+  /* Números de factura emitida que aparecen más de una vez (por ejemplo, al juntar copias de dos tabletas) */
+  function dupNums() {
+    var seen = {}, out = [];
+    Object.keys(S.pres).forEach(function (id) { var p = S.pres[id]; if (!isIssued(p) || !p.num) return; seen[p.num] = (seen[p.num] || 0) + 1; });
+    Object.keys(seen).forEach(function (n) { if (seen[n] > 1) out.push(n); });
+    return out.sort();
+  }
+
   /* Siguiente número de factura de la serie: cuenta solo las ya emitidas, así no quedan huecos */
   function nextFacNum(tipo) {
     var y = new Date().getFullYear(), head = serieOf(tipo) + '-' + y + '-', max = 0;
@@ -1582,12 +1605,17 @@ if (typeof module !== 'undefined') module.exports = Core;
     $$('#v-presupuesto > section.card').forEach(function (sec) {
       if (sec.id === 'card-pago' || sec.classList.contains('sum')) return;
       if (issued) sec.setAttribute('inert', ''); else sec.removeAttribute('inert');
+      $$('input, textarea, select, button', sec).forEach(function (el) { el.disabled = issued; });
     });
     $('#q-pago').disabled = issued;
     var cb = $('#q-cobrada'); cb.checked = q.estado === 'cobrada'; cb.disabled = !issued; cb.closest('label').hidden = t === 'rectificativa';
     $('#pago-hint').textContent = t === 'rectificativa' ? '' : !issued ? 'Después de emitirla podrás marcarla como cobrada.' : (q.pago === 'transferencia' && !S.cfg.iban ? 'No has puesto tu IBAN en Ajustes: no sale en la factura.' : '');
     var lb = $('#lockbar'), msg = '';
-    if (issued) msg = '<b>' + esc(TIPON[t]) + ' ' + esc(q.num || '') + ' emitida el ' + C.fdate(q.fecha) + '</b>Ya no se puede cambiar ni borrar.' + (t === 'factura' ? ' Si hay un error, pulsa «Factura rectificativa» más abajo.' : '') + (q.rectPor ? ' Rectificada por ' + esc(q.rectPor) + '.' : '');
+    if (issued) {
+      msg = '<b>' + esc(TIPON[t]) + ' ' + esc(q.num || '') + ' emitida el ' + C.fdate(q.fecha) + '</b>Ya no se puede cambiar ni borrar.' + (t === 'factura' ? ' Si hay un error, pulsa «Factura rectificativa» más abajo.' : '') + (q.rectPor ? ' Rectificada por ' + esc(q.rectPor) + '.' : '');
+      var lc = ls('pe2-ultimaCopia', null), dd = lc ? Math.floor((Date.now() - new Date(lc).getTime()) / 86400000) : Infinity;
+      if (dd > 7) msg += '<br><br><b>Haz una copia de seguridad</b>Las facturas solo están guardadas en esta tableta y ' + (lc ? 'tu última copia es de hace ' + dd + ' días' : 'aún no has hecho ninguna copia') + '. Ve a Ajustes › Copia de seguridad › Exportar copia y guárdala en Archivos o en iCloud.';
+    }
     else if (t === 'rectificativa' && q.rect) msg = '<b>Rectifica la factura ' + esc(q.rect.num || '') + ' del ' + C.fdate(q.rect.fecha) + '</b>Las líneas restan de esa factura. Deja solo lo que hay que devolver o anular y escribe el motivo.';
     else if (fac && q.origen && q.origen.num) msg = '<b>Factura del presupuesto ' + esc(q.origen.num) + '</b>Revisa los datos y pulsa «Emitir factura».';
     lb.hidden = !msg; lb.innerHTML = msg;
@@ -1647,6 +1675,7 @@ if (typeof module !== 'undefined') module.exports = Core;
     L.innerHTML = q.mat.map(function (l, i) { return matLineHtml(l, i, t); }).join('');
   }
   function addMat(id) {
+    if (isIssued(S.q)) { toast(TIPON[tipoOf(S.q)] + ' ' + (S.q.num || '') + ' ya está emitida: no se le puede añadir nada. Abre una factura nueva.', 4500); return 0; }
     var m = S.mats[id]; if (!m) return;
     var ex = S.q.mat.filter(function (l) { return l.matId === id; })[0];
     if (ex) ex.cant = C.r3((+ex.cant || 0) + 1);
@@ -1978,6 +2007,9 @@ if (typeof module !== 'undefined') module.exports = Core;
       .sort(function (a, b) { return (b.actualizado || 0) - (a.actualizado || 0); });
     var pend = all.filter(function (p) { return tipoOf(p) === 'factura' && p.estado === 'emitida'; });
     var sumP = pend.reduce(function (a, p) { return a + C.calc(normQ(p)).total; }, 0);
+    var dn = dupNums();
+    $('#saved-hint').className = dn.length ? 'hint warn' : 'hint';
+    if (dn.length) { $('#saved-hint').textContent = 'Atención: hay facturas con el mismo número (' + dn.join(', ') + '). Suele pasar al juntar copias de dos tabletas con la misma serie.'; } else
     $('#saved-hint').textContent = tf !== 'presupuesto' && pend.length ? 'Pendiente de cobro: ' + C.eur(sumP) + ' en ' + pend.length + (pend.length === 1 ? ' factura.' : ' facturas.') : '';
     var L = $('#saved-list');
     if (!S.presReady) { L.innerHTML = '<div class="card empty">Cargando…</div>'; return; }
@@ -2038,6 +2070,8 @@ if (typeof module !== 'undefined') module.exports = Core;
     if (serieOf('factura') === (String(S.cfg.prefijo || 'P').trim() || 'P')) w.push('La serie de facturas tiene que ser distinta del prefijo de los presupuestos.');
     if (serieOf('factura') === serieOf('rectificativa')) w.push('La serie de rectificativas tiene que ser distinta de la de facturas.');
     if (!e.nombre || !e.nif || !e.dir) w.push('Para emitir facturas rellena arriba el nombre, el NIF y la dirección de tu empresa.');
+    else if (!nifOk(e.nif)) w.push('Tu NIF (' + e.nif + ') no parece correcto: revisa los números y la letra.');
+    var dn = dupNums(); if (dn.length) w.push('Hay facturas con el mismo número: ' + dn.join(', ') + '.');
     var n = $('#fac-note'); n.textContent = w.join(' '); n.className = w.length ? 'hint warn' : 'hint'; n.hidden = !w.length;
   }
   function renderTarifas() {
@@ -2076,7 +2110,7 @@ if (typeof module !== 'undefined') module.exports = Core;
     if (v === 'catalogo') renderCatalog();
     if (v === 'guardados') renderSaved();
     if (v === 'ajustes') renderSettings();
-    if (v === 'presupuesto') renderMatList(), renderTotals();
+    if (v === 'presupuesto') renderMatList(), renderTotals(), applyDocUI();
   }
   window.addEventListener('hashchange', function () { route(); window.scrollTo(0, 0); });
 
@@ -2173,6 +2207,7 @@ if (typeof module !== 'undefined') module.exports = Core;
   });
   $('#btn-pick').addEventListener('click', function () { S.psearch = ''; $('#pick-q').value = ''; openSheet('#sh-pick'); renderPicker(); });
   $('#btn-mo').addEventListener('click', function () {
+    if (isIssued(S.q)) return;
     S.q.mo.push({ k: uid(), desc: '', unidad: 'ud', cant: 1, precio: 0 }); renderMoList(); touch();
     var ins = $$('#mo-list [data-f="desc"]'); if (ins.length) ins[ins.length - 1].focus();
   });
@@ -2236,10 +2271,15 @@ if (typeof module !== 'undefined') module.exports = Core;
     if (serieOf(tipoOf(q)) === (String(S.cfg.prefijo || 'P').trim() || 'P')) add('bad', 'La serie de facturas es igual que el prefijo de los presupuestos. Cámbiala en Ajustes.');
     if (!q.mat.length && !q.mo.length) add('bad', 'Añade al menos un material o una línea de mano de obra.');
     else if (Math.abs(t.total) < 0.005) add('bad', 'El total es 0 €.');
+    else if (!rect && t.total < 0) add('bad', 'El total sale negativo. Para devolver dinero de otra factura usa «Factura rectificativa».');
+    if (q.mat.concat(q.mo).some(function (l) { return (+l.cant || 0) < 0 || (+l.coste || 0) < 0 || (+l.precio || 0) < 0; })) add('bad', 'Hay cantidades o precios negativos. Corrígelos antes de emitir.');
+    if (e.nif && !nifOk(e.nif)) add('warn', 'Tu NIF (' + e.nif + ') no parece correcto. Revísalo en Ajustes.');
+    var dn = dupNums(); if (dn.length) add('warn', 'Hay números de factura repetidos en esta tableta: ' + dn.join(', ') + '. Revisa Guardados.');
     if (rect && !String((q.rect && q.rect.motivo) || '').trim()) add('bad', 'Escribe el motivo de la rectificación.');
     if (!simp) {
       var miss = [!String(c.nombre || '').trim() && 'nombre', !String(c.nif || '').trim() && 'NIF', !String(c.dir || '').trim() && 'domicilio'].filter(Boolean);
       if (miss.length) add('bad', 'Faltan datos del cliente: ' + miss.join(', ') + '.' + (rect ? '' : ' Si es un particular y no los tienes, marca «Factura simplificada».'));
+      else if (!nifOk(c.nif)) add('warn', 'El NIF del cliente (' + c.nif + ') no parece correcto: revisa los números y la letra.');
       else add('ok', 'Cliente: ' + c.nombre + ' · NIF ' + c.nif);
     } else {
       var tot = Math.abs(t.total);
@@ -2266,9 +2306,12 @@ if (typeof module !== 'undefined') module.exports = Core;
     emitChecks(); openSheet('#sh-emit');
   }
   $('#emit-simp').addEventListener('change', function (e) { S.q.simplificada = e.target.checked; touch(); emitChecks(); });
+  var emitting = false;
   $('#btn-emit-go').addEventListener('click', function () {
+    if (emitting || !isFac(S.q) || isIssued(S.q)) return;
     if (!emitChecks()) return;
-    var q = S.q, prev = { num: q.num, fecha: q.fecha, estado: q.estado };
+    emitting = true; $('#btn-emit-go').disabled = true;
+    var q = S.q, prev = { num: q.num, fecha: q.fecha, estado: q.estado }, before = S.pres[q.id] ? clone(S.pres[q.id]) : null;
     clearTimeout(saveT);
     q.num = nextFacNum(tipoOf(q)); q.fecha = today(); q.estado = 'emitida'; q.emitida = Date.now(); q.numAuto = false;
     if (q.fechaOp === q.fecha) q.fechaOp = '';
@@ -2280,12 +2323,16 @@ if (typeof module !== 'undefined') module.exports = Core;
         var o = clone(S.pres[q.rect.id]); o.rectPor = (o.rectPor ? o.rectPor + ', ' : '') + q.num;
         Store.put('presupuestos', o.id, o).catch(function () {});
       }
+      emitting = false;
       fillQuote(); closeSheet('#sh-emit');
       toast(TIPON[tipoOf(q)] + ' ' + q.num + ' emitida', 3500);
       openPdf();
     }, function (er) {
+      emitting = false;
       q.num = prev.num; q.fecha = prev.fecha; q.estado = prev.estado; delete q.emitida;
-      $('#emit-err').textContent = errMsg(er);
+      if (before) S.pres[q.id] = before; else delete S.pres[q.id];
+      lsSet('pe2-draft', S.q); fillQuote(); emitChecks();
+      $('#emit-err').textContent = 'No se ha emitido: ' + errMsg(er);
     });
   });
   $('#btn-dup').addEventListener('click', function () { if (S.dirty) saveNow(); duplicate(S.q); });
@@ -2325,6 +2372,7 @@ if (typeof module !== 'undefined') module.exports = Core;
   $('#pick-grid').addEventListener('click', function (e) {
     var b = e.target.closest('[data-add]'); if (!b) return;
     var n = addMat(b.dataset.add), m = S.mats[b.dataset.add];
+    if (!n) return;
     renderPicker(); toast('Añadido: ' + (m ? m.nombre : '') + ' (' + C.qty(n) + ')');
   });
   $('#btn-pick-new').addEventListener('click', function () { openMat(null, true); });
@@ -2337,7 +2385,7 @@ if (typeof module !== 'undefined') module.exports = Core;
   $('#cat-list').addEventListener('click', function (e) {
     var o = e.target.closest('[data-open]'); if (o) { openMat(o.dataset.open); return; }
     var a = e.target.closest('[data-qadd]');
-    if (a) { var n = addMat(a.dataset.qadd); toast('Añadido al presupuesto ' + (S.q.num || '') + ' (' + C.qty(n) + ')'); }
+    if (a) { var n = addMat(a.dataset.qadd); if (n) toast('Añadido a ' + (isFac(S.q) ? 'la factura ' + (S.q.num || 'en borrador') : 'el presupuesto ' + (S.q.num || '')) + ' (' + C.qty(n) + ')'); }
   });
   $('#btn-newmat').addEventListener('click', function () { openMat(null, false); });
 
@@ -2466,7 +2514,7 @@ if (typeof module !== 'undefined') module.exports = Core;
     FileOut.save(new Blob([JSON.stringify(data)], { type: 'application/json' }), name, 'application/json').then(function (r) {
       if (r === 'needs-tap') { toast('Toca otra vez «Exportar copia»'); return; }
       if (r === 'cancelled') return;
-      lsSet('pe2-ultimaCopia', new Date().toISOString()); bkNote(); toast('Copia de seguridad lista');
+      lsSet('pe2-ultimaCopia', new Date().toISOString()); bkNote(); applyDocUI(); toast('Copia de seguridad lista');
     });
   });
   $('#btn-bk-imp').addEventListener('click', function () { $('#file-bk').value = ''; $('#file-bk').click(); });
