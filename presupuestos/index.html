@@ -248,6 +248,26 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:2px s
 @media (max-width:420px){.grid3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.grid3 .f:last-child{grid-column:1/-1}.tb-tot{font-size:26px}.tarifa{grid-template-columns:minmax(0,1fr) 56px 80px 36px}}
 @media (min-width:640px){.mline{grid-template-columns:60px minmax(0,1fr) auto}.mline .mctl{grid-column:2/-1}}
 @media (prefers-reduced-motion:reduce){.panel{animation:none}#toast{transition:none}}
+/* ---- Facturas ---- */
+.doctype{display:flex;gap:4px;background:var(--soft);padding:4px;border-radius:12px;width:max-content;max-width:100%}
+.doctype button{all:unset;cursor:pointer;padding:9px 18px;border-radius:9px;font-weight:600;font-size:15px;color:var(--mute)}
+.doctype button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.doctype button:focus-visible{outline:3px solid var(--accent)}
+#v-presupuesto[data-tipo="presupuesto"] .fac-only,#v-presupuesto:not([data-tipo="presupuesto"]) .pre-only,#v-presupuesto:not([data-tipo="rectificativa"]) .rect-only{display:none!important}
+.lockbar{background:var(--accent-soft);color:var(--ink);border-radius:var(--r);padding:12px 14px;font-size:14px;line-height:1.45}
+.lockbar b{display:block;font-size:15px}
+.card[inert]{opacity:.8}
+.qnum:read-only::placeholder{font-size:19px;font-weight:600}
+.card[inert] :is(#btn-pick,#btn-mo,#mo-chips,#iva-chips,.del,.step button,.sync){display:none!important}
+.qstate{display:flex;align-items:center;min-height:40px}
+.qstate .pill{font-size:14px;padding:5px 12px}
+.brand .newfac{margin-left:auto}
+.checks{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.checks li{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.4}
+.checks li::before{content:'✓';font-weight:700;color:var(--ok);flex:none;width:1.1em}
+.checks li.warn::before{content:'!';color:var(--warn)}
+.checks li.bad::before{content:'✕';color:var(--danger)}
+.checks li.bad{color:var(--danger)}
 </style>
 <script>
 /* Deja la app guardada en la tableta para usarla sin conexión y avisa de si está lista o de qué lo impide. */
@@ -287,16 +307,20 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:2px s
   <header class="apphead">
     <div class="brand">
       <div class="bolt" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6.2z" fill="#18202b"/></svg></div>
-      <div><div class="app-name">Presupuestos</div><div class="app-sub mode"><span class="dot" id="mode-dot"></span><span id="mode-txt">Cargando datos…</span></div></div>
+      <div><div class="app-name">Presupuestos y facturas</div><div class="app-sub mode"><span class="dot" id="mode-dot"></span><span id="mode-txt">Cargando datos…</span></div></div>
+      <button class="btn sm sig newfac" id="btn-newfac-top" type="button">+ Factura</button>
     </div>
     <div class="wires" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
   </header>
 
   <!-- ========== PRESUPUESTO ========== -->
   <main id="v-presupuesto" class="view" aria-label="Presupuesto actual">
+    <div class="doctype" id="doctype" role="group" aria-label="Tipo de documento"><button type="button" data-tipo="presupuesto">Presupuesto</button><button type="button" data-tipo="factura">Factura</button></div>
+    <div class="lockbar" id="lockbar" role="status" hidden></div>
     <section class="qhead">
-      <div class="f"><label for="q-num" class="eyebrow">Presupuesto nº</label><input id="q-num" class="qnum" data-q="num" autocomplete="off" placeholder="P-2026-001"></div>
-      <div class="f"><label for="q-estado" class="eyebrow">Estado</label>
+      <div class="f"><label for="q-num" class="eyebrow" id="q-num-lbl">Presupuesto nº</label><input id="q-num" class="qnum" data-q="num" autocomplete="off" placeholder="P-2026-001"></div>
+      <div class="f fac-only"><span class="eyebrow">Estado</span><div class="qstate" id="q-fstate"></div></div>
+      <div class="f pre-only"><label for="q-estado" class="eyebrow">Estado</label>
         <select id="q-estado" data-q="estado"><option value="borrador">Borrador</option><option value="enviado">Enviado</option><option value="aceptado">Aceptado</option><option value="rechazado">Rechazado</option></select></div>
     </section>
 
@@ -307,10 +331,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:2px s
         <div class="f"><label for="q-nif">NIF / CIF</label><input id="q-nif" data-q="cliente.nif" autocomplete="off"></div>
         <div class="f"><label for="q-tel">Teléfono</label><input id="q-tel" data-q="cliente.tel" inputmode="tel" autocomplete="off"></div>
         <div class="f full"><label for="q-email">Email</label><input id="q-email" data-q="cliente.email" inputmode="email" autocomplete="off"></div>
+        <div class="f full fac-only"><label for="q-cdir">Domicilio del cliente</label><input id="q-cdir" data-q="cliente.dir" placeholder="Calle, número, código postal y población" autocomplete="off"></div>
         <div class="f full"><label for="q-obra">Dirección de la obra</label><input id="q-obra" data-q="obra" placeholder="Calle, número, piso y población" autocomplete="off"></div>
-        <div class="f full"><label for="q-trabajo">Trabajo a realizar</label><textarea id="q-trabajo" data-q="trabajo" rows="2" placeholder="Ej.: renovación del cuadro y cambio de mecanismos en cocina"></textarea></div>
-        <div class="f"><label for="q-fecha">Fecha</label><input id="q-fecha" type="date" data-q="fecha"></div>
-        <div class="f"><label for="q-validez">Validez (días)</label><input id="q-validez" data-q="validez" data-num inputmode="numeric"></div>
+        <div class="f full rect-only"><label for="q-motivo">Motivo de la rectificación</label><textarea id="q-motivo" data-q="rect.motivo" rows="2" placeholder="Ej.: error en las horas de mano de obra"></textarea></div>
+        <div class="f full"><label for="q-trabajo" id="q-trabajo-lbl">Trabajo a realizar</label><textarea id="q-trabajo" data-q="trabajo" rows="2" placeholder="Ej.: renovación del cuadro y cambio de mecanismos en cocina"></textarea></div>
+        <div class="f"><label for="q-fecha" id="q-fecha-lbl">Fecha</label><input id="q-fecha" type="date" data-q="fecha"></div>
+        <div class="f pre-only"><label for="q-validez">Validez (días)</label><input id="q-validez" data-q="validez" data-num inputmode="numeric"></div>
+        <div class="f fac-only"><label for="q-fop">Fecha del trabajo</label><input id="q-fop" type="date" data-q="fechaOp"></div>
+        <p class="hint full fac-only" id="q-fecha-hint">La fecha de la factura se pone sola al emitirla. Rellena la del trabajo solo si fue otro día.</p>
       </div>
     </section>
 
@@ -341,7 +369,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:2px s
         <button class="chip" type="button" data-iva="0">Sin IVA</button>
       </div>
       <p class="hint" id="iva-hint"></p>
-      <div class="f"><label for="q-notas">Condiciones</label><textarea id="q-notas" data-q="notas" rows="3"></textarea></div>
+      <div class="grid3 fac-only"><div class="f"><label for="q-ret">Retención IRPF %</label><input id="q-ret" data-q="ret" data-num inputmode="decimal"></div><p class="hint" style="grid-column:2/-1;align-self:end">Solo si facturas a una empresa que te la aplica. Si no, déjala en 0.</p></div>
+      <div class="f"><label for="q-notas" id="q-notas-lbl">Condiciones</label><textarea id="q-notas" data-q="notas" rows="3"></textarea></div>
+    </section>
+
+    <section class="card fac-only" id="card-pago" aria-labelledby="h-pago">
+      <h2 id="h-pago">Cobro</h2>
+      <div class="grid2">
+        <div class="f"><label for="q-pago">Forma de pago</label><select id="q-pago" data-q="pago"><option value="">Sin indicar</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="transferencia">Transferencia</option><option value="bizum">Bizum</option><option value="domiciliacion">Domiciliación</option></select></div>
+        <div class="f" style="justify-content:flex-end"><label class="check"><input type="checkbox" id="q-cobrada"> Cobrada</label></div>
+      </div>
+      <p class="hint" id="pago-hint"></p>
     </section>
 
     <section class="card sum" aria-labelledby="h-sum">
@@ -350,7 +388,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:2px s
     </section>
 
     <div class="qactions">
+      <button class="btn sig" id="btn-emit2" type="button" hidden>Emitir factura</button>
+      <button class="btn pre-only" id="btn-tofac" type="button">Hacer factura de este presupuesto</button>
+      <button class="btn" id="btn-rect" type="button" hidden>Factura rectificativa</button>
       <button class="btn" id="btn-new" type="button">Nuevo presupuesto</button>
+      <button class="btn" id="btn-newfac" type="button">Nueva factura</button>
       <button class="btn" id="btn-dup" type="button">Duplicar</button>
       <button class="btn" id="btn-copy" type="button">Copiar resumen</button>
     </div>
@@ -367,9 +409,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:2px s
   </main>
 
   <!-- ========== GUARDADOS ========== -->
-  <main id="v-guardados" class="view" aria-label="Presupuestos guardados" hidden>
-    <div class="vhead"><h1>Presupuestos</h1><button class="btn pri" id="btn-new2" type="button">+ Nuevo</button></div>
+  <main id="v-guardados" class="view" aria-label="Presupuestos y facturas guardados" hidden>
+    <div class="vhead"><h1>Guardados</h1><div class="chips"><button class="btn" id="btn-new2" type="button">+ Presupuesto</button><button class="btn pri" id="btn-newfac2" type="button">+ Factura</button></div></div>
+    <div class="chips scroll" id="tipo-chips" aria-label="Filtrar por tipo"></div>
     <div class="chips scroll" id="est-chips" aria-label="Filtrar por estado"></div>
+    <p class="hint" id="saved-hint"></p>
     <div id="saved-list" class="slist"></div>
   </main>
 
@@ -378,7 +422,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:2px s
     <div class="vhead"><h1>Ajustes</h1></div>
     <section class="card" aria-labelledby="h-emp">
       <h2 id="h-emp">Tu empresa</h2>
-      <p class="hint">Aparece en la cabecera de cada PDF.</p>
+      <p class="hint">Aparece en la cabecera de cada PDF. Para hacer facturas hacen falta el nombre, el NIF y la dirección.</p>
       <div class="logo-row">
         <div class="logo-box" id="logo-box">Sin logo</div>
         <div class="chips"><button class="btn sm" id="btn-logo" type="button">Subir logo</button><button class="btn sm ghost" id="btn-logo-x" type="button" hidden>Quitar</button></div>
@@ -396,12 +440,27 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:2px s
       <h2 id="h-def">Valores por defecto</h2>
       <p class="hint">Se aplican a cada presupuesto nuevo.</p>
       <div class="grid2">
-        <div class="f"><label for="c-pre">Prefijo de numeración</label><input id="c-pre" data-c="prefijo" autocomplete="off"></div>
+        <div class="f"><label for="c-pre">Prefijo de los presupuestos</label><input id="c-pre" data-c="prefijo" autocomplete="off"></div>
         <div class="f"><label for="c-val">Validez (días)</label><input id="c-val" data-c="validez" data-num inputmode="numeric"></div>
         <div class="f"><label for="c-iva">IVA %</label><input id="c-iva" data-c="iva" data-num inputmode="decimal"></div>
         <div class="f"><label for="c-mg">Margen sobre materiales %</label><input id="c-mg" data-c="margen" data-num inputmode="decimal"></div>
         <div class="f full"><label for="c-cond">Condiciones</label><textarea id="c-cond" data-c="condiciones" rows="3"></textarea></div>
       </div>
+    </section>
+    <section class="card" aria-labelledby="h-fac">
+      <h2 id="h-fac">Facturas</h2>
+      <p class="hint">Cada factura recibe su número al emitirla, seguido y sin huecos dentro de cada año (F-2026-001, F-2026-002…). Una factura emitida ya no se puede cambiar ni borrar: si hay un error, se corrige con una factura rectificativa.</p>
+      <div class="grid2">
+        <div class="f"><label for="c-pfac">Serie de facturas</label><input id="c-pfac" data-c="prefijoFac" autocomplete="off"></div>
+        <div class="f"><label for="c-prect">Serie de rectificativas</label><input id="c-prect" data-c="prefijoRect" autocomplete="off"></div>
+        <div class="f"><label for="c-pago">Forma de pago habitual</label><select id="c-pago" data-c="pago"><option value="">Sin indicar</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="transferencia">Transferencia</option><option value="bizum">Bizum</option><option value="domiciliacion">Domiciliación</option></select></div>
+        <div class="f"><label for="c-ret">Retención IRPF % habitual</label><input id="c-ret" data-c="ret" data-num inputmode="decimal"></div>
+        <div class="f full"><label for="c-iban">IBAN para cobrar por transferencia</label><input id="c-iban" data-c="iban" autocomplete="off" placeholder="ES00 0000 0000 0000 0000 0000"></div>
+        <div class="f full"><label for="c-nfac">Observaciones en cada factura</label><textarea id="c-nfac" data-c="notaFac" rows="2" placeholder="Ej.: Garantía de 6 meses en la mano de obra."></textarea></div>
+      </div>
+      <p class="hint">Si haces facturas desde dos tabletas, pon una serie distinta en cada una (por ejemplo F y F2) para que no se repitan los números.</p>
+      <p class="hint" id="fac-note"></p>
+      <div class="chips"><button class="btn sm" id="btn-libro" type="button">Exportar libro de facturas (Excel)</button></div>
     </section>
     <section class="card" aria-labelledby="h-tar">
       <h2 id="h-tar">Tarifas de mano de obra</h2>
@@ -429,11 +488,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:2px s
 <div class="dock">
   <div class="dock-in">
     <div class="totbar" id="totbar">
-      <div><div class="tb-lab"><span>Total con IVA</span><span aria-hidden="true">·</span><span id="savestate">Se guarda solo</span></div><div class="tb-tot" id="tb-tot">0,00 €</div></div>
-      <div class="tb-acts"><button class="btn sig" id="btn-pdf" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 11v6M9.5 14.5 12 17l2.5-2.5"/></svg>Generar PDF</button></div>
+      <div><div class="tb-lab"><span id="tb-lab">Total con IVA</span><span aria-hidden="true">·</span><span id="savestate">Se guarda solo</span></div><div class="tb-tot" id="tb-tot">0,00 €</div></div>
+      <div class="tb-acts"><button class="btn sig" id="btn-pdf" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 11v6M9.5 14.5 12 17l2.5-2.5"/></svg><span id="btn-pdf-txt">Generar PDF</span></button></div>
     </div>
     <nav class="tabs" aria-label="Secciones">
-      <a class="tab" href="#presupuesto" data-v="presupuesto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Presupuesto</a>
+      <a class="tab" href="#presupuesto" data-v="presupuesto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg><span id="tab-doc">Presupuesto</span></a>
       <a class="tab" href="#catalogo" data-v="catalogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>Catálogo</a>
       <a class="tab" href="#guardados" data-v="guardados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg>Guardados</a>
       <a class="tab" href="#ajustes" data-v="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Ajustes</a>
@@ -511,6 +570,22 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:2px s
       <p class="status" id="pdf-status" role="status"></p>
     </div>
     <div class="p-foot"><button class="btn sig" type="button" id="btn-pdf-go">Descargar PDF</button></div>
+  </div>
+</div>
+
+<!-- ========== HOJA: EMITIR FACTURA ========== -->
+<div class="sheet" id="sh-emit" role="dialog" aria-modal="true" aria-labelledby="emit-t" hidden>
+  <div class="scrim" data-close></div>
+  <div class="panel">
+    <div class="p-head"><h2 id="emit-t">Emitir factura</h2><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+    <div class="p-body">
+      <div class="summary" id="emit-sum"></div>
+      <ul class="checks" id="emit-checks"></ul>
+      <label class="check" id="emit-simp-row"><input type="checkbox" id="emit-simp"> Factura simplificada (sin NIF ni domicilio del cliente)</label>
+      <p class="hint" id="emit-hint"></p>
+      <p class="status err" id="emit-err" role="alert"></p>
+    </div>
+    <div class="p-foot"><button class="btn" type="button" data-close>Seguir editando</button><button class="btn sig" type="button" id="btn-emit-go">Emitir factura</button></div>
   </div>
 </div>
 
@@ -893,20 +968,21 @@ var Core = (function () {
   function neto(m) { var p = +m.precio || 0; return m.ivaIncl ? r4(p / 1.21) : r4(p); }
 
   function calc(q) {
-    var mg = +q.margen || 0, dt = +q.dto || 0, iv = +q.iva || 0;
+    var mg = +q.margen || 0, dt = +q.dto || 0, iv = +q.iva || 0, rt = +q.ret || 0, sg = q.signo === -1 ? -1 : 1;
     var matLines = (q.mat || []).map(function (l) {
       var u = ru((+l.coste || 0) * (1 + mg / 100));
-      return { u: u, imp: r2(u * (+l.cant || 0)) };
+      return { u: u, imp: r2(sg * u * (+l.cant || 0)) };
     });
     var moLines = (q.mo || []).map(function (l) {
       var u = r2(l.precio);
-      return { u: u, imp: r2(u * (+l.cant || 0)) };
+      return { u: u, imp: r2(sg * u * (+l.cant || 0)) };
     });
     var tMat = r2(matLines.reduce(function (a, b) { return a + b.imp; }, 0));
     var tMo = r2(moLines.reduce(function (a, b) { return a + b.imp; }, 0));
     var sub = r2(tMat + tMo), dto = r2(sub * dt / 100), base = r2(sub - dto), iva = r2(base * iv / 100);
     var pctMat = base > 0 ? (tMat * (1 - dt / 100)) / base * 100 : 0;
-    return { matLines: matLines, moLines: moLines, tMat: tMat, tMo: tMo, sub: sub, dto: dto, base: base, iva: iva, total: r2(base + iva), pctMat: pctMat };
+    var ret = r2(base * rt / 100);
+    return { matLines: matLines, moLines: moLines, tMat: tMat, tMo: tMo, sub: sub, dto: dto, base: base, iva: iva, ret: ret, total: r2(base + iva - ret), pctMat: pctMat };
   }
 
   function host(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return ''; } }
@@ -915,7 +991,11 @@ var Core = (function () {
   async function buildPdf(d) {
     var q = d.q, t = d.t, cfg = d.cfg || {}, e = cfg.empresa || {}, o = d.opts || {};
     var pdf = MiniPDF.Doc({ format: 'a4' });
-    pdf.setProperties({ title: 'Presupuesto ' + (q.num || ''), author: e.nombre || '', creator: 'Presupuestos de electricidad' });
+    var tipo = q.tipo || 'presupuesto', isFac = tipo !== 'presupuesto';
+    var TITLE = tipo === 'rectificativa' ? 'FACTURA RECTIFICATIVA' : tipo === 'factura' ? (q.simplificada ? 'FACTURA SIMPLIFICADA' : 'FACTURA') : 'PRESUPUESTO';
+    var DOCN = tipo === 'rectificativa' ? 'Factura rectificativa' : tipo === 'factura' ? 'Factura' : 'Presupuesto';
+    if (isFac) o = Object.assign({}, o, { fuentes: false });
+    pdf.setProperties({ title: DOCN + ' ' + (q.num || ''), author: e.nombre || '', creator: 'Presupuestos de electricidad' });
     var F = { b: false }, FB = { b: true };
     var PW = 210, PH = 297, M = 15, CW = PW - 2 * M, BOTTOM = PH - 20;
     var INK = [24, 32, 43], MUTE = [93, 104, 119], LINE = [213, 219, 227], SOFT = [238, 241, 244], ZEBRA = [247, 248, 250],
@@ -995,21 +1075,28 @@ var Core = (function () {
     var el = [e.nif ? 'NIF ' + e.nif : '', e.dir || '', [e.tel, e.email].filter(Boolean).join('  ·  '), e.web || ''].filter(Boolean);
     yy += 0.6;
     el.forEach(function (s) { wrap(s, F, 8.5, leftW).forEach(function (ln) { text(ln, lx, yy, 8.5, F, MUTE); yy += lh(8.5); }); });
-    text('PRESUPUESTO', PW - M, top + 6, 19, FB, INK, 'right');
-    var rr = [['Número', q.num || '—'], ['Fecha', fdate(q.fecha) || '—'], ['Válido hasta', q.fecha ? fdate(addDays(q.fecha, q.validez || 30)) : '—']];
-    var ry = top + 12.5;
-    rr.forEach(function (r) { text(r[0], PW - M - 34, ry, 8.5, F, MUTE); text(r[1], PW - M, ry, 9, FB, INK, 'right'); ry += 4.7; });
+    text(TITLE, PW - M, top + 6, TITLE.length > 12 ? 14 : 19, FB, INK, 'right');
+    var rr;
+    if (isFac) {
+      rr = [['Número', q.num || 'BORRADOR'], ['Fecha', fdate(q.fecha) || '—']];
+      if (q.fechaOp && q.fechaOp !== q.fecha) rr.push(['Fecha del trabajo', fdate(q.fechaOp)]);
+      if (tipo === 'rectificativa' && q.rect) { rr.push(['Rectifica a', q.rect.num || '—']); if (q.rect.fecha) rr.push(['De fecha', fdate(q.rect.fecha)]); }
+    } else rr = [['Número', q.num || '—'], ['Fecha', fdate(q.fecha) || '—'], ['Válido hasta', q.fecha ? fdate(addDays(q.fecha, q.validez || 30)) : '—']];
+    var ry = top + 12.5, rlx = PW - M - (isFac ? 46 : 34);
+    rr.forEach(function (r) { text(r[0], rlx, ry, 8.5, F, MUTE); text(r[1], PW - M, ry, 9, FB, INK, 'right'); ry += 4.7; });
     y = Math.max(yy, ry) + 4;
 
     /* ---- Cliente y trabajo ---- */
     var c = q.cliente || {}, colW = (CW - 8) / 2 - 2;
     var cl = [];
     if (c.nif) cl.push('NIF ' + c.nif);
-    if (q.obra) cl.push('Obra: ' + q.obra);
+    if (isFac && c.dir) cl.push(c.dir);
+    if (q.obra && !(isFac && String(c.dir || '').trim() === String(q.obra).trim())) cl.push('Obra: ' + q.obra);
     var ct = [c.tel, c.email].filter(Boolean).join('  ·  '); if (ct) cl.push(ct);
     var cName = wrap(c.nombre || 'Cliente sin indicar', FB, 10.5, colW);
     var cLines = []; cl.forEach(function (s) { cLines = cLines.concat(wrap(s, F, 8.5, colW)); });
-    var wLines = wrap(q.trabajo || 'Sin descripción', F, 9, colW);
+    var wTxt = tipo === 'rectificativa' ? [(q.rect && q.rect.motivo) || 'Sin indicar', q.trabajo || ''].filter(Boolean).join('\n') : (q.trabajo || 'Sin descripción');
+    var wLines = wrap(wTxt, F, 9, colW);
     var hL = 5 + cName.length * lh(10.5) + cLines.length * lh(8.5);
     var hR = 5 + wLines.length * lh(9);
     var boxH = Math.max(hL, hR) + 6;
@@ -1021,7 +1108,7 @@ var Core = (function () {
     cName.forEach(function (s) { text(s, bx, by, 10.5, FB, INK); by += lh(10.5); });
     cLines.forEach(function (s) { text(s, bx, by, 8.5, F, INK); by += lh(8.5); });
     var bx2 = M + CW / 2 + 2; by = y + 5;
-    text('TRABAJO A REALIZAR', bx2, by, 7, FB, MUTE); by += 4.6;
+    text(tipo === 'rectificativa' ? 'MOTIVO DE LA RECTIFICACIÓN' : isFac ? 'TRABAJO REALIZADO' : 'TRABAJO A REALIZAR', bx2, by, 7, FB, MUTE); by += 4.6;
     wLines.forEach(function (s) { text(s, bx2, by, 9, F, INK); by += lh(9); });
     y += boxH + 7;
 
@@ -1127,9 +1214,10 @@ var Core = (function () {
 
     /* ---- Totales ---- */
     var rows = [['Materiales', eur(t.tMat)], ['Mano de obra y otros', eur(t.tMo)]];
-    if (+q.dto) rows.push(['Descuento (' + pct(q.dto) + ')', '-' + eur(t.dto)]);
+    if (+q.dto) rows.push(['Descuento (' + pct(q.dto) + ')', eur(-t.dto)]);
     rows.push(['Base imponible', eur(t.base), 1]);
     rows.push(['IVA (' + pct(q.iva) + ')', eur(t.iva)]);
+    if (+t.ret) rows.push(['Retención IRPF (' + pct(q.ret) + ')', eur(-t.ret)]);
     var totH = rows.length * 6 + 13;
     fits(totH + 2);
     var tx = PW - M - 86, tw0 = 86, ty3 = y;
@@ -1141,10 +1229,26 @@ var Core = (function () {
     });
     ty3 += 1.5;
     rect(tx, ty3, tw0, 11, YEL);
-    text('TOTAL', tx + 3, ty3 + 7.3, 11, FB, INK);
+    text(tipo === 'factura' ? 'TOTAL A PAGAR' : 'TOTAL', tx + 3, ty3 + 7.3, 11, FB, INK);
     text(eur(t.total), tx + tw0 - 3, ty3 + 7.6, 14, FB, INK, 'right');
     if (q.iva === 0 || q.iva === '0') { /* nada */ }
     y = ty3 + 11 + 9;
+
+    /* ---- Forma de pago ---- */
+    if (isFac) {
+      var PAGON = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia bancaria', bizum: 'Bizum', domiciliacion: 'Domiciliación bancaria' };
+      var pl = [];
+      if (q.pago) pl.push('Forma de pago: ' + (PAGON[q.pago] || q.pago) + (q.pago === 'transferencia' && cfg.iban ? '  ·  IBAN ' + cfg.iban : ''));
+      else if (cfg.iban && tipo === 'factura') pl.push('IBAN para el pago: ' + cfg.iban);
+      if (q.origen && q.origen.num) pl.push('Según presupuesto ' + q.origen.num + '.');
+      if (pl.length) {
+        var pls = []; pl.forEach(function (sx) { pls = pls.concat(wrap(sx, F, 8.5, CW)); });
+        fits(10 + pls.length * lh(8.5));
+        text('PAGO', M, y, 7.5, FB, MUTE); y += 4.6;
+        pls.forEach(function (sx) { text(sx, M, y, 8.5, F, INK); y += lh(8.5); });
+        y += 6;
+      }
+    }
 
     /* ---- Condiciones ---- */
     var notes = String(q.notas || '').trim();
@@ -1156,21 +1260,23 @@ var Core = (function () {
       var nl = []; if (notes) nl = nl.concat(wrap(notes, F, 8.5, CW));
       extra.forEach(function (sx) { nl = nl.concat(wrap(sx, F, 8, CW)); });
       fits(10 + Math.min(nl.length, 6) * lh(8.5));
-      text('CONDICIONES', M, y, 7.5, FB, MUTE); y += 4.6;
+      text(isFac ? 'OBSERVACIONES' : 'CONDICIONES', M, y, 7.5, FB, MUTE); y += 4.6;
       nl.forEach(function (sx) { if (y > BOTTOM - 2) { newPage(); } text(sx, M, y, 8.5, F, INK); y += lh(8.5); });
       y += 6;
     }
 
-    /* ---- Firma ---- */
-    fits(30);
-    var fw = (CW - 10) / 2;
-    [['Conforme, el cliente', c.nombre || ''], ['Por la empresa', e.nombre || '']].forEach(function (f, k) {
-      var fx = M + k * (fw + 10);
-      rect(fx, y, fw, 24, null, LINE, 0.3);
-      text(f[0], fx + 3, y + 4.6, 7.5, FB, MUTE);
-      text('Fecha y firma', fx + 3, y + 21, 7, F, MUTE);
-      if (f[1]) text(f[1], fx + fw - 3, y + 21, 7.5, F, INK, 'right');
-    });
+    /* ---- Firma (solo presupuestos) ---- */
+    if (!isFac) {
+      fits(30);
+      var fw = (CW - 10) / 2;
+      [['Conforme, el cliente', c.nombre || ''], ['Por la empresa', e.nombre || '']].forEach(function (f, k) {
+        var fx = M + k * (fw + 10);
+        rect(fx, y, fw, 24, null, LINE, 0.3);
+        text(f[0], fx + 3, y + 4.6, 7.5, FB, MUTE);
+        text('Fecha y firma', fx + 3, y + 21, 7, F, MUTE);
+        if (f[1]) text(f[1], fx + fw - 3, y + 21, 7.5, F, INK, 'right');
+      });
+    }
 
     /* ---- Pie en todas las páginas ---- */
     var n = nPages;
@@ -1179,7 +1285,7 @@ var Core = (function () {
       hline(M, PW - M, PH - 12, LINE);
       var left = [e.nombre, e.nif ? 'NIF ' + e.nif : ''].filter(Boolean).join('  ·  ');
       if (left) text(left, M, PH - 8, 7.2, F, MUTE);
-      text('Presupuesto ' + (q.num || '') + '  ·  Página ' + (idx + 1) + ' de ' + n, PW - M, PH - 8, 7.2, F, MUTE, 'right');
+      text(DOCN + ' ' + (q.num || '') + '  ·  Página ' + (idx + 1) + ' de ' + n, PW - M, PH - 8, 7.2, F, MUTE, 'right');
     }
     return pdf.output('blob');
   }
@@ -1260,6 +1366,7 @@ if (typeof module !== 'undefined') module.exports = Core;
   var CFG0 = {
     empresa: { nombre: '', nif: '', dir: '', tel: '', email: '', web: '', logo: null },
     prefijo: 'P', iva: 21, margen: 0, validez: 30,
+    prefijoFac: 'F', prefijoRect: 'R', iban: '', pago: '', ret: 0, notaFac: '',
     condiciones: 'Pago según lo acordado.\nLos trabajos no incluidos en este presupuesto se valorarán aparte.',
     tarifas: [{ desc: 'Hora de oficial electricista', unidad: 'h', precio: 35 }, { desc: 'Hora de ayudante', unidad: 'h', precio: 25 }, { desc: 'Instalación de punto de luz', unidad: 'ud', precio: 45 }, { desc: 'Instalación de enchufe', unidad: 'ud', precio: 40 }, { desc: 'Instalación de interruptor', unidad: 'ud', precio: 35 }, { desc: 'Desplazamiento', unidad: 'ud', precio: 20 }],
     pdf: { fotos: true, fuentes: true }
@@ -1267,7 +1374,7 @@ if (typeof module !== 'undefined') module.exports = Core;
   var S = {
     mode: 'init', db: null, assets: null, dl: null, user: null,
     mats: {}, pres: {}, cfg: clone(CFG0), matsReady: false, presReady: false, cfgReady: false,
-    q: null, dirty: false, view: 'presupuesto', cat: 'all', search: '', pcat: 'all', psearch: '', est: 'all', marca: '', pmarca: '',
+    q: null, dirty: false, view: 'presupuesto', cat: 'all', search: '', pcat: 'all', psearch: '', est: 'all', tipoF: 'all', marca: '', pmarca: '',
     edit: null
   };
 
@@ -1352,27 +1459,53 @@ if (typeof module !== 'undefined') module.exports = Core;
     dot.classList.add('on'); t.textContent = 'Guardado en esta tableta · funciona sin conexión';
   }
 
+  /* ---------- Tipos de documento ---------- */
+  var TIPON = { presupuesto: 'Presupuesto', factura: 'Factura', rectificativa: 'Factura rectificativa' };
+  var PAGON = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', bizum: 'Bizum', domiciliacion: 'Domiciliación' };
+  function tipoOf(q) { return (q && q.tipo) || 'presupuesto'; }
+  function isFac(q) { return tipoOf(q) !== 'presupuesto'; }
+  function isIssued(q) { return isFac(q) && !!q.estado && q.estado !== 'borrador'; }
+  function serieOf(tipo) {
+    var def = tipo === 'rectificativa' ? 'R' : 'F';
+    return String((tipo === 'rectificativa' ? S.cfg.prefijoRect : S.cfg.prefijoFac) || def).trim() || def;
+  }
+  /* Siguiente número de factura de la serie: cuenta solo las ya emitidas, así no quedan huecos */
+  function nextFacNum(tipo) {
+    var y = new Date().getFullYear(), head = serieOf(tipo) + '-' + y + '-', max = 0;
+    Object.keys(S.pres).forEach(function (id) {
+      var p = S.pres[id]; if (!isIssued(p)) return;
+      var n = String(p.num || '');
+      if (n.indexOf(head) === 0) { var v = parseInt(n.slice(head.length), 10); if (v > max) max = v; }
+    });
+    return head + String(max + 1).padStart(3, '0');
+  }
+
   /* ---------- Presupuesto actual ---------- */
   function nextNum() {
     var pre = String(S.cfg.prefijo || 'P').trim() || 'P', y = new Date().getFullYear(), head = pre + '-' + y + '-', max = 0;
     Object.keys(S.pres).forEach(function (id) {
       if (S.q && id === S.q.id) return;
+      if (isFac(S.pres[id])) return;
       var n = String(S.pres[id].num || '');
       if (n.indexOf(head) === 0) { var v = parseInt(n.slice(head.length), 10); if (v > max) max = v; }
     });
     return head + String(max + 1).padStart(3, '0');
   }
-  function blankQuote() {
+  function blankQuote(tipo) {
+    tipo = tipo || 'presupuesto';
+    var fac = tipo !== 'presupuesto';
     return {
-      id: 'p-' + uid(), num: '', numAuto: true, fecha: today(), estado: 'borrador',
-      cliente: { nombre: '', nif: '', tel: '', email: '' }, obra: '', trabajo: '', mat: [], mo: [],
-      margen: +S.cfg.margen || 0, dto: 0, iva: S.cfg.iva == null ? 21 : +S.cfg.iva, validez: +S.cfg.validez || 30, notas: S.cfg.condiciones || '',
+      id: (fac ? 'f-' : 'p-') + uid(), tipo: tipo, num: '', numAuto: !fac, fecha: today(), estado: 'borrador',
+      cliente: { nombre: '', nif: '', tel: '', email: '', dir: '' }, obra: '', trabajo: '', mat: [], mo: [],
+      margen: +S.cfg.margen || 0, dto: 0, iva: S.cfg.iva == null ? 21 : +S.cfg.iva, validez: +S.cfg.validez || 30,
+      notas: fac ? (S.cfg.notaFac || '') : (S.cfg.condiciones || ''),
+      ret: fac ? (+S.cfg.ret || 0) : 0, pago: fac ? (S.cfg.pago || '') : '', fechaOp: '', simplificada: false,
       creado: Date.now(), actualizado: 0
     };
   }
   function normQ(q) {
-    q = Object.assign(blankQuote(), q || {});
-    q.cliente = Object.assign({ nombre: '', nif: '', tel: '', email: '' }, q.cliente || {});
+    q = Object.assign(blankQuote(q && q.tipo), q || {});
+    q.cliente = Object.assign({ nombre: '', nif: '', tel: '', email: '', dir: '' }, q.cliente || {});
     q.mat = (q.mat || []).map(function (l) { return Object.assign({ k: uid(), nombre: '', unidad: 'ud', cant: 1, coste: 0, cat: 'otros', fuente: {} }, l); });
     q.mo = (q.mo || []).map(function (l) { return Object.assign({ k: uid(), desc: '', unidad: 'ud', cant: 1, precio: 0 }, l); });
     return q;
@@ -1386,7 +1519,7 @@ if (typeof module !== 'undefined') module.exports = Core;
   function touch() {
     S.q.actualizado = Date.now(); S.dirty = true;
     lsSet('pe2-draft', S.q);
-    renderTotals(); scheduleSave();
+    renderTotals(); scheduleSave(); applyDocUI();
   }
   function scheduleSave() {
     clearTimeout(saveT);
@@ -1397,7 +1530,7 @@ if (typeof module !== 'undefined') module.exports = Core;
   function saveNow() {
     clearTimeout(saveT);
     if (!worth(S.q) || !S.presReady) return Promise.resolve();
-    if (S.q.numAuto && !S.pres[S.q.id]) { S.q.num = nextNum(); if (document.activeElement !== $('#q-num')) $('#q-num').value = S.q.num; }
+    if (S.q.numAuto && !isFac(S.q) && !S.pres[S.q.id]) { S.q.num = nextNum(); if (document.activeElement !== $('#q-num')) $('#q-num').value = S.q.num; }
     var data = clone(S.q);
     setSave('saving');
     return Store.put('presupuestos', S.q.id, data).then(function () {
@@ -1409,9 +1542,55 @@ if (typeof module !== 'undefined') module.exports = Core;
     S.q = normQ(clone(q)); S.dirty = false; lsSet('pe2-draft', S.q);
     fillQuote(); setSave(worth(S.q) ? (S.pres[S.q.id] ? 'saved' : 'pending') : 'draft');
   }
-  function newQuote() {
-    var go = function () { var q = blankQuote(); if (S.presReady) q.num = nextNum(); loadQuote(q); location.hash = '#presupuesto'; window.scrollTo(0, 0); toast('Presupuesto nuevo'); };
+  function newQuote(tipo) {
+    tipo = typeof tipo === 'string' ? tipo : 'presupuesto';
+    var go = function () {
+      var q = blankQuote(tipo); if (S.presReady && tipo === 'presupuesto') q.num = nextNum();
+      loadQuote(q); location.hash = '#presupuesto'; window.scrollTo(0, 0);
+      toast(tipo === 'presupuesto' ? 'Presupuesto nuevo' : 'Factura nueva: pon el cliente y lo que has hecho, y pulsa «Emitir factura»', tipo === 'presupuesto' ? 0 : 4500);
+    };
     if (S.dirty && worth(S.q)) saveNow().then(go); else go();
+  }
+  function newFactura() { newQuote('factura'); }
+
+  /* Muestra lo que toca según el tipo de documento y bloquea las facturas ya emitidas */
+  function applyDocUI() {
+    var q = S.q; if (!q) return;
+    var t = tipoOf(q), fac = t !== 'presupuesto', issued = isIssued(q), v = $('#v-presupuesto');
+    v.dataset.tipo = t;
+    $('#doctype').hidden = !(!worth(q) && !S.pres[q.id]);
+    $$('#doctype [data-tipo]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.tipo === (fac ? 'factura' : 'presupuesto'))); });
+    $('#q-num-lbl').textContent = TIPON[t] + ' nº';
+    var qn = $('#q-num'); qn.readOnly = fac; qn.placeholder = fac ? 'Se numera al emitir' : 'P-2026-001';
+    $('#q-fecha').readOnly = fac;
+    $('#q-fecha-lbl').textContent = fac ? 'Fecha de la factura' : 'Fecha';
+    $('#q-fecha-hint').hidden = issued;
+    $('#q-trabajo-lbl').textContent = fac ? 'Trabajo realizado' : 'Trabajo a realizar';
+    $('#q-notas-lbl').textContent = fac ? 'Observaciones' : 'Condiciones';
+    $('#tab-doc').textContent = fac ? 'Factura' : 'Presupuesto';
+    $('#tb-lab').textContent = fac && +q.ret ? 'Total a pagar' : 'Total con IVA';
+    if (fac) {
+      var cls = q.estado === 'cobrada' ? 'ok' : issued ? 'acc' : '';
+      var lbl = q.estado === 'cobrada' ? 'Cobrada' : issued ? (t === 'rectificativa' ? 'Emitida' : 'Emitida · pendiente de cobro') : 'Borrador';
+      $('#q-fstate').innerHTML = '<span class="pill ' + cls + '">' + lbl + '</span>';
+    }
+    $('#btn-emit2').hidden = !(fac && !issued);
+    $('#btn-emit2').textContent = t === 'rectificativa' ? 'Emitir factura rectificativa' : 'Emitir factura';
+    $('#btn-rect').hidden = !(t === 'factura' && issued);
+    $('#btn-dup').hidden = t === 'rectificativa';
+    $('#btn-pdf-txt').textContent = fac && !issued ? 'Emitir factura' : 'Generar PDF';
+    $$('#v-presupuesto > section.card').forEach(function (sec) {
+      if (sec.id === 'card-pago' || sec.classList.contains('sum')) return;
+      if (issued) sec.setAttribute('inert', ''); else sec.removeAttribute('inert');
+    });
+    $('#q-pago').disabled = issued;
+    var cb = $('#q-cobrada'); cb.checked = q.estado === 'cobrada'; cb.disabled = !issued; cb.closest('label').hidden = t === 'rectificativa';
+    $('#pago-hint').textContent = t === 'rectificativa' ? '' : !issued ? 'Después de emitirla podrás marcarla como cobrada.' : (q.pago === 'transferencia' && !S.cfg.iban ? 'No has puesto tu IBAN en Ajustes: no sale en la factura.' : '');
+    var lb = $('#lockbar'), msg = '';
+    if (issued) msg = '<b>' + esc(TIPON[t]) + ' ' + esc(q.num || '') + ' emitida el ' + C.fdate(q.fecha) + '</b>Ya no se puede cambiar ni borrar.' + (t === 'factura' ? ' Si hay un error, pulsa «Factura rectificativa» más abajo.' : '') + (q.rectPor ? ' Rectificada por ' + esc(q.rectPor) + '.' : '');
+    else if (t === 'rectificativa' && q.rect) msg = '<b>Rectifica la factura ' + esc(q.rect.num || '') + ' del ' + C.fdate(q.rect.fecha) + '</b>Las líneas restan de esa factura. Deja solo lo que hay que devolver o anular y escribe el motivo.';
+    else if (fac && q.origen && q.origen.num) msg = '<b>Factura del presupuesto ' + esc(q.origen.num) + '</b>Revisa los datos y pulsa «Emitir factura».';
+    lb.hidden = !msg; lb.innerHTML = msg;
   }
 
   function fillQuote() {
@@ -1420,7 +1599,7 @@ if (typeof module !== 'undefined') module.exports = Core;
       var v = getPath(q, el.dataset.q);
       el.value = el.hasAttribute('data-num') ? inNum(v) : (v == null ? '' : v);
     });
-    renderMatList(); renderMoChips(); renderMoList(); renderTotals();
+    renderMatList(); renderMoChips(); renderMoList(); renderTotals(); applyDocUI();
   }
 
   /* --- líneas de material --- */
@@ -1516,7 +1695,8 @@ if (typeof module !== 'undefined') module.exports = Core;
     if (+q.dto) rows.push(['Descuento (' + C.pct(q.dto) + ')', '−' + C.eur(t.dto)]);
     rows.push(['Base imponible', C.eur(t.base), 'b']);
     rows.push(['IVA (' + C.pct(q.iva) + ')', C.eur(t.iva)]);
-    rows.push(['Total', C.eur(t.total), 'tot']);
+    if (+t.ret) rows.push(['Retención IRPF (' + C.pct(q.ret) + ')', C.eur(-t.ret)]);
+    rows.push([tipoOf(q) === 'factura' ? 'Total a pagar' : 'Total', C.eur(t.total), 'tot']);
     $('#sum').innerHTML = rows.map(function (r) { return '<div class="r ' + (r[2] || '') + '"><span>' + esc(r[0]) + '</span><span>' + esc(r[1]) + '</span></div>'; }).join('');
     $('#tb-tot').textContent = C.eur(t.total);
     $$('#iva-chips [data-iva]').forEach(function (b) { b.setAttribute('aria-pressed', String(+b.dataset.iva === +q.iva)); });
@@ -1726,6 +1906,7 @@ if (typeof module !== 'undefined') module.exports = Core;
     var q = S.q, t = C.calc(q);
     $('#pdf-sum').innerHTML = '<span class="hint">' + esc(q.num || 'Sin número') + ' · ' + esc(q.cliente.nombre || 'Cliente sin indicar') + '</span><b>' + C.eur(t.total) + '</b><span class="hint">' + q.mat.length + ' materiales · ' + q.mo.length + ' líneas de mano de obra</span>';
     $('#pdf-fotos').checked = !!S.cfg.pdf.fotos; $('#pdf-fuentes').checked = !!S.cfg.pdf.fuentes;
+    $('#pdf-fuentes').closest('label').hidden = isFac(q);
     pdfHint();
     $('#pdf-status').textContent = ''; $('#pdf-status').className = 'status';
     var go = $('#btn-pdf-go'); go.disabled = false; go.textContent = 'Descargar PDF'; pdfReady = null;
@@ -1743,6 +1924,7 @@ if (typeof module !== 'undefined') module.exports = Core;
   }
   async function makePdf() {
     if (pdfReady) { sharePdf(); return; }
+    if (isFac(S.q) && !isIssued(S.q)) { closeSheet('#sh-pdf'); openEmit(); return; }
     var st = $('#pdf-status'), go = $('#btn-pdf-go'), q = clone(S.q);
     if (!q.mat.length && !q.mo.length) { st.className = 'status err'; st.textContent = 'Añade al menos un material o una línea de mano de obra.'; return; }
     go.disabled = true; go.textContent = 'Preparando…'; st.className = 'status'; st.textContent = 'Preparando el PDF…';
@@ -1759,7 +1941,7 @@ if (typeof module !== 'undefined') module.exports = Core;
       }
       var logo = S.cfg.empresa.logo ? await logoJpeg(fotoSrc(S.cfg.empresa.logo)) : null;
       var blob = await C.buildPdf({ q: q, t: C.calc(q), cfg: S.cfg, opts: opts, imgs: imgs, logo: logo });
-      var name = ('Presupuesto ' + (q.num || '') + (q.cliente.nombre ? ' - ' + q.cliente.nombre : '')).replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim().slice(0, 120) + '.pdf';
+      var name = (TIPON[tipoOf(q)] + ' ' + (q.num || '') + (q.cliente.nombre ? ' - ' + q.cliente.nombre : '')).replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim().slice(0, 120) + '.pdf';
       pdfReady = { blob: blob, name: name };
       go.disabled = false;
       if (FileOut.isIOS) {
@@ -1778,35 +1960,57 @@ if (typeof module !== 'undefined') module.exports = Core;
 
   /* ---------- Guardados ---------- */
   var EST = [['borrador', 'Borrador', ''], ['enviado', 'Enviado', 'acc'], ['aceptado', 'Aceptado', 'ok'], ['rechazado', 'Rechazado', 'bad']];
+  var EST_F = [['borrador', 'Borrador', ''], ['emitida', 'Pendiente de cobro', 'acc'], ['cobrada', 'Cobrada', 'ok'], ['rect', 'Rectificativas', '']];
+  function estKey(p) { return tipoOf(p) === 'rectificativa' && isIssued(p) ? 'rect' : (p.estado || 'borrador'); }
   function renderSaved() {
     var all = Object.keys(S.pres).map(function (k) { return S.pres[k]; });
-    var counts = {}; all.forEach(function (p) { counts[p.estado || 'borrador'] = (counts[p.estado || 'borrador'] || 0) + 1; });
-    $('#est-chips').innerHTML = '<button type="button" class="chip" data-est="all" aria-pressed="' + (S.est === 'all') + '">Todos<span class="n">' + all.length + '</span></button>' +
-      EST.filter(function (e) { return counts[e[0]]; }).map(function (e) { return '<button type="button" class="chip" data-est="' + e[0] + '" aria-pressed="' + (S.est === e[0]) + '">' + e[1] + '<span class="n">' + counts[e[0]] + '</span></button>'; }).join('');
-    var list = all.filter(function (p) { return S.est === 'all' || (p.estado || 'borrador') === S.est; })
+    var nF = all.filter(isFac).length, nP = all.length - nF, tf = S.tipoF || 'all';
+    $('#tipo-chips').innerHTML = [['all', 'Todo', all.length], ['presupuesto', 'Presupuestos', nP], ['factura', 'Facturas', nF]].map(function (c) {
+      return '<button type="button" class="chip" data-tf="' + c[0] + '" aria-pressed="' + (tf === c[0]) + '">' + c[1] + '<span class="n">' + c[2] + '</span></button>';
+    }).join('');
+    var pool = all.filter(function (p) { return tf === 'all' || (tf === 'factura' ? isFac(p) : !isFac(p)); });
+    var ESTS = tf === 'factura' ? EST_F : tf === 'presupuesto' ? EST : [];
+    var counts = {}; pool.forEach(function (p) { var k = estKey(p); counts[k] = (counts[k] || 0) + 1; });
+    $('#est-chips').hidden = !ESTS.length;
+    $('#est-chips').innerHTML = ESTS.length ? '<button type="button" class="chip" data-est="all" aria-pressed="' + (S.est === 'all') + '">Todos<span class="n">' + pool.length + '</span></button>' +
+      ESTS.filter(function (e) { return counts[e[0]]; }).map(function (e) { return '<button type="button" class="chip" data-est="' + e[0] + '" aria-pressed="' + (S.est === e[0]) + '">' + e[1] + '<span class="n">' + counts[e[0]] + '</span></button>'; }).join('') : '';
+    var list = pool.filter(function (p) { return !ESTS.length || S.est === 'all' || estKey(p) === S.est; })
       .sort(function (a, b) { return (b.actualizado || 0) - (a.actualizado || 0); });
+    var pend = all.filter(function (p) { return tipoOf(p) === 'factura' && p.estado === 'emitida'; });
+    var sumP = pend.reduce(function (a, p) { return a + C.calc(normQ(p)).total; }, 0);
+    $('#saved-hint').textContent = tf !== 'presupuesto' && pend.length ? 'Pendiente de cobro: ' + C.eur(sumP) + ' en ' + pend.length + (pend.length === 1 ? ' factura.' : ' facturas.') : '';
     var L = $('#saved-list');
-    if (!S.presReady) { L.innerHTML = '<div class="card empty">Cargando presupuestos…</div>'; return; }
-    if (!list.length) { L.innerHTML = '<div class="card empty"><b>' + (all.length ? 'Ninguno con este estado' : 'Aún no hay presupuestos guardados') + '</b><span>Se guardan solos en cuanto escribes el cliente o añades una línea.</span></div>'; return; }
+    if (!S.presReady) { L.innerHTML = '<div class="card empty">Cargando…</div>'; return; }
+    if (!list.length) { L.innerHTML = '<div class="card empty"><b>' + (all.length ? 'No hay ninguno con este filtro' : 'Aún no hay nada guardado') + '</b><span>Se guardan solos en cuanto escribes el cliente o añades una línea.</span></div>'; return; }
     L.innerHTML = list.map(function (p) {
-      var e = EST.filter(function (x) { return x[0] === (p.estado || 'borrador'); })[0] || EST[0];
+      var fac = isFac(p), issued = isIssued(p), ES = fac ? EST_F : EST;
+      var e = ES.filter(function (x) { return x[0] === (p.estado || 'borrador'); })[0] || ES[0];
+      if (tipoOf(p) === 'rectificativa' && issued) e = ['emitida', 'Emitida', 'acc'];
       var t = C.calc(normQ(p)), cur = S.q && S.q.id === p.id;
-      return '<article class="scard"><div class="top"><span class="num">' + esc(p.num || 'Sin número') + '</span><span class="pill ' + e[2] + '">' + e[1] + '</span></div>' +
+      var numTxt = p.num || (fac ? 'Factura en borrador' : 'Sin número');
+      var extra = (p.rect && p.rect.num ? ' · rectifica ' + esc(p.rect.num) : '') + (p.rectPor ? ' · rectificada por ' + esc(p.rectPor) : '') + (p.origen && p.origen.num ? ' · del presupuesto ' + esc(p.origen.num) : '');
+      return '<article class="scard"><div class="top"><span class="num">' + esc(numTxt) + '</span><span class="chips" style="gap:6px;justify-content:flex-end">' +
+        (fac ? '<span class="pill">' + esc(TIPON[tipoOf(p)] + (p.simplificada ? ' simplificada' : '')) + '</span>' : '') + '<span class="pill ' + e[2] + '">' + e[1] + '</span></span></div>' +
         '<div class="top"><span class="who">' + esc((p.cliente && p.cliente.nombre) || 'Cliente sin indicar') + '</span><span class="tot">' + C.eur(t.total) + '</span></div>' +
         (p.trabajo ? '<div class="what">' + esc(p.trabajo) + '</div>' : '') +
-        '<div class="hint">' + C.fdate(p.fecha) + ' · ' + (p.mat || []).length + ' materiales' + (cur ? ' · <b>abierto ahora</b>' : '') + '</div>' +
-        '<div class="acts"><button type="button" class="btn sm pri" data-open-p="' + esc(p.id) + '">Abrir</button><button type="button" class="btn sm" data-dup-p="' + esc(p.id) + '">Duplicar</button><button type="button" class="btn sm danger" data-del-p="' + esc(p.id) + '">Borrar</button></div></article>';
+        '<div class="hint">' + C.fdate(p.fecha) + ' · ' + (p.mat || []).length + ' materiales' + extra + (cur ? ' · <b>abierto ahora</b>' : '') + '</div>' +
+        '<div class="acts"><button type="button" class="btn sm pri" data-open-p="' + esc(p.id) + '">Abrir</button>' +
+        (tipoOf(p) === 'factura' && p.estado === 'emitida' ? '<button type="button" class="btn sm" data-cob-p="' + esc(p.id) + '">Marcar cobrada</button>' : '') +
+        (tipoOf(p) !== 'rectificativa' ? '<button type="button" class="btn sm" data-dup-p="' + esc(p.id) + '">Duplicar</button>' : '') +
+        (!issued ? '<button type="button" class="btn sm danger" data-del-p="' + esc(p.id) + '">Borrar</button>' : '') + '</div></article>';
     }).join('');
   }
   function duplicate(src) {
-    var q = normQ(clone(src));
-    q.id = 'p-' + uid(); q.fecha = today(); q.estado = 'borrador'; q.creado = Date.now(); q.numAuto = false;
-    q.num = nextNumFor(); q.mat.forEach(function (l) { l.k = uid(); }); q.mo.forEach(function (l) { l.k = uid(); });
+    if (tipoOf(src) === 'rectificativa') { toast('Las facturas rectificativas no se duplican.'); return; }
+    var q = normQ(clone(src)), fac = isFac(q);
+    q.id = (fac ? 'f-' : 'p-') + uid(); q.fecha = today(); q.estado = 'borrador'; q.creado = Date.now(); q.numAuto = false;
+    q.num = fac ? '' : nextNumFor(); q.mat.forEach(function (l) { l.k = uid(); }); q.mo.forEach(function (l) { l.k = uid(); });
+    delete q.emitida; delete q.rectPor; delete q.cobradaEl; q.fechaOp = '';
     q.actualizado = Date.now();
     Store.put('presupuestos', q.id, q).catch(function (e) { toast(errMsg(e)); });
     loadQuote(q); setSave('saved');
     location.hash = '#presupuesto'; window.scrollTo(0, 0);
-    toast('Copia creada: ' + q.num);
+    toast(fac ? 'Copia de la factura en borrador: se numerará al emitirla' : 'Copia creada: ' + q.num);
   }
   function nextNumFor() { var keep = S.q; S.q = null; var n = nextNum(); S.q = keep; return n; }
 
@@ -1827,7 +2031,14 @@ if (typeof module !== 'undefined') module.exports = Core;
     var lg = S.cfg.empresa.logo;
     $('#logo-box').innerHTML = lg ? '<img src="' + esc(fotoSrc(lg)) + '" alt="Logo">' : 'Sin logo';
     $('#btn-logo-x').hidden = !lg;
-    renderTarifas();
+    renderTarifas(); facNote();
+  }
+  function facNote() {
+    var e = S.cfg.empresa || {}, w = [];
+    if (serieOf('factura') === (String(S.cfg.prefijo || 'P').trim() || 'P')) w.push('La serie de facturas tiene que ser distinta del prefijo de los presupuestos.');
+    if (serieOf('factura') === serieOf('rectificativa')) w.push('La serie de rectificativas tiene que ser distinta de la de facturas.');
+    if (!e.nombre || !e.nif || !e.dir) w.push('Para emitir facturas rellena arriba el nombre, el NIF y la dirección de tu empresa.');
+    var n = $('#fac-note'); n.textContent = w.join(' '); n.className = w.length ? 'hint warn' : 'hint'; n.hidden = !w.length;
   }
   function renderTarifas() {
     if ($('#tar-list').contains(document.activeElement)) return;
@@ -1872,7 +2083,9 @@ if (typeof module !== 'undefined') module.exports = Core;
   function onData(kind, first) {
     if (kind === 'cfg') {
       if (first && S.q && !worth(S.q) && !S.pres[S.q.id] && !S.dirty) {
-        S.q.margen = +S.cfg.margen || 0; S.q.iva = S.cfg.iva == null ? 21 : +S.cfg.iva; S.q.validez = +S.cfg.validez || 30; S.q.notas = S.cfg.condiciones || '';
+        S.q.margen = +S.cfg.margen || 0; S.q.iva = S.cfg.iva == null ? 21 : +S.cfg.iva; S.q.validez = +S.cfg.validez || 30;
+        S.q.notas = isFac(S.q) ? (S.cfg.notaFac || '') : (S.cfg.condiciones || '');
+        if (isFac(S.q)) { S.q.ret = +S.cfg.ret || 0; S.q.pago = S.cfg.pago || ''; }
         fillQuote();
       }
       renderMoChips();
@@ -1888,7 +2101,7 @@ if (typeof module !== 'undefined') module.exports = Core;
       if (r && (r.actualizado || 0) > (S.q.actualizado || 0) && !S.dirty) { S.q = normQ(clone(r)); fillQuote(); setSave('saved'); }
       if (first) {
         migrateOld();
-        if (S.q.numAuto && !S.pres[S.q.id]) { S.q.num = nextNum(); $('#q-num').value = S.q.num; }
+        if (S.q.numAuto && !isFac(S.q) && !S.pres[S.q.id]) { S.q.num = nextNum(); $('#q-num').value = S.q.num; }
         if (worth(S.q) && (!r || (r.actualizado || 0) < (S.q.actualizado || 0))) scheduleSave();
         else if (r) setSave('saved');
       }
@@ -1920,6 +2133,7 @@ if (typeof module !== 'undefined') module.exports = Core;
   var vP = $('#v-presupuesto');
   vP.addEventListener('input', function (e) {
     var el = e.target;
+    if (isIssued(S.q)) return;
     if (el.dataset.q) {
       var v = el.hasAttribute('data-num') ? num(el.value) : el.value;
       setPath(S.q, el.dataset.q, v);
@@ -1934,6 +2148,7 @@ if (typeof module !== 'undefined') module.exports = Core;
   });
   vP.addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
+    if (isIssued(S.q) && (b.dataset.iva != null || b.dataset.t != null || b.closest('.mline, .moline'))) return;
     if (b.dataset.iva != null) { S.q.iva = +b.dataset.iva; $('#q-iva').value = inNum(S.q.iva); touch(); return; }
     if (b.dataset.t != null) {
       var t = S.cfg.tarifas[+b.dataset.t]; if (!t) return;
@@ -1963,10 +2178,120 @@ if (typeof module !== 'undefined') module.exports = Core;
   });
   $('#btn-new').addEventListener('click', newQuote);
   $('#btn-new2').addEventListener('click', newQuote);
+  $('#btn-newfac').addEventListener('click', newFactura);
+  $('#btn-newfac2').addEventListener('click', newFactura);
+  $('#btn-newfac-top').addEventListener('click', newFactura);
+  $('#doctype').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-tipo]'); if (!b) return;
+    var t = b.dataset.tipo; if ((isFac(S.q) ? 'factura' : 'presupuesto') === t) return;
+    if (worth(S.q) || S.pres[S.q.id]) return;
+    var q = blankQuote(t); if (t === 'presupuesto' && S.presReady) q.num = nextNum();
+    loadQuote(q);
+  });
+  $('#q-cobrada').addEventListener('change', function (e) {
+    if (!isIssued(S.q)) { e.target.checked = false; return; }
+    S.q.estado = e.target.checked ? 'cobrada' : 'emitida'; S.q.cobradaEl = e.target.checked ? today() : '';
+    touch(); saveNow(); toast(e.target.checked ? 'Factura marcada como cobrada' : 'Factura pendiente de cobro');
+  });
+  $('#btn-emit2').addEventListener('click', openEmit);
+  /* Pasar un presupuesto a factura */
+  $('#btn-tofac').addEventListener('click', function () {
+    var src = S.q; if (isFac(src)) return;
+    if (!src.mat.length && !src.mo.length) { toast('Añade primero materiales o mano de obra al presupuesto.'); return; }
+    var go = function () {
+      var q = blankQuote('factura');
+      ['cliente', 'obra', 'trabajo', 'mat', 'mo', 'margen', 'dto', 'iva'].forEach(function (k) { q[k] = clone(src[k]); });
+      q.cliente = Object.assign({ nombre: '', nif: '', tel: '', email: '', dir: '' }, q.cliente);
+      if (!q.cliente.dir && src.obra) q.cliente.dir = src.obra;
+      q.mat.forEach(function (l) { l.k = uid(); }); q.mo.forEach(function (l) { l.k = uid(); });
+      q.origen = { tipo: 'presupuesto', id: src.id, num: src.num || '' };
+      q.actualizado = Date.now();
+      Store.put('presupuestos', q.id, q).catch(function (er) { toast(errMsg(er)); });
+      loadQuote(q); setSave('saved'); window.scrollTo(0, 0);
+      toast('Factura en borrador con los datos de ' + (src.num || 'el presupuesto') + '. Revisa y pulsa «Emitir factura».', 5000);
+    };
+    if (S.dirty && worth(S.q)) saveNow().then(go); else go();
+  });
+  /* Factura rectificativa de una factura emitida */
+  $('#btn-rect').addEventListener('click', function () {
+    var src = S.q; if (tipoOf(src) !== 'factura' || !isIssued(src)) return;
+    var q = blankQuote('rectificativa');
+    ['cliente', 'obra', 'trabajo', 'mat', 'mo', 'margen', 'dto', 'iva', 'ret', 'pago', 'simplificada'].forEach(function (k) { q[k] = clone(src[k]); });
+    q.mat.forEach(function (l) { l.k = uid(); }); q.mo.forEach(function (l) { l.k = uid(); });
+    q.signo = -1; q.notas = '';
+    q.rect = { id: src.id, num: src.num, fecha: src.fecha, motivo: '' };
+    q.actualizado = Date.now();
+    Store.put('presupuestos', q.id, q).catch(function (er) { toast(errMsg(er)); });
+    loadQuote(q); setSave('saved'); window.scrollTo(0, 0);
+    toast('Rectificativa de ' + src.num + ' en borrador: escribe el motivo, deja solo lo que cambia y emítela.', 6000);
+    setTimeout(function () { try { $('#q-motivo').focus(); } catch (er) {} }, 350);
+  });
+
+  /* ---------- Emitir factura ---------- */
+  function emitChecks() {
+    var q = S.q, t = C.calc(q), e = S.cfg.empresa || {}, c = q.cliente || {}, out = [], err = false, simp = !!q.simplificada, rect = tipoOf(q) === 'rectificativa';
+    function add(cls, txt) { out.push('<li class="' + cls + '">' + esc(txt) + '</li>'); if (cls === 'bad') err = true; }
+    if (!e.nombre || !e.nif || !e.dir) add('bad', 'Faltan datos de tu empresa en Ajustes: ' + [!e.nombre && 'nombre', !e.nif && 'NIF', !e.dir && 'dirección'].filter(Boolean).join(', ') + '.');
+    else add('ok', 'Emisor: ' + e.nombre + ' · NIF ' + e.nif);
+    if (serieOf(tipoOf(q)) === (String(S.cfg.prefijo || 'P').trim() || 'P')) add('bad', 'La serie de facturas es igual que el prefijo de los presupuestos. Cámbiala en Ajustes.');
+    if (!q.mat.length && !q.mo.length) add('bad', 'Añade al menos un material o una línea de mano de obra.');
+    else if (Math.abs(t.total) < 0.005) add('bad', 'El total es 0 €.');
+    if (rect && !String((q.rect && q.rect.motivo) || '').trim()) add('bad', 'Escribe el motivo de la rectificación.');
+    if (!simp) {
+      var miss = [!String(c.nombre || '').trim() && 'nombre', !String(c.nif || '').trim() && 'NIF', !String(c.dir || '').trim() && 'domicilio'].filter(Boolean);
+      if (miss.length) add('bad', 'Faltan datos del cliente: ' + miss.join(', ') + '.' + (rect ? '' : ' Si es un particular y no los tienes, marca «Factura simplificada».'));
+      else add('ok', 'Cliente: ' + c.nombre + ' · NIF ' + c.nif);
+    } else {
+      var tot = Math.abs(t.total);
+      if (tot > 3000) add('bad', 'Una factura simplificada no puede pasar de 3.000 € con IVA. Pon el NIF y el domicilio del cliente y quita «Factura simplificada».');
+      else if (tot > 400) add('warn', 'Por encima de 400 € con IVA, la factura simplificada solo vale si el trabajo se hace en el domicilio del cliente (por ejemplo, una avería en su casa).');
+      else add('ok', 'Factura simplificada: no hacen falta el NIF ni el domicilio del cliente.');
+      if (c.nombre) add('ok', 'Cliente: ' + c.nombre);
+    }
+    if (+q.iva === 0) add('warn', 'Factura sin IVA: escribe en «Observaciones» por qué no lleva IVA.');
+    if (+q.iva === 10 && t.pctMat > 40) add('warn', 'Con IVA del 10 % los materiales no pueden pasar del 40 % de la base imponible (ahora son el ' + Math.round(t.pctMat) + ' %).');
+    if (!q.pago) add('warn', 'No has puesto la forma de pago.');
+    else if (q.pago === 'transferencia' && !S.cfg.iban) add('warn', 'Cobrarás por transferencia, pero tu IBAN no está en Ajustes.');
+    $('#emit-checks').innerHTML = out.join('');
+    $('#emit-t').textContent = rect ? 'Emitir factura rectificativa' : 'Emitir factura';
+    $('#emit-sum').innerHTML = '<span class="hint">Se emitirá con el número</span><b>' + esc(nextFacNum(tipoOf(q))) + '</b><span class="hint">Fecha de hoy, ' + C.fdate(today()) + ' · Total ' + C.eur(t.total) + '</span>';
+    $('#emit-simp-row').hidden = rect;
+    $('#emit-hint').textContent = 'Una vez emitida no se puede cambiar ni borrar. Si después ves un error, se corrige con una factura rectificativa.';
+    $('#btn-emit-go').disabled = err;
+    return !err;
+  }
+  function openEmit() {
+    if (!isFac(S.q) || isIssued(S.q)) return;
+    $('#emit-simp').checked = !!S.q.simplificada; $('#emit-err').textContent = '';
+    emitChecks(); openSheet('#sh-emit');
+  }
+  $('#emit-simp').addEventListener('change', function (e) { S.q.simplificada = e.target.checked; touch(); emitChecks(); });
+  $('#btn-emit-go').addEventListener('click', function () {
+    if (!emitChecks()) return;
+    var q = S.q, prev = { num: q.num, fecha: q.fecha, estado: q.estado };
+    clearTimeout(saveT);
+    q.num = nextFacNum(tipoOf(q)); q.fecha = today(); q.estado = 'emitida'; q.emitida = Date.now(); q.numAuto = false;
+    if (q.fechaOp === q.fecha) q.fechaOp = '';
+    q.actualizado = Date.now();
+    var data = clone(q);
+    Store.put('presupuestos', q.id, data).then(function () {
+      S.dirty = false; lsSet('pe2-draft', S.q); setSave('saved');
+      if (q.rect && q.rect.id && S.pres[q.rect.id]) {
+        var o = clone(S.pres[q.rect.id]); o.rectPor = (o.rectPor ? o.rectPor + ', ' : '') + q.num;
+        Store.put('presupuestos', o.id, o).catch(function () {});
+      }
+      fillQuote(); closeSheet('#sh-emit');
+      toast(TIPON[tipoOf(q)] + ' ' + q.num + ' emitida', 3500);
+      openPdf();
+    }, function (er) {
+      q.num = prev.num; q.fecha = prev.fecha; q.estado = prev.estado; delete q.emitida;
+      $('#emit-err').textContent = errMsg(er);
+    });
+  });
   $('#btn-dup').addEventListener('click', function () { if (S.dirty) saveNow(); duplicate(S.q); });
   $('#btn-copy').addEventListener('click', function () {
     var q = S.q, t = C.calc(q), L = [];
-    L.push('Presupuesto ' + (q.num || '') + ' · ' + C.fdate(q.fecha));
+    L.push(TIPON[tipoOf(q)] + ' ' + (q.num || '(borrador)') + ' · ' + C.fdate(q.fecha));
     if (q.cliente.nombre) L.push('Cliente: ' + q.cliente.nombre);
     if (q.obra) L.push('Obra: ' + q.obra);
     if (q.trabajo) L.push('Trabajo: ' + q.trabajo);
@@ -1976,12 +2301,13 @@ if (typeof module !== 'undefined') module.exports = Core;
     L.push('');
     L.push('Base imponible: ' + C.eur(t.base));
     L.push('IVA (' + C.pct(q.iva) + '): ' + C.eur(t.iva));
-    L.push('TOTAL: ' + C.eur(t.total));
+    if (+t.ret) L.push('Retención IRPF (' + C.pct(q.ret) + '): ' + C.eur(-t.ret));
+    L.push((tipoOf(q) === 'factura' ? 'TOTAL A PAGAR: ' : 'TOTAL: ') + C.eur(t.total));
     var txt = L.join('\n');
     var fallback = function () { $('#txt-area').value = txt; openSheet('#sh-text'); setTimeout(function () { $('#txt-area').select(); }, 50); };
     try { navigator.clipboard.writeText(txt).then(function () { toast('Resumen copiado'); }, fallback); } catch (err) { fallback(); }
   });
-  $('#btn-pdf').addEventListener('click', openPdf);
+  $('#btn-pdf').addEventListener('click', function () { if (isFac(S.q) && !isIssued(S.q)) openEmit(); else openPdf(); });
   $('#btn-pdf-go').addEventListener('click', makePdf);
   function pdfStale() { pdfReady = null; $('#btn-pdf-go').textContent = 'Descargar PDF'; $('#pdf-status').textContent = ''; }
   $('#pdf-fotos').addEventListener('change', function (e) { S.cfg.pdf.fotos = e.target.checked; saveCfgSoon(); pdfStale(); });
@@ -2045,6 +2371,7 @@ if (typeof module !== 'undefined') module.exports = Core;
 
   /* ---------- Eventos: guardados ---------- */
   $('#est-chips').addEventListener('click', function (e) { var b = e.target.closest('[data-est]'); if (!b) return; S.est = b.dataset.est; renderSaved(); });
+  $('#tipo-chips').addEventListener('click', function (e) { var b = e.target.closest('[data-tf]'); if (!b) return; S.tipoF = b.dataset.tf; S.est = 'all'; renderSaved(); });
   var armedP = null, armT = null;
   $('#saved-list').addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
@@ -2055,13 +2382,20 @@ if (typeof module !== 'undefined') module.exports = Core;
       return;
     }
     if (b.dataset.dupP) { var src = S.pres[b.dataset.dupP]; if (src) duplicate(src); return; }
+    if (b.dataset.cobP) {
+      var pc = S.pres[b.dataset.cobP]; if (!pc || !isIssued(pc)) return;
+      if (S.q && S.q.id === pc.id) { S.q.estado = 'cobrada'; S.q.cobradaEl = today(); touch(); saveNow(); }
+      else { var pc2 = clone(pc); pc2.estado = 'cobrada'; pc2.cobradaEl = today(); pc2.actualizado = Date.now(); Store.put('presupuestos', pc2.id, pc2).catch(function (er) { toast(errMsg(er)); }); }
+      renderSaved(); toast('Factura ' + (pc.num || '') + ' cobrada'); return;
+    }
     if (b.dataset.delP) {
       var id = b.dataset.delP;
+      if (isIssued(S.pres[id])) { toast('Una factura emitida no se puede borrar.'); return; }
       if (armedP !== id) { armedP = id; b.classList.add('armed'); b.textContent = 'Toca otra vez para borrar'; clearTimeout(armT); armT = setTimeout(function () { armedP = null; renderSaved(); }, 3500); return; }
       armedP = null;
       Store.del('presupuestos', id).catch(function (er) { toast(errMsg(er)); });
       if (S.q && S.q.id === id) { clearTimeout(saveT); var q = blankQuote(); q.num = nextNum(); loadQuote(q); }
-      renderSaved(); toast('Presupuesto borrado');
+      renderSaved(); toast('Borrado');
     }
   });
 
@@ -2071,7 +2405,7 @@ if (typeof module !== 'undefined') module.exports = Core;
     var el = e.target;
     if (el.dataset.c) {
       var v = el.type === 'checkbox' ? el.checked : el.hasAttribute('data-num') ? num(el.value) : el.value;
-      setPath(S.cfg, el.dataset.c, v); saveCfgSoon();
+      setPath(S.cfg, el.dataset.c, v); saveCfgSoon(); facNote();
       return;
     }
     var row = el.closest('.tarifa'); if (row && el.dataset.tf) {
@@ -2096,6 +2430,29 @@ if (typeof module !== 'undefined') module.exports = Core;
     renderSettings();
   });
   $('#btn-logo-x').addEventListener('click', function () { S.cfg.empresa.logo = null; saveCfgSoon(); renderSettings(); });
+
+  /* ---------- Libro de facturas (para el gestor) ---------- */
+  $('#btn-libro').addEventListener('click', function () {
+    var rows = Object.keys(S.pres).map(function (k) { return S.pres[k]; }).filter(isIssued)
+      .sort(function (a, b) { return String(a.fecha || '').localeCompare(String(b.fecha || '')) || String(a.num || '').localeCompare(String(b.num || '')); });
+    if (!rows.length) { toast('Aún no hay facturas emitidas.'); return; }
+    function cell(v) { v = String(v == null ? '' : v); return /[";\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+    function n2(x) { return (Math.round((+x || 0) * 100) / 100).toFixed(2).replace('.', ','); }
+    function nq(x) { return String(+x || 0).replace('.', ','); }
+    var head = ['Número', 'Tipo', 'Fecha factura', 'Fecha del trabajo', 'Cliente', 'NIF cliente', 'Domicilio cliente', 'Base imponible', 'IVA %', 'Cuota IVA', 'Retención %', 'Retención', 'Total', 'Estado', 'Forma de pago', 'Rectifica a', 'Presupuesto'];
+    var lines = [head.join(';')].concat(rows.map(function (p) {
+      var q = normQ(p), t = C.calc(q);
+      return [q.num, TIPON[tipoOf(q)] + (q.simplificada ? ' simplificada' : ''), C.fdate(q.fecha), C.fdate(q.fechaOp), q.cliente.nombre, q.cliente.nif, q.cliente.dir,
+        n2(t.base), nq(q.iva), n2(t.iva), nq(q.ret), n2(t.ret), n2(t.total), tipoOf(q) === 'rectificativa' ? 'Emitida' : q.estado === 'cobrada' ? 'Cobrada' : 'Pendiente', PAGON[q.pago] || '',
+        (q.rect && q.rect.num) || '', (q.origen && q.origen.num) || ''].map(cell).join(';');
+    }));
+    var d = new Date(), name = 'Libro de facturas ' + d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + '.csv';
+    FileOut.save(new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }), name, 'text/csv').then(function (r) {
+      if (r === 'needs-tap') { toast('Toca otra vez «Exportar libro de facturas»'); return; }
+      if (r === 'cancelled') return;
+      toast('Libro de facturas listo: ' + rows.length + (rows.length === 1 ? ' factura' : ' facturas'));
+    });
+  });
 
   /* ---------- Copia de seguridad ---------- */
   function bkNote() {
@@ -2132,7 +2489,7 @@ if (typeof module !== 'undefined') module.exports = Core;
       if (!(lsSet('pe2-mat', S.mats) && lsSet('pe2-pres', S.pres) && lsSet('pe2-cfg', S.cfg))) { toast(errMsg({ code: 'quota_exceeded' })); return; }
       onData('cfg', false); onData('mats'); onData('pres', false);
       if (S.view === 'ajustes') renderSettings();
-      toast('Copia importada: ' + nP + (nP === 1 ? ' presupuesto' : ' presupuestos') + ' y ' + nM + (nM === 1 ? ' material' : ' materiales') + ' nuevos o actualizados');
+      toast('Copia importada: ' + nP + (nP === 1 ? ' documento' : ' documentos') + ' y ' + nM + (nM === 1 ? ' material' : ' materiales') + ' nuevos o actualizados');
     }, function () { toast('No se pudo leer el archivo.'); });
   });
   bkNote();
