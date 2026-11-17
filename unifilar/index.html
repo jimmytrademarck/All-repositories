@@ -2199,8 +2199,10 @@ function onDown(e){
   if (hEl && hEl.dataset.h && sel.size === 1) {
     const f = byId([...sel][0]), h = hEl.dataset.h;
     if (f && h === 'resize' && f.type === 'frame') { act = Object.assign(base, {type:'resize', el:f, ow:f.w, oh:f.h}); return; }
-    if (f && h === 'scale' && f.type === 'sym') { const b = symBox(f), t0 = symTerms(f); act = Object.assign(base, {type:'scale', el:f, sc0:symScale(f), v0:[b[2] - f.x, b[3] - f.y], t0, att:attachedTo(t0)}); return; }
-    if (f && h === 'tsize' && f.type === 'text') { const b = textBox(f); act = Object.assign(base, {type:'tsize', el:f, z0:+f.size || 3.5, v0:[b[2] - f.x, b[3] - f.y]}); return; }
+    /* f0: dónde se cogió el asa; el tamaño cambia según cuánto se aleja el dedo desde ahí (sin saltos al empezar). */
+    const proj = (v, p) => ((p[0] - f.x) * v[0] + (p[1] - f.y) * v[1]) / ((v[0] * v[0] + v[1] * v[1]) || 1);
+    if (f && h === 'scale' && f.type === 'sym') { const b = symBox(f), t0 = symTerms(f), v0 = [b[2] - f.x, b[3] - f.y]; act = Object.assign(base, {type:'scale', el:f, sc0:symScale(f), v0, f0:Math.max(0.2, proj(v0, w)), t0, att:attachedTo(t0)}); return; }
+    if (f && h === 'tsize' && f.type === 'text') { const b = textBox(f), v0 = [b[2] - f.x, b[3] - f.y]; act = Object.assign(base, {type:'tsize', el:f, z0:+f.size || 3.5, v0, f0:Math.max(0.2, proj(v0, w))}); return; }
   }
   if (target) {
     base.wasSel = sel.size === 1 && sel.has(target.id);
@@ -2241,7 +2243,7 @@ function onMove(e){
     case 'resize': act.el.w = Math.max(10, snapG(act.ow + w[0] - act.w0[0])); act.el.h = Math.max(10, snapG(act.oh + w[1] - act.w0[1])); rerenderEl(act.el); renderOverlay(); break;
     case 'scale': case 'tsize': {
       /* Se mide cuánto se ha alejado el dedo del punto de anclaje en la dirección de la esquina. */
-      const v = act.v0, L = v[0] * v[0] + v[1] * v[1] || 1, f = ((w[0] - act.el.x) * v[0] + (w[1] - act.el.y) * v[1]) / L;
+      const v = act.v0, L = v[0] * v[0] + v[1] * v[1] || 1, f = ((w[0] - act.el.x) * v[0] + (w[1] - act.el.y) * v[1]) / L / act.f0;
       if (act.type === 'scale') {
         const sc = clamp(Math.round(act.sc0 * f * 4) / 4, 0.5, 4);
         if (sc !== symScale(act.el)) { applyScale(act.el, sc, act.t0, act.att); renderEls(); renderOverlay(); showSize(Math.round(sc * 100) + ' %'); }
@@ -2287,7 +2289,7 @@ function onUp(e){
       if (a.moved) break;
       /* Con «Texto»: sobre un texto se edita ese texto; sobre el cajetín se escribe en su casilla; si no, texto nuevo. */
       if (a.target && (a.target.type === 'text' || a.target.type === 'frame')) { setTool('sel'); edOpen(a.target.type, a.target.id); break; }
-      if (!a.target) { const f = cajetinFieldAt(doc, w); if (f) { setTool('sel'); edOpen('info', f.k); break; } }
+      if (!a.target) { const f = cajetinFieldAt(doc, w); if (f) { setTool('sel'); edOpen('info', f.k, {selectAll:true}); break; } }
       addText(w);
       break;
     case 'framedraw':
@@ -2335,7 +2337,7 @@ function onUp(e){
         if (!a.add) sel.clear();
         /* Con ratón: un clic en una casilla del cajetín y se escribe en ella. */
         const f = !a.add && cajetinFieldAt(doc, w);
-        if (f) { edOpen('info', f.k); break; }
+        if (f) { edOpen('info', f.k, {selectAll:true}); break; }
       }
       renderProps();
       break;
@@ -2344,7 +2346,7 @@ function onUp(e){
         /* Con el dedo: si había algo seleccionado, el primer toque solo lo suelta (así no sale el teclado sin querer). */
         if (sel.size) { sel.clear(); renderProps(); break; }
         const f = cajetinFieldAt(doc, w);
-        if (f) edOpen('info', f.k);
+        if (f) edOpen('info', f.k, {selectAll:true});
       }
       break;
   }
@@ -3286,6 +3288,7 @@ window.addEventListener('pagehide', persist);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persist(); });
 buildLib('');
 $('#docsave').textContent = 'Guardado en ' + DEVN;
+$('#home .note').textContent = 'Los esquemas se guardan solos en ' + DEVN + '. Para pasarlos a otro aparato, ábrelo y pulsa «Exportar» → «Archivo del esquema» y mándalo (por AirDrop, por ejemplo); en el otro pulsa «Abrir archivo». Haz de vez en cuando una «Copia de seguridad»: si borras el icono de la app o los datos del navegador, se borran sus esquemas.';
 updatePanels();
 const lastId = (() => { try { return localStorage.getItem(K_LAST); } catch (e) { return null; } })();
 const first = lastId && Store.load(lastId);
