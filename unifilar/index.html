@@ -67,23 +67,27 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .main{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr);min-height:0;position:relative}
 /* Cada panel en su columna, aunque otro esté oculto (si no, la hoja se quedaba sin ancho). */
 .main > .lib{grid-column:1;grid-row:1} .main > .stage{grid-column:2;grid-row:1} .main > .props{grid-column:3;grid-row:1}
-.lib{width:206px;display:flex;flex-direction:column;min-height:0;background:var(--surface);border-right:1px solid var(--line)}
-.lib-search{padding:8px;border-bottom:1px solid var(--line)}
-.lib-search input{width:100%;height:42px;border:1px solid var(--line-strong);border-radius:10px;background:var(--bg);padding:0 12px;font-size:16px}
-.lib-list{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 8px 24px;flex:1 1 auto;min-height:0}
+.lib{width:98px;display:flex;flex-direction:column;min-height:0;background:var(--surface);border-right:1px solid var(--line)}
+.lib-search{padding:6px 5px;border-bottom:1px solid var(--line)}
+.lib-search input{width:100%;height:40px;border:1px solid var(--line-strong);border-radius:9px;background:var(--bg);padding:0 7px;font-size:16px}
+.lib-list{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:2px 5px 24px;flex:1 1 auto;min-height:0}
 .cat{display:flex;align-items:center;gap:6px;width:100%;min-height:44px;margin:6px 0 4px;padding:6px 4px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--muted);text-align:left;font-family:var(--f-display);font-weight:600;font-size:.78rem;letter-spacing:.07em;text-transform:uppercase;line-height:1.15}
+.lib .cat{flex-wrap:wrap;gap:2px 4px;min-height:40px;padding:6px 2px;font-size:.62rem;letter-spacing:.04em}
+.lib .cat small{font-size:.62rem;padding:0 5px}
+.lib .cat .chev{width:14px;height:14px}
 .cat span{flex:1 1 auto}
 .cat small{font-family:var(--f-body);font-weight:600;letter-spacing:0;font-size:.74rem;background:var(--sunk);border:1px solid var(--line);border-radius:999px;padding:1px 7px}
 .cat .chev{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transform:rotate(-90deg);flex:none}
 .cat[aria-expanded="true"] .chev{transform:none}
 .cat[aria-expanded="true"]{color:var(--ink)}
-.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-.tile{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px 7px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);min-height:92px;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-.tile svg{width:56px;height:52px;background:#fff;border-radius:6px;pointer-events:none}
-.tile span{font-size:.74rem;line-height:1.15;text-align:center;pointer-events:none;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tiles{display:grid;grid-template-columns:minmax(0,1fr);gap:5px}
+.tile{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 3px 6px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);min-height:78px;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.tile svg{width:50px;height:44px;background:#fff;border-radius:6px;pointer-events:none;flex:none}
+.tile span{font-size:.69rem;line-height:1.15;text-align:center;pointer-events:none;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;hyphens:auto}
 .tile[aria-pressed="true"]{border-color:var(--sel);box-shadow:0 0 0 2px var(--sel) inset;background:var(--surface)}
 
 .stage{position:relative;min-width:0;min-height:0;background:var(--stage);overflow:hidden}
+#cv.vgest{will-change:transform;transform-origin:0 0}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;font-family:Helvetica,Arial,sans-serif}
 #cv .hit{fill:transparent;stroke:none}
 #cv .hitw{fill:none;stroke:transparent;stroke-width:22px;vector-effect:non-scaling-stroke;pointer-events:stroke}
@@ -114,6 +118,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 button.mtag{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
 .banner .dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:6px;vertical-align:-2px;box-shadow:0 0 0 1.5px rgba(255,255,255,.7)}
 .bpal{flex:1 0 100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;padding:4px 0 2px}
+.banner .micon svg{width:26px;height:26px;background:#fff;border-radius:5px;flex:none}
 .bpal-n{flex:1 0 100%;text-align:center;font-size:.85rem;opacity:.85}
 .sw{width:38px;height:38px;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);padding:0;position:relative;overflow:hidden;flex:none;cursor:pointer}
 .sw.on{border-color:var(--sel);outline:2px solid var(--surface);outline-offset:-4px}
@@ -152,12 +157,7 @@ button.mtag{text-decoration:underline;text-underline-offset:3px;text-decoration-
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
 @media (max-width:1180px){
-  .lib{width:164px}
   .props{width:272px}
-  .tiles{grid-template-columns:minmax(0,1fr)}
-  .tile{flex-direction:row;min-height:58px;padding:4px 6px;justify-content:flex-start;gap:8px}
-  .tile svg{width:46px;height:44px;flex:none}
-  .tile span{text-align:left}
 }
 @media (max-width:1300px){
   .tb .nl{display:none}
@@ -187,7 +187,8 @@ button.mtag{text-decoration:underline;text-underline-offset:3px;text-decoration-
 @media (max-width:820px){ .tb{min-width:40px;padding:4px 2px;font-size:.66rem} .tb.exp .nl2{display:none} .tb.exp{padding:4px 10px} }
 @media (max-width:700px){
   .tb.exp .nl2{display:none} .lbl-long{display:none}
-  .lib{position:absolute;left:0;top:0;bottom:0;width:min(250px,78vw);z-index:6;box-shadow:6px 0 24px rgba(0,0,0,.25)}
+  .lib{position:absolute;left:0;top:0;bottom:0;width:min(228px,72vw);z-index:6;box-shadow:6px 0 24px rgba(0,0,0,.25)}
+  .lib .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
   .main > .lib{grid-column:auto;grid-row:auto}
   .bar{gap:2px;padding:4px 6px}
   .bar > *{order:2} .bar > #b-home{order:0} .bar > #b-lib{order:1} .bar > #b-export{order:1}
@@ -352,7 +353,8 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
           <pattern id="grid" width="5" height="5" patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r="0.28" fill="#B8BEB8"/></pattern>
           <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%"><feDropShadow dx="0" dy="0.8" stdDeviation="1.2" flood-opacity=".25"/></filter>
         </defs>
-        <rect id="page" x="0" y="0" width="297" height="210" fill="#fff" filter="url(#shadow)"/>
+        <rect id="pshadow" x="0.5" y="0.8" width="297" height="210" fill="#000" opacity=".16"/>
+        <rect id="page" x="0" y="0" width="297" height="210" fill="#fff"/>
         <rect id="pgrid" x="0" y="0" width="297" height="210" fill="url(#grid)" pointer-events="none"/>
         <g id="g-sheet" pointer-events="none"></g>
         <g id="g-els" stroke-linecap="round" stroke-linejoin="round"></g>
@@ -381,7 +383,7 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
   <!-- Menú desplegable de símbolos -->
   <div class="dd" id="dd" hidden role="dialog" aria-label="Símbolos">
     <div class="dd-head"><input type="search" id="dd-q" placeholder="Buscar símbolo" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Buscar símbolo"><button class="x" type="button" id="dd-x" aria-label="Cerrar">×</button></div>
-    <p class="dd-tip">Toca un símbolo para ponerlo en la hoja, o arrástralo hasta su sitio.</p>
+    <p class="dd-tip">Toca un símbolo y luego el plano donde lo quieras (puedes poner varios), o arrástralo hasta su sitio.</p>
     <div class="dd-list" id="dd-list" role="menu"></div>
     <div class="dd-foot"><button type="button" class="btn" id="dd-panel">Dejar el panel de símbolos fijo a la izquierda</button></div>
   </div>
@@ -1350,7 +1352,7 @@ const pageRect = $('#page'), pgrid = $('#pgrid'), stage = $('#stage');
 /* ---------- Si algo falla, la app se recupera: suelta el gesto a medias y vuelve a dibujar ---------- */
 let errAt = 0;
 function recover(){
-  try { act = null; ptrs.clear(); simPress.clear(); $('#app').classList.remove('dragging'); gOvl.removeAttribute('transform'); gDots.style.opacity = ''; } catch (e) {}
+  try { act = null; ptrs.clear(); simPress.clear(); $('#app').classList.remove('dragging'); gOvl.removeAttribute('transform'); gDots.style.opacity = ''; vg = null; svg.style.transform = ''; svg.classList.remove('vgest'); } catch (e) {}
   try { if (doc) { renderAll(); renderProps(); } } catch (e) {}
   if (Date.now() - errAt > 8000) { errAt = Date.now(); try { toast('Algo ha fallado, pero la app se ha recuperado. Tu esquema sigue guardado.', 5000); } catch (e) {} }
 }
@@ -1498,7 +1500,7 @@ let simOut = {}, simT = {}, simLatch = {}, simPrevE = {}, simWake = 0;
 let multi = false;
 let wireKind = 'linea', wireDraft = null, hoverPt = null, wirePal = false;
 let view = {x:-10, y:-10, s:3};
-let undoS = [], redoS = [], lastSnap = '';
+let undoS = [], redoS = [], lastSnap = '', undoChars = 0;
 let clip = null, pasteN = 0;
 let act = null;
 const ptrs = new Map();
@@ -1519,10 +1521,13 @@ function pruneWires(){
 function commit(){
   clearTimeout(commitT);
   if (!doc) return;
+  tcache = null;
   pruneWires();
   const now = snapOf();
   if (now === lastSnap) return;
-  undoS.push(lastSnap); if (undoS.length > 150) undoS.shift();
+  undoS.push(lastSnap); undoChars += lastSnap.length;
+  /* Una sesión larga no debe llenar la memoria del iPad: como mucho 150 pasos y unos 12 millones de caracteres. */
+  while (undoS.length > 150 || (undoChars > 12e6 && undoS.length > 10)) undoChars -= undoS.shift().length;
   redoS = []; lastSnap = now;
   doc.updated = Date.now();
   scheduleSave(); updateUndo();
@@ -1531,12 +1536,14 @@ const commitSoon = () => { clearTimeout(commitT); commitT = setTimeout(commit, 7
 function scheduleSave(){
   clearTimeout(saveT);
   saveT = setTimeout(() => {
+    /* Guardar lleva unos milisegundos en planos grandes: si se está dibujando, se espera a que se suelte. */
+    if (act) { scheduleSave(); return; }
     const ok = Store.save(doc);
     const s = $('#docsave');
     s.textContent = ok ? 'Guardado en ' + DEVN : 'No se pudo guardar: falta espacio';
     s.style.color = ok ? '' : 'var(--ko)';
     if (!ok) toast('No queda espacio para guardar. Exporta el archivo del esquema y borra esquemas viejos.', 7000);
-  }, 250);
+  }, 400);
 }
 function restore(snap){
   if (ed) { ed = null; ied.hidden = true; $('#ied-tip').hidden = true; }
@@ -1546,21 +1553,37 @@ function restore(snap){
   doc.updated = Date.now(); scheduleSave();
   renderAll(); renderProps(); updateUndo();
 }
-function undo(){ commit(); if (!undoS.length) return; redoS.push(lastSnap); lastSnap = undoS.pop(); restore(lastSnap); }
-function redo(){ if (!redoS.length) return; undoS.push(lastSnap); lastSnap = redoS.pop(); restore(lastSnap); }
+function undo(){ commit(); if (!undoS.length) return; redoS.push(lastSnap); lastSnap = undoS.pop(); undoChars -= lastSnap.length; restore(lastSnap); }
+function redo(){ if (!redoS.length) return; undoS.push(lastSnap); undoChars += lastSnap.length; lastSnap = redoS.pop(); restore(lastSnap); }
 function updateUndo(){ $('#b-undo').disabled = !undoS.length; $('#b-redo').disabled = !redoS.length; }
 
 /* ---------- Vista: zoom y desplazamiento ---------- */
-function applyView(){
-  const r = svg.getBoundingClientRect();
-  if (!r.width || !doc) return;
-  svg.setAttribute('viewBox', `${view.x} ${view.y} ${r.width / view.s} ${r.height / view.s}`);
-  $('#z-fit').textContent = Math.round(view.s / MM * 100) + ' %';
+/* light: durante un gesto (ampliar o mover la hoja) solo se cambia el encuadre; la capa de selección se rehace al soltar. */
+let svgW = 0, svgH = 0;
+/* Ampliar y mover con los dedos: mientras dura el gesto, la hoja ya dibujada se escala y se desplaza como una imagen
+   (lo hace la tarjeta gráfica, sin volver a dibujar cientos de símbolos en cada movimiento). Al soltar se dibuja
+   una sola vez con el encuadre final, nítida. */
+let vg = null;
+function vgStart(){ if (vg) return; vg = {x:view.x, y:view.y, s:view.s}; svg.classList.add('vgest'); }
+function vgSet(){
+  if (!vg) { applyView(true); return; }
+  svg.style.transform = `translate(${(vg.x - view.x) * view.s}px,${(vg.y - view.y) * view.s}px) scale(${view.s / vg.s})`;
+  const zl = Math.round(view.s / MM * 100) + ' %', z = $('#z-fit'); if (z.textContent !== zl) z.textContent = zl;
+}
+function vgEnd(){ if (!vg) return; vg = null; svg.style.transform = ''; svg.classList.remove('vgest'); applyView(); }
+function applyView(light){
+  if (!doc) return;
+  if (vg) { vgSet(); return; }
+  if (!light || !svgW) { const r = stage.getBoundingClientRect(); svgW = r.width; svgH = r.height; }
+  if (!svgW) return;
+  svg.setAttribute('viewBox', `${view.x} ${view.y} ${svgW / view.s} ${svgH / view.s}`);
+  const zl = Math.round(view.s / MM * 100) + ' %', z = $('#z-fit'); if (z.textContent !== zl) z.textContent = zl;
+  if (light) return;
   renderOverlay();
   edPlace();
 }
 function fit(){
-  const [W, H] = pageSize(doc.page), r = svg.getBoundingClientRect();
+  const [W, H] = pageSize(doc.page), r = stage.getBoundingClientRect();
   if (!r.width) return;
   /* En vertical se deja libre la parte de abajo, donde sale el panel de propiedades, para que no tape el cajetín. */
   const cover = isNarrow() ? r.height * 0.44 + 12 : 0;
@@ -1569,28 +1592,49 @@ function fit(){
   view.s = s; view.x = W / 2 - r.width / 2 / s; view.y = H / 2 - h / 2 / s;
   applyView();
 }
-function zoomAt(f, cx, cy){
-  const r = svg.getBoundingClientRect();
+function zoomAt(f, cx, cy, light){
+  const r = stage.getBoundingClientRect();
   if (cx == null) { cx = r.left + r.width / 2; cy = r.top + r.height / 2; }
   const w = toWorld(cx, cy), s = clamp(view.s * f, 0.4, 40);
   view.s = s; view.x = w[0] - (cx - r.left) / s; view.y = w[1] - (cy - r.top) / s;
-  applyView();
+  applyView(light);
 }
-function toWorld(cx, cy){ const r = svg.getBoundingClientRect(); return [view.x + (cx - r.left) / view.s, view.y + (cy - r.top) / view.s]; }
+function toWorld(cx, cy){ const r = stage.getBoundingClientRect(); return [view.x + (cx - r.left) / view.s, view.y + (cy - r.top) / view.s]; }
 
 /* ---------- Conexiones: puntos de unión y simulación ---------- */
+/* Índice por cuadrículas de 20 mm: para saber qué cables pasan por un punto sin recorrerlos todos.
+   Con planos grandes (cientos de cables) evita que todo vaya a tirones. */
+function wireIndex(wires){
+  const C = 20, g = new Map(), big = [];
+  wires.forEach(w => {
+    const ps = w.pts;
+    for (let i = 0; i < ps.length - 1; i++) {
+      const a = ps[i], b = ps[i + 1];
+      const x0 = Math.floor((Math.min(a[0], b[0]) - 0.05) / C), x1 = Math.floor((Math.max(a[0], b[0]) + 0.05) / C);
+      const y0 = Math.floor((Math.min(a[1], b[1]) - 0.05) / C), y1 = Math.floor((Math.max(a[1], b[1]) + 0.05) / C);
+      if ((x1 - x0 + 1) * (y1 - y0 + 1) > 600) { if (big[big.length - 1] !== w) big.push(w); continue; }
+      for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
+        const k = x + ',' + y; let arr = g.get(k); if (!arr) { arr = []; g.set(k, arr); }
+        if (arr[arr.length - 1] !== w) arr.push(w);
+      }
+    }
+  });
+  return p => { const arr = g.get(Math.floor(p[0] / C) + ',' + Math.floor(p[1] / C)) || []; return big.length ? [...new Set(arr.concat(big))] : [...new Set(arr)]; };
+}
 function junctions(els){
-  const wires = els.filter(e => e.type === 'wire'), out = [], seen = new Set();
+  const wires = els.filter(e => e.type === 'wire' && e.pts && e.pts.length >= 2), out = [], seen = new Set();
+  const at = wireIndex(wires);
   wires.forEach(w => [w.pts[0], w.pts[w.pts.length - 1]].forEach(p => {
     const key = p[0].toFixed(2) + ',' + p[1].toFixed(2);
     if (seen.has(key)) return;
+    seen.add(key);
     let cnt = 0;
-    for (const v of wires) {
+    for (const v of at(p)) {
       const a = v.pts[0], b = v.pts[v.pts.length - 1], ia = eqp(a, p), ib = eqp(b, p);
       if (ia || ib) cnt += (ia ? 1 : 0) + (ib ? 1 : 0);
       else if (onWire(p, v.pts)) cnt += 2;
     }
-    if (cnt >= 3) { seen.add(key); out.push(p); }
+    if (cnt >= 3) out.push(p);
   }));
   return out;
 }
@@ -1609,8 +1653,9 @@ function simulate(depth){
   syms.forEach(s => symTerms(s).forEach((t, i) => T.push({k:'t:' + s.id + ':' + i, p:[t.x, t.y]})));
   const byKey = {};
   T.forEach(t => { const key = t.p[0].toFixed(2) + ',' + t.p[1].toFixed(2); gfind(t.k); if (byKey[key]) guni(t.k, byKey[key]); else byKey[key] = t.k; });
-  T.forEach(t => wires.forEach(w => { if (onWire(t.p, w.pts)) guni(t.k, 'w:' + w.id); }));
-  wires.forEach(w1 => { gfind('w:' + w1.id); [w1.pts[0], w1.pts[w1.pts.length - 1]].forEach(p => wires.forEach(w2 => { if (w2 !== w1 && onWire(p, w2.pts)) guni('w:' + w1.id, 'w:' + w2.id); })); });
+  const atS = wireIndex(wires);
+  T.forEach(t => atS(t.p).forEach(w => { if (onWire(t.p, w.pts)) guni(t.k, 'w:' + w.id); }));
+  wires.forEach(w1 => { gfind('w:' + w1.id); [w1.pts[0], w1.pts[w1.pts.length - 1]].forEach(p => atS(p).forEach(w2 => { if (w2 !== w1 && onWire(p, w2.pts)) guni('w:' + w1.id, 'w:' + w2.id); })); });
   const rem = {};
   syms.forEach(s => { if (s.k === 'remision') { const k = String(s.p.txt || '').trim().toUpperCase(); if (k) { if (rem[k]) guni('t:' + s.id + ':0', rem[k]); else rem[k] = 't:' + s.id + ':0'; } } });
   const coils = syms.filter(s => SYM[s.k].coil && refKey(s));
@@ -1696,11 +1741,12 @@ function elSVG(el, si){
 let simInfo = null;
 function renderSheet(){
   const [W, H] = pageSize(doc.page);
-  [pageRect, pgrid].forEach(r => { r.setAttribute('width', W); r.setAttribute('height', H); });
+  [pageRect, pgrid, $('#pshadow')].forEach(r => { r.setAttribute('width', W); r.setAttribute('height', H); });
   pgrid.style.display = prefs.grid ? '' : 'none';
   gSheet.innerHTML = svgOf(sheetPrims(doc, []));
 }
 function renderEls(){
+  tcache = null;
   simInfo = sim ? simulate() : null;
   gEls.innerHTML = sorted(doc.els).map(e => elSVG(e, simInfo)).join('');
   renderDots();
@@ -1710,7 +1756,13 @@ function rerenderEl(el){
   const g = gEls.querySelector(`[data-id="${el.id}"]`);
   const tmp = document.createElementNS(NS, 'g');
   tmp.innerHTML = elSVG(el, simInfo);
-  if (g) g.replaceWith(tmp.firstChild); else renderEls();
+  if (g) { g.replaceWith(tmp.firstChild); return; }
+  /* Elemento nuevo: se añade en su capa (recuadros, cables, símbolos, textos) sin redibujar todo el plano. */
+  if (sim || !byId(el.id)) { renderEls(); return; }
+  const o = ORDER[el.type];
+  let before = null;
+  for (const n of gEls.children) { const e2 = byId(n.dataset.id); if (e2 && ORDER[e2.type] > o) { before = n; break; } }
+  gEls.insertBefore(tmp.firstChild, before);
 }
 function renderOverlay(){
   if (!doc) return;
@@ -1748,10 +1800,12 @@ function renderAll(){ renderSheet(); renderEls(); renderOverlay(); updateHeader(
 function updateHeader(){ $('#docname').textContent = doc.name; document.title = doc.name + ' · Unifilar'; }
 
 /* ---------- Cables: enganche, rutas y edición ---------- */
+let tcache = null;
+const allTerms = () => tcache || (tcache = doc.els.filter(el => el.type === 'sym').flatMap(el => symTerms(el)));
 function wireSnap(w, not){
   const R = Math.min(18 / view.s, 3.5);
   let best = null, bd = R;
-  doc.els.forEach(el => { if (el.type === 'sym') symTerms(el).forEach(t => { if (not && eqp(not, [t.x, t.y])) return; const d = Math.hypot(t.x - w[0], t.y - w[1]); if (d < bd) { bd = d; best = {p:[t.x, t.y], kind:'term', ax:t.ax}; } }); });
+  allTerms().forEach(t => { if (not && eqp(not, [t.x, t.y])) return; const d = Math.hypot(t.x - w[0], t.y - w[1]); if (d < bd) { bd = d; best = {p:[t.x, t.y], kind:'term', ax:t.ax}; } });
   if (best) return best;
   bd = R;
   doc.els.forEach(el => {
@@ -1890,7 +1944,7 @@ function addWire(pts){
   if (pts.length < 2) return null;
   const el = {type:'wire', id:uid(), pts, k:wireKind, n:'', txt:'', col:prefs.wireCol || 'negro'};
   doc.els.push(el);
-  commit(); renderEls(); renderOverlay();
+  commit(); rerenderEl(el); renderDots(); renderOverlay();
   return el;
 }
 function finishDraft(){
@@ -1927,19 +1981,19 @@ function placeSymbol(k, w){
   doc.els.push(el);
   addRecent(k);
   sel = new Set([el.id]);
-  commit(); renderEls(); renderOverlay(); renderProps();
+  commit(); rerenderEl(el); renderOverlay(); renderProps();
 }
 function addText(w){
   /* Donde se toca queda el centro de la primera línea, y se escribe ahí mismo. */
   const el = {type:'text', id:uid(), x:snapG(w[0], 1), y:snapG(w[1] - 3.5 * 0.625, 0.5), s:'', size:3.5, b:false, rot:0};
   doc.els.push(el); sel = new Set([el.id]);
-  setTool('sel'); renderEls(); renderOverlay();
+  rerenderEl(el); renderOverlay();
   edOpen('text', el.id, {isNew:true});
 }
 function addFrame(x, y, w, h){
   const el = {type:'frame', id:uid(), x, y, w:Math.max(10, w), h:Math.max(10, h), s:'CGMP', dash:true};
   doc.els.unshift(el); sel = new Set([el.id]);
-  commit(); setTool('sel'); renderEls(); renderOverlay(); renderProps();
+  commit(); renderEls(); renderOverlay(); renderProps();
 }
 
 /* ---------- Escribir directamente en el plano y en el cajetín ----------
@@ -1961,7 +2015,7 @@ function edSpec(){
 function edPlace(){
   if (!ed) return;
   const sp = edSpec(); if (!sp) { edClose(false); return; }
-  const sr = stage.getBoundingClientRect(), r = svg.getBoundingClientRect();
+  const sr = stage.getBoundingClientRect(), r = stage.getBoundingClientRect();
   /* Si la letra en pantalla es muy pequeña, el cuadro se agranda para que se lea bien al escribir. */
   const fpx = Math.max(15, sp.size * view.s), lh = Math.round(fpx * 1.25);
   const lines = ied.value.split('\n'), shown = ied.value ? lines : [ied.placeholder || ''];
@@ -1980,7 +2034,7 @@ function edPlace(){
 function edEnsureVisible(){
   if (!ed) return;
   const sp = edSpec(); if (!sp) return;
-  const sr = stage.getBoundingClientRect(), r = svg.getBoundingClientRect(), vv = window.visualViewport;
+  const sr = stage.getBoundingClientRect(), r = stage.getBoundingClientRect(), vv = window.visualViewport;
   const lh = Math.max(15, sp.size * view.s) * 1.25;
   const sy = r.top + (sp.cy - view.y) * view.s, sx = r.left + (sp.x - view.x) * view.s;
   let bottom = Math.min(sr.bottom, vv ? vv.offsetTop + vv.height : innerHeight) - lh - 24;
@@ -2070,7 +2124,12 @@ ied.addEventListener('blur', e => {
 /* Un clic en la hoja no debe llevarse el foco del cuadro de escritura ni seleccionar nada de la página. */
 svg.addEventListener('mousedown', e => e.preventDefault());
 /* Tocar o hacer clic en cualquier otro sitio termina la escritura (Safari no quita el foco al pulsar un botón). */
-document.addEventListener('pointerdown', e => { if (ed && e.target !== ied) edClose(true, samePropField(e.target)); }, true);
+document.addEventListener('pointerdown', e => {
+  if (!ed || e.target === ied) return;
+  /* Con «Solo Apple Pencil», un dedo o la palma sobre el plano no cortan lo que se está escribiendo. */
+  if (e.pointerType === 'touch' && svg.contains(e.target) && pencilOnly()) return;
+  edClose(true, samePropField(e.target));
+}, true);
 /* Muestra el tamaño mientras se arrastra el asa. */
 let sizeT = 0;
 function showSize(txt){ const t = $('#szbadge'); t.textContent = txt; t.hidden = false; clearTimeout(sizeT); }
@@ -2122,7 +2181,11 @@ function endDrag(){
     act.att.forEach(a => { attCur(a, act.dx, act.dy); a.w.pts = simplify(a.cur); });
     commit();
   }
-  renderEls(); renderOverlay();
+  /* Solo se redibuja lo que se ha movido (en planos grandes, rehacer todo daba un tirón al soltar). */
+  const changed = act.moving.concat(act.trans, act.att.map(a => a.w));
+  if (sim || changed.length > 250) renderEls();
+  else { changed.forEach(e => { if (byId(e.id)) rerenderEl(e); }); renderDots(); }
+  renderOverlay();
 }
 /* Cambia el tamaño de un símbolo. Los cables que llegaban a sus bornes se vuelven a enganchar en el sitio nuevo. */
 function applyScale(el, sc, t0, att){
@@ -2203,6 +2266,7 @@ function endErase(a){
 }
 let eraserPt = null;
 function cancelAct(){
+  vgEnd();
   if (!act) return;
   if (act.type === 'erase') { const a = act; act = null; endErase(a); return; }
   if (act.type === 'drag') { gOvl.removeAttribute('transform'); gDots.style.opacity = ''; $('#app').classList.remove('dragging'); renderEls(); }
@@ -2214,18 +2278,19 @@ function cancelAct(){
   act = null; renderOverlay();
 }
 function startPinch(){
+  vgStart();
   const [a, b] = [...ptrs.values()];
-  const r = svg.getBoundingClientRect();
+  const r = stage.getBoundingClientRect();
   const m = {x:(a.x + b.x) / 2, y:(a.y + b.y) / 2};
   act = {type:'pinch', d0:Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), s0:view.s, wm:[view.x + (m.x - r.left) / view.s, view.y + (m.y - r.top) / view.s]};
 }
 function doPinch(){
   const [a, b] = [...ptrs.values()];
-  const r = svg.getBoundingClientRect();
+  const r = stage.getBoundingClientRect();
   const d = Math.hypot(a.x - b.x, a.y - b.y), m = {x:(a.x + b.x) / 2, y:(a.y + b.y) / 2};
   const s = clamp(act.s0 * d / act.d0, 0.4, 40);
   view.s = s; view.x = act.wm[0] - (m.x - r.left) / s; view.y = act.wm[1] - (m.y - r.top) / s;
-  applyView();
+  vgSet();
 }
 function onDown(e){
   if (e.button && e.button !== 0 && e.button !== 1) return;
@@ -2260,7 +2325,8 @@ function onDown(e){
     return;
   }
   if (tool === 'wire') { act = Object.assign(base, {type:'wire', s0:wireSnap(w)}); return; }
-  if (tool === 'place' && !target) { act = Object.assign(base, {type:'place'}); return; }
+  /* Con un símbolo elegido, cada toque pone uno (también encima de un cable, para intercalarlo). */
+  if (tool === 'place' && SYM[placeKind]) { act = Object.assign(base, {type:'place'}); return; }
   if (tool === 'text') { act = Object.assign(base, {type:'textplace'}); return; }
   if (tool === 'frame') { act = Object.assign(base, {type:'framedraw'}); return; }
   if (hEl && hEl.dataset.h && sel.size === 1) {
@@ -2309,7 +2375,7 @@ function onMove(e){
   const w = toWorld(e.clientX, e.clientY);
   switch (act.type) {
     case 'pan': case 'simtap': case 'place': case 'textplace':
-      view.x = act.vx - dxp / view.s; view.y = act.vy - dyp / view.s; applyView(); break;
+      vgStart(); view.x = act.vx - dxp / view.s; view.y = act.vy - dyp / view.s; vgSet(); break;
     case 'drag': moveDrag(w); break;
     case 'erase': eraseAlong(act.lx, act.ly, e.clientX, e.clientY); act.lx = e.clientX; act.ly = e.clientY; eraserPt = w; renderOverlay(); break;
     case 'seg': {
@@ -2333,7 +2399,7 @@ function onMove(e){
       const v = act.v0, L = v[0] * v[0] + v[1] * v[1] || 1, f = ((w[0] - act.el.x) * v[0] + (w[1] - act.el.y) * v[1]) / L / act.f0;
       if (act.type === 'scale') {
         const sc = clamp(Math.round(act.sc0 * f * 4) / 4, 0.5, 4);
-        if (sc !== symScale(act.el)) { applyScale(act.el, sc, act.t0, act.att); renderEls(); renderOverlay(); showSize(Math.round(sc * 100) + ' %'); }
+        if (sc !== symScale(act.el)) { applyScale(act.el, sc, act.t0, act.att); rerenderEl(act.el); act.att.forEach(a => rerenderEl(a.w)); gDots.style.opacity = '0'; renderOverlay(); showSize(Math.round(sc * 100) + ' %'); }
       } else {
         const z = clamp(Math.round(act.z0 * f * 2) / 2, 1, 40);
         if (z !== act.el.size) { act.el.size = z; rerenderEl(act.el); renderOverlay(); showSize(fmtN(z) + ' mm'); }
@@ -2356,10 +2422,12 @@ function onUp(e){
   if (act && act.type === 'pinch') {
     if (ptrs.size === 1) { const [id, p] = [...ptrs.entries()][0]; act = {type:'pan', pid:id, x0:p.x, y0:p.y, w0:toWorld(p.x, p.y), vx:view.x, vy:view.y, moved:true, ptype:'touch'}; }
     else if (!ptrs.size) act = null;
+    if (!act) vgEnd();
     return;
   }
   if (!act || e.pointerId !== act.pid) return;
-  const a = act; act = null;
+  const a = act; act = null; tcache = null;
+  vgEnd();
   const w = toWorld(e.clientX, e.clientY);
   switch (a.type) {
     case 'simtap':
@@ -2371,12 +2439,12 @@ function onUp(e){
         renderEls();
       }
       break;
-    case 'place': if (!a.moved) { const k = placeKind; placeSymbol(k, w); if (!placeMulti) setTool('sel'); } break;
+    case 'place': if (!a.moved && SYM[placeKind]) placeSymbol(placeKind, w); break;
     case 'textplace':
       if (a.moved) break;
       /* Con «Texto»: sobre un texto se edita ese texto; sobre el cajetín se escribe en su casilla; si no, texto nuevo. */
-      if (a.target && (a.target.type === 'text' || a.target.type === 'frame')) { setTool('sel'); edOpen(a.target.type, a.target.id); break; }
-      if (!a.target) { const f = cajetinFieldAt(doc, w); if (f) { setTool('sel'); edOpen('info', f.k, {selectAll:true}); break; } }
+      if (a.target && (a.target.type === 'text' || a.target.type === 'frame')) { edOpen(a.target.type, a.target.id); break; }
+      if (!a.target) { const f = cajetinFieldAt(doc, w); if (f) { edOpen('info', f.k, {selectAll:true}); break; } }
       addText(w);
       break;
     case 'framedraw':
@@ -2403,7 +2471,7 @@ function onUp(e){
       break;
     case 'erase': if (a.pending) { act = a; eraseAt(a.lx, a.ly); act = null; } endErase(a); break;
     case 'seg':
-      if (a.moved) { a.el.pts = simplify(a.el.pts); gDots.style.opacity = ''; commit(); renderEls(); }
+      if (a.moved) { a.el.pts = simplify(a.el.pts); gDots.style.opacity = ''; commit(); rerenderEl(a.el); if (sim) renderEls(); else renderDots(); }
       break;
     case 'resize': commit(); renderOverlay(); renderProps(); break;
     case 'wend':
@@ -2411,12 +2479,12 @@ function onUp(e){
       if (a.moved) {
         const pts = simplify(a.el.pts);
         a.el.pts = pts.length >= 2 ? pts : a.orig;
-        commit(); renderEls(); renderProps();
+        commit(); rerenderEl(a.el); if (sim) renderEls(); else renderDots(); renderProps();
       }
       break;
     case 'scale': case 'tsize':
-      hideSize();
-      if (a.moved) { commit(); renderEls(); renderProps(); }
+      hideSize(); gDots.style.opacity = '';
+      if (a.moved) { commit(); if (sim) renderEls(); else renderDots(); renderProps(); }
       /* Un toque en el asa de un texto, sin arrastrar, también abre la escritura. */
       else if (a.type === 'tsize') edOpen('text', a.el.id);
       break;
@@ -2450,24 +2518,115 @@ function onUp(e){
 function onCancel(e){
   if (!ptrs.has(e.pointerId)) return;
   ptrs.delete(e.pointerId);
+  if (!ptrs.size) vgEnd();
   if (act && act.pressed) { simPress.delete(act.pressed); renderEls(); }
   if (act && act.type === 'pinch') { if (ptrs.size === 1) { const [id, p] = [...ptrs.entries()][0]; act = {type:'pan', pid:id, x0:p.x, y0:p.y, w0:toWorld(p.x, p.y), vx:view.x, vy:view.y, moved:true, ptype:'touch'}; } else if (!ptrs.size) act = null; return; }
   if (act) cancelAct();
   if (!ptrs.size) act = null;
 }
 const safe = fn => e => { try { fn(e); } catch (er) { recover(); } };
-svg.addEventListener('pointerdown', safe(onDown));
-svg.addEventListener('pointermove', safe(onMove));
-svg.addEventListener('pointerup', safe(onUp));
-svg.addEventListener('pointercancel', safe(onCancel));
+
+/* ---------- Apple Pencil, dedos y palma ----------
+   Con «Solo Apple Pencil» (lo normal en el iPad): el lápiz dibuja y edita, igual que el ratón en el Mac.
+   Los dedos sobre el plano solo sirven para ampliarlo y moverlo con dos dedos. Un dedo suelto no hace nada,
+   y la palma apoyada mientras se dibuja se ignora: mientras el lápiz está en la pantalla (y un momento después)
+   cualquier contacto de la mano se descarta, igual que los contactos grandes. */
+const IPAD = /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const pencilOnly = () => (prefs.input || (IPAD ? 'pencil' : 'touch')) === 'pencil';
+const zt = new Map(), palm = new Set(), penIds = new Set();
+let zoomG = null, penUpAt = -1e9, hintAt = 0;
+const isPalm = e => (e.width || 0) > 46 || (e.height || 0) > 46;
+function zStart(){
+  const [a, b] = [...zt.values()], r = stage.getBoundingClientRect(), m = [(a.x + b.x) / 2, (a.y + b.y) / 2];
+  edClose(true); vgStart();
+  zoomG = {d0:Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), s0:view.s, wm:[view.x + (m[0] - r.left) / view.s, view.y + (m[1] - r.top) / view.s], left:r.left, top:r.top};
+}
+function zFrame(){
+  if (!zoomG || zt.size < 2) return;
+  const [a, b] = [...zt.values()], d = Math.hypot(a.x - b.x, a.y - b.y), m = [(a.x + b.x) / 2, (a.y + b.y) / 2];
+  const sNew = clamp(zoomG.s0 * d / zoomG.d0, 0.4, 40);
+  view.s = sNew; view.x = zoomG.wm[0] - (m[0] - zoomG.left) / sNew; view.y = zoomG.wm[1] - (m[1] - zoomG.top) / sNew;
+  vgSet();
+}
+function zEnd(){ if (!zoomG) return; zoomG = null; vgEnd(); }
+function fingerHint(){
+  const now = Date.now(); if (now - hintAt < 25000) return; hintAt = now;
+  toast('El plano se dibuja con el Apple Pencil. Con dos dedos lo amplías y lo mueves.', 6000, {label:'Usar también el dedo', fn:() => { prefs.input = 'touch'; savePrefs(); renderProps(); toast('Ahora también puedes dibujar con el dedo. Se cambia en Hoja → «Dibujar con».', 5000); }});
+}
+function tDown(e){
+  e.preventDefault();
+  const now = performance.now();
+  /* Palma: el lápiz está apoyado o se acaba de levantar, el contacto es grande, o ya hay dos dedos. */
+  if (penIds.size || now - penUpAt < 400 || isPalm(e) || zt.size >= 2) { palm.add(e.pointerId); return; }
+  zt.set(e.pointerId, {x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY, t:now});
+  try { svg.setPointerCapture(e.pointerId); } catch (er) {}
+  if (zt.size === 2) zStart();
+}
+function tMove(e){
+  if (palm.has(e.pointerId)) return;
+  const p = zt.get(e.pointerId); if (!p) return;
+  p.x = e.clientX; p.y = e.clientY;
+  if (zoomG) frameOnce(zFrame);
+}
+function tUp(e){
+  palm.delete(e.pointerId);
+  const p = zt.get(e.pointerId); if (!p) return;
+  zt.delete(e.pointerId);
+  if (zoomG) { if (zt.size < 2) zEnd(); return; }
+  if (e.type === 'pointerup' && !zt.size && Math.hypot(p.x - p.x0, p.y - p.y0) < 12 && performance.now() - p.t < 600) fingerHint();
+}
+/* Los movimientos se juntan y se procesan una vez por fotograma: el Pencil manda hasta 240 por segundo. */
+const pendMove = new Map(); let moveRaf = 0, frameFns = new Set(), frameRaf = 0;
+function frameOnce(fn){ frameFns.add(fn); if (!frameRaf) frameRaf = requestAnimationFrame(() => { frameRaf = 0; const f = [...frameFns]; frameFns.clear(); f.forEach(g => safe(g)()); }); }
+function flushMove(){
+  if (moveRaf) { cancelAnimationFrame(moveRaf); moveRaf = 0; }
+  if (!pendMove.size) return;
+  const evs = [...pendMove.values()]; pendMove.clear();
+  evs.forEach(ev => safe(onMove)(ev));
+}
+const byTouch = e => e.pointerType === 'touch';
+function pDown(e){
+  if (byTouch(e)) {
+    if (pencilOnly()) { tDown(e); return; }
+    /* Con «Pencil y dedo», la palma también se ignora mientras se dibuja con el lápiz. */
+    if (penIds.size || performance.now() - penUpAt < 400 || isPalm(e)) { e.preventDefault(); palm.add(e.pointerId); return; }
+  }
+  if (e.pointerType === 'pen') {
+    penIds.add(e.pointerId);
+    /* El lápiz manda: si había dedos ampliando, se dejan de tener en cuenta. */
+    if (zt.size) { zt.forEach((v, id) => palm.add(id)); zt.clear(); zEnd(); }
+    if (ptrs.size) { [...ptrs.keys()].forEach(id => { if (id !== e.pointerId) palm.add(id); }); }
+  }
+  flushMove();
+  onDown(e);
+}
+function pMove(e){
+  if (palm.has(e.pointerId)) return;
+  if (byTouch(e) && pencilOnly()) { tMove(e); return; }
+  pendMove.set(e.pointerId, e);
+  if (!moveRaf) moveRaf = requestAnimationFrame(() => { moveRaf = 0; flushMove(); });
+}
+function pEnd(e, cancel){
+  if (e.pointerType === 'pen') { penIds.delete(e.pointerId); penUpAt = performance.now(); }
+  if (palm.has(e.pointerId)) { palm.delete(e.pointerId); if (ptrs.has(e.pointerId)) { ptrs.delete(e.pointerId); } return; }
+  if (byTouch(e) && pencilOnly()) { tUp(e); return; }
+  flushMove();
+  if (cancel) onCancel(e); else onUp(e);
+}
+svg.addEventListener('pointerdown', safe(pDown));
+svg.addEventListener('pointermove', safe(pMove));
+svg.addEventListener('pointerup', safe(e => pEnd(e, false)));
+svg.addEventListener('pointercancel', safe(e => pEnd(e, true)));
 svg.addEventListener('pointerleave', e => { if (e.pointerType !== 'touch' && hoverPt) { hoverPt = null; renderOverlay(); } });
+let wheelT = 0;
 svg.addEventListener('wheel', e => {
   e.preventDefault();
-  if (e.ctrlKey || e.metaKey) zoomAt(Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY);
-  else { view.x += e.deltaX / view.s; view.y += e.deltaY / view.s; applyView(); }
+  if (e.ctrlKey || e.metaKey) zoomAt(Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY, true);
+  else { view.x += e.deltaX / view.s; view.y += e.deltaY / view.s; applyView(true); }
+  clearTimeout(wheelT); wheelT = setTimeout(() => applyView(), 120);
 }, {passive:false});
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive:false}));
-svg.addEventListener('lostpointercapture', safe(e => { if (ptrs.has(e.pointerId)) onCancel(e); }));
+svg.addEventListener('lostpointercapture', safe(e => { if (zt.has(e.pointerId) || palm.has(e.pointerId)) { tUp(e); palm.delete(e.pointerId); return; } if (ptrs.has(e.pointerId)) { flushMove(); onCancel(e); } }));
 if (window.visualViewport) window.visualViewport.addEventListener('resize', () => requestAnimationFrame(() => { applyView(); edEnsureVisible(); if (!dd.hidden) ddPlace(); }));
 let lastPType = 'mouse';
 svg.addEventListener('pointerdown', e => { lastPType = e.pointerType; }, true);
@@ -2478,7 +2637,6 @@ svg.addEventListener('contextmenu', e => e.preventDefault());
 function setTool(t, kind){
   if (wireDraft && t !== 'wire') finishDraft();
   if (sim && t !== 'sim') setSim(false);
-  if (t !== tool || kind !== placeKind) bannerMin = false;
   if ((t === 'hand' || t === 'erase') && sel.size) { sel.clear(); renderProps(); }
   eraserPt = null;
   tool = t; placeKind = t === 'place' ? kind : null;
@@ -2489,54 +2647,34 @@ function setTool(t, kind){
 }
 function setSim(on){
   if (on) edClose(true);
-  sim = on; bannerMin = false;
+  sim = on;
   if (on) { simReset(); if (wireDraft) finishDraft(); tool = 'sel'; placeKind = null; sel.clear(); document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', 'false')); document.querySelectorAll('.tile').forEach(b => b.setAttribute('aria-pressed', 'false')); }
   else { simReset(); document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === tool))); }
   $('#b-sim').setAttribute('aria-pressed', String(on));
   renderEls(); renderOverlay(); renderProps(); updateBanner();
 }
-/* Cuadro de opciones de la herramienta. Con «OK» se recoge en una etiqueta pequeña arriba a la izquierda
-   y la herramienta sigue activa; tocando la etiqueta se vuelve a abrir. */
-let bannerMin = false;
+/* Barra pequeña de la herramienta: sin mensajes ni «OK». Solo sale cuando la herramienta tiene opciones
+   (cable: tipo y color; colocar símbolo: cuál y girar; simulación). La herramienta elegida queda resaltada
+   en la barra de arriba y sigue activa hasta que se elige otra. */
 function updateBanner(){
   const b = $('#banner');
-  let h = '', cls = '', mini = '';
-  const ok = '<button class="bb pri" data-b="ok" type="button">OK</button>';
-  const exit = '<button class="bb" data-b="done" type="button" aria-label="Salir de la herramienta">Salir</button>';
-  const x = '<button class="bb bx" data-b="done" type="button" aria-label="Salir de la herramienta">✕</button>';
+  let h = '', cls = '';
   if (sim) {
     cls = 'sim';
-    const sources = doc.els.some(e => e.type === 'sym' && SYM[e.k].kind === 'source');
-    h = `<p>${sources ? 'Simulación: toca un aparato para abrirlo o cerrarlo; los pulsadores, mantenlos pulsados. Lo que tiene tensión se ve en rojo.' : 'Pon una «Red / acometida» o un generador para que haya tensión.'}</p>${ok}<button class="bb" data-b="simreset" type="button">Reiniciar</button><button class="bb on" data-b="simoff" type="button">Salir</button>`;
-    mini = `<button class="mtag" data-b="open" type="button">⚡ Simulación</button><button class="bb" data-b="simreset" type="button">Reiniciar</button><button class="bb bx" data-b="simoff" type="button" aria-label="Salir de la simulación">✕</button>`;
-  } else if (tool === 'erase') {
-    h = `<p>Goma: toca lo que quieras borrar, o pasa el dedo o el lápiz por encima. Si te equivocas, «Deshacer» lo recupera.</p>${ok}${exit}`;
-    mini = `<span class="mtag">Goma: toca para borrar</span>${x}`;
-  } else if (tool === 'hand') {
-    mini = `<span class="mtag">✋ Solo mover la hoja</span><button class="bb bx" data-b="done" type="button" aria-label="Volver a editar">✕</button>`;
+    const sources = doc && doc.els.some(e => e.type === 'sym' && SYM[e.k].kind === 'source');
+    h = `<span class="mtag">⚡ ${sources ? 'Simulación' : 'Simulación: falta una red o un generador'}</span><button class="bb" data-b="simreset" type="button">Reiniciar</button><button class="bb bx" data-b="simoff" type="button" aria-label="Salir de la simulación">✕</button>`;
   } else if (tool === 'wire') {
     const dot = `<span class="dot" style="${swStyle(prefs.wireCol || 'negro')}"></span>`;
-    if (wireDraft) {
-      h = `<p>Toca para hacer esquinas. Toca un borne o un cable para terminar.</p><button class="bb pri" data-b="wfinish" type="button">Terminar</button><button class="bb" data-b="wcancel" type="button">Cancelar</button>`;
-      mini = `<button class="mtag" data-b="open" type="button">${dot}${wireKind === 'barra' ? 'Barra' : 'Cable'}</button><button class="bb pri" data-b="wfinish" type="button">Terminar</button><button class="bb" data-b="wcancel" type="button">Cancelar</button>`;
-    } else {
-      h = `<p>Elige cómo será el cable y pulsa OK. Luego arrastra de un borne a otro, o tócalos uno tras otro.</p><button class="bb${wireKind === 'linea' ? ' on' : ''}" data-b="wk-linea" type="button">Línea</button><button class="bb${wireKind === 'barra' ? ' on' : ''}" data-b="wk-barra" type="button">Barra</button><button class="bb${wirePal ? ' on' : ''}" data-b="wcol" type="button">${dot}Color</button>${ok}${exit}` + (wirePal ? `<div class="bpal">${Object.keys(WCOL).map(k => `<button type="button" class="sw${(prefs.wireCol || 'negro') === k ? ' on' : ''}" data-b="wc-${k}" style="${swStyle(k)}" title="${hesc(wireColName(k))}" aria-label="${hesc(wireColName(k))}"></button>`).join('')}<label class="sw sw-any" title="Otro color"><input type="color" id="wc-any" value="${/^#/.test(prefs.wireCol || '') ? prefs.wireCol : '#ff00aa'}" aria-label="Otro color"></label><span class="bpal-n">${hesc(wireColName(prefs.wireCol || 'negro'))}</span></div>` : '');
-      mini = `<button class="mtag" data-b="open" type="button">${dot}${wireKind === 'barra' ? 'Barra' : 'Cable'} · opciones</button>${x}`;
-    }
-  } else if (tool === 'place') {
-    h = `<p>Toca la hoja donde quieras «${hesc(SYM[placeKind].n)}». Después podrás arrastrarlo para ajustarlo.</p><button class="bb" data-b="prot" type="button">Girar ↻</button><button class="bb${placeMulti ? ' on' : ''}" data-b="pmulti" type="button">${placeMulti ? '✓ ' : ''}Poner varios</button>${ok}${exit}`;
-    mini = `<button class="mtag" data-b="open" type="button">Colocar: ${hesc(SYM[placeKind].n)}${placeMulti ? ' (varios)' : ''}</button>${x}`;
-  } else if (tool === 'text') {
-    h = `<p>Toca la hoja donde quieras el texto.</p>${ok}${exit}`;
-    mini = `<button class="mtag" data-b="open" type="button">Texto: toca la hoja</button>${x}`;
-  } else if (tool === 'frame') {
-    h = `<p>Arrastra para dibujar el recuadro, o toca para poner uno.</p>${ok}${exit}`;
-    mini = `<button class="mtag" data-b="open" type="button">Recuadro: arrastra</button>${x}`;
+    if (wireDraft) h = `<span class="mtag">Cable: toca para hacer esquinas</span><button class="bb pri" data-b="wfinish" type="button">Terminar</button><button class="bb" data-b="wcancel" type="button">Cancelar</button>`;
+    else h = `<button class="bb${wireKind === 'linea' ? ' on' : ''}" data-b="wk-linea" type="button">Línea</button><button class="bb${wireKind === 'barra' ? ' on' : ''}" data-b="wk-barra" type="button">Barra</button><button class="bb${wirePal ? ' on' : ''}" data-b="wcol" type="button" aria-label="Color del cable">${dot}Color</button>`
+      + (wirePal ? `<div class="bpal">${Object.keys(WCOL).map(k => `<button type="button" class="sw${(prefs.wireCol || 'negro') === k ? ' on' : ''}" data-b="wc-${k}" style="${swStyle(k)}" title="${hesc(wireColName(k))}" aria-label="${hesc(wireColName(k))}"></button>`).join('')}<label class="sw sw-any" title="Otro color"><input type="color" id="wc-any" value="${/^#/.test(prefs.wireCol || '') ? prefs.wireCol : '#ff00aa'}" aria-label="Otro color"></label><span class="bpal-n">${hesc(wireColName(prefs.wireCol || 'negro'))}</span></div>` : '');
+  } else if (tool === 'place' && SYM[placeKind]) {
+    h = `<span class="mtag">${ICONS[placeKind] ? `<span class="micon">${ICONS[placeKind]}</span>` : ''}${hesc(SYM[placeKind].n)}</span><button class="bb" data-b="prot" type="button">Girar ↻${placeRot ? ' ' + placeRot * 90 + '°' : ''}</button>`;
   }
-  const useMini = (bannerMin || !h) && mini;
-  b.className = 'banner ' + cls + (useMini ? ' mini' : '');
-  b.innerHTML = useMini ? mini : h;
-  b.hidden = !(useMini || h);
+  b.className = 'banner mini ' + cls;
+  if (b.innerHTML !== h) b.innerHTML = h;
+  b.hidden = !h;
+  $('#b-lib').setAttribute('aria-pressed', String(tool === 'place'));
 }
 $('#banner').addEventListener('input', e => { if (e.target.id === 'wc-any') { prefs.wireCol = e.target.value; savePrefs(); const n = $('#banner .bpal-n'); if (n) n.textContent = 'Otro color'; const d = $('#banner .dot'); if (d) d.setAttribute('style', swStyle(prefs.wireCol)); } });
 $('#banner').addEventListener('change', e => { if (e.target.id === 'wc-any') { wirePal = false; updateBanner(); } });
@@ -2549,12 +2687,9 @@ $('#banner').addEventListener('click', e => {
   else if (k === 'wcancel') { wireDraft = null; hoverPt = null; renderOverlay(); updateBanner(); }
   else if (k === 'wk-linea' || k === 'wk-barra') { wireKind = k.slice(3); updateBanner(); }
   else if (k === 'wcol') { wirePal = !wirePal; updateBanner(); }
-  else if (k.startsWith('wc-')) { prefs.wireCol = k.slice(3); savePrefs(); wirePal = false; updateBanner(); toast('Los cables nuevos serán ' + wireColName(prefs.wireCol).toLowerCase()); }
-  else if (k === 'pmulti') { placeMulti = !placeMulti; updateBanner(); }
-  else if (k === 'prot') { placeRot = (placeRot + 1) % 4; toast('Se colocará girado ' + placeRot * 90 + '°'); }
+  else if (k.startsWith('wc-')) { prefs.wireCol = k.slice(3); savePrefs(); wirePal = false; updateBanner(); }
+  else if (k === 'prot') { placeRot = (placeRot + 1) % 4; updateBanner(); }
   else if (k === 'done') setTool('sel');
-  else if (k === 'ok') { bannerMin = true; wirePal = false; updateBanner(); }
-  else if (k === 'open') { bannerMin = false; updateBanner(); }
 });
 document.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
 $('#b-sim').addEventListener('click', () => setSim(!sim));
@@ -2594,7 +2729,7 @@ function buildLib(q){
     h += sect(c.k, c.n, ks, !!q || !closed.includes(c.k));
   });
   $('#lib-list').innerHTML = h || '<p class="hint" style="padding:10px 4px">No hay ningún símbolo con ese nombre.</p>';
-  $('#lib-q').placeholder = 'Buscar (' + Object.keys(SYM).length + ' símbolos)';
+  $('#lib-q').placeholder = 'Buscar';
 }
 $('#lib-list').addEventListener('click', e => {
   const b = e.target.closest('[data-cat]'); if (!b || $('#lib-q').value.trim()) return;
@@ -2604,9 +2739,10 @@ $('#lib-list').addEventListener('click', e => {
   prefs.closed = closed; savePrefs(); buildLib('');
 });
 function addRecent(k){
+  const was = (prefs.recent || [])[0];
   prefs.recent = [k].concat((prefs.recent || []).filter(x => x !== k)).slice(0, 8);
   savePrefs();
-  if (!$('#lib-q').value.trim()) { const L = $('#lib-list'), top = L.scrollTop; buildLib(''); L.scrollTop = top; }
+  if (was !== k && !$('#lib').hidden && !$('#lib-q').value.trim()) { const L = $('#lib-list'), top = L.scrollTop; buildLib(''); L.scrollTop = top; }
 }
 $('#lib-q').addEventListener('input', e => buildLib(e.target.value));
 /* Toca un símbolo para elegirlo, o arrástralo hasta la hoja. Sirve para el panel y para el menú desplegable. */
@@ -2637,7 +2773,7 @@ function tileDrag(list, itemSel, onTap, onDrop){
       const r = stage.getBoundingClientRect();
       if (e.clientX > r.left && e.clientX < r.right && e.clientY > r.top && e.clientY < r.bottom) {
         if (sim) setSim(false);
-        setTool('sel'); placeSymbol(k, toWorld(e.clientX, e.clientY));
+        placeSymbol(k, toWorld(e.clientX, e.clientY));
         if (onDrop) onDrop(k);
       }
     } else onTap(k);
@@ -2677,7 +2813,7 @@ function ddBuild(){
 }
 function ddPlace(){
   const b = $('#b-lib').getBoundingClientRect(), vw = innerWidth, vh = window.visualViewport ? window.visualViewport.height : innerHeight;
-  const W = Math.min(380, vw - 12), left = clamp(b.left + b.width / 2 - W / 2, 6, vw - W - 6), top = b.bottom + 6;
+  const W = Math.min(320, vw - 12), left = clamp(b.left + b.width / 2 - W / 2, 6, vw - W - 6), top = b.bottom + 6;
   dd.style.width = W + 'px'; dd.style.left = left + 'px'; dd.style.top = top + 'px';
   dd.style.maxHeight = Math.max(220, vh - top - 10) + 'px';
 }
@@ -2698,7 +2834,7 @@ function insertSym(k){
   if (wireDraft) finishDraft();
   edClose(true);
   setTool('sel');
-  const [W, H] = pageSize(doc.page), r = svg.getBoundingClientRect();
+  const [W, H] = pageSize(doc.page), r = stage.getBoundingClientRect();
   const c = toWorld(r.left + r.width / 2, r.top + r.height * (isNarrow() ? 0.3 : 0.45));
   let x = clamp(snapG(c[0]), 25, snapG(W - 25)), y = clamp(snapG(c[1]), 25, snapG(H - 25));
   const cb = cajetinBox(doc);
@@ -2720,9 +2856,15 @@ ddList.addEventListener('click', e => {
   const c = e.target.closest('[data-cat]');
   if (c) { const k = c.dataset.cat; if (ddCats.has(k)) ddCats.delete(k); else ddCats.add(k); const top = ddList.scrollTop; ddBuild(); ddList.scrollTop = top; const nb = ddList.querySelector(`[data-cat="${k}"]`); if (nb && e.detail === 0) nb.focus(); return; }
   /* Con el teclado (Enter o espacio sobre un símbolo) también se inserta. */
-  const it = e.target.closest('.dd-it'); if (it && e.detail === 0) insertSym(it.dataset.k);
+  const it = e.target.closest('.dd-it'); if (it && e.detail === 0) ddPick(it.dataset.k);
 });
-tileDrag(ddList, '.dd-it', insertSym, () => ddClose());
+function ddPick(k){
+  if (!SYM[k]) return;
+  if (sim) setSim(false);
+  ddClose();
+  setTool('place', k);
+}
+tileDrag(ddList, '.dd-it', ddPick, () => ddClose());
 $('#dd-panel').addEventListener('click', () => { if (isPhone()) libPhone = !libPhone; else { prefs.lib = !prefs.lib; savePrefs(); } updatePanels(); ddClose(); });
 dd.addEventListener('keydown', e => {
   e.stopPropagation();
@@ -2735,7 +2877,7 @@ dd.addEventListener('keydown', e => {
   } else if (e.key === 'Enter' && e.target === ddQ) {
     e.preventDefault();
     const f = ddList.querySelector('.dd-it');
-    if (f) insertSym(f.dataset.k);
+    if (f) ddPick(f.dataset.k);
     else { const c = ddList.querySelector('[data-cat]'); if (c) c.click(); }
   }
 });
@@ -2768,6 +2910,7 @@ const isPhone = () => window.matchMedia('(max-width:700px)').matches;
 let libPhone = false;
 function updatePanels(){
   const libOn = isPhone() ? libPhone : prefs.lib;
+  if (libOn && $('#lib').hidden) buildLib($('#lib-q').value);
   $('#lib').hidden = !libOn;
   const show = isNarrow() ? (sel.size > 0 || propsManual) : prefs.props;
   $('#props').hidden = !show;
@@ -2827,6 +2970,7 @@ function renderProps(){
       + segHTML('Orientación', 'page', 'orient', P.orient, ['l', 'p'], ['Horizontal', 'Vertical'])
       + segHTML('Cajetín', 'page', 'cajetin', String(P.cajetin !== false), ['true', 'false'], ['Sí', 'No'])
       + segHTML('Rejilla en pantalla', 'pref', 'grid', String(prefs.grid), ['true', 'false'], ['Sí', 'No'])
+      + (navigator.maxTouchPoints > 0 ? segHTML('Dibujar en el plano con', 'pref', 'input', pencilOnly() ? 'pencil' : 'touch', ['pencil', 'touch'], ['Solo Apple Pencil', 'Pencil y dedo']) + '<p class="hint" style="margin-top:-4px">Con «Solo Apple Pencil», los dedos solo amplían y mueven el plano (con dos dedos) y la palma no hace nada.</p>' : '')
       + `<p class="sect">Datos del cajetín</p><p class="hint">El cajetín está abajo a la derecha de la hoja. Puedes escribir aquí o directamente en él: toca una casilla del cajetín y escribe. Sale igual en el PDF.</p>`
       + fieldHTML('info', 'titulo', 'Título', I.titulo, {ph:doc.name})
       + fieldHTML('info', 'emplazamiento', 'Emplazamiento', I.emplazamiento, {ph:'Calle, número, localidad'})
@@ -2834,7 +2978,7 @@ function renderProps(){
       + fieldHTML('info', 'autor', 'Instalador / autor', I.autor)
       + `<div class="two"><div>${fieldHTML('info', 'fecha', 'Fecha', I.fecha)}</div><div>${fieldHTML('info', 'plano', 'Plano nº', I.plano)}</div></div>`
       + `<div class="two"><div>${fieldHTML('info', 'escala', 'Escala', I.escala, {ph:'S/E'})}</div><div>${fieldHTML('info', 'hoja', 'Hoja', I.hoja)}</div></div>`
-      + `<p class="sect">Cómo se usa</p><p class="hint">Abre «Símbolos» arriba y toca uno para ponerlo en la hoja (o arrástralo a su sitio). Con «Cable», arrastra de un borne a otro. Toca un elemento para cambiar sus datos y arrástralo para moverlo; el círculo de su esquina cambia el tamaño. Para escribir, usa «Texto» o toca dos veces un texto. Un dedo mueve la hoja; dos dedos hacen zoom.</p>`;
+      + `<p class="sect">Cómo se usa</p><p class="hint">Abre «Símbolos» arriba y toca uno para ponerlo en la hoja (o arrástralo a su sitio). Con «Cable», arrastra de un borne a otro. Toca un elemento para cambiar sus datos y arrástralo para moverlo; el círculo de su esquina cambia el tamaño. Para escribir, usa «Texto» o toca dos veces un texto. La herramienta elegida sigue activa hasta que eliges otra. ${pencilOnly() && navigator.maxTouchPoints > 0 ? 'Se dibuja con el Apple Pencil; con dos dedos se amplía y se mueve el plano.' : 'Un dedo mueve la hoja; dos dedos hacen zoom.'}</p>`;
   } else if (sel.size === 1) {
     const el = byId([...sel][0]);
     if (el.type === 'sym') {
@@ -2896,7 +3040,7 @@ function setVal(scope, k, v, el){
   else if (scope === 'info') doc.info[k] = v;
   else if (scope === 'doc') { doc.name = String(v).slice(0, 120) || 'Esquema'; updateHeader(); }
   else if (scope === 'page') doc.page[k] = k === 'cajetin' ? v === 'true' : v;
-  else if (scope === 'pref') { prefs[k] = v === 'true'; savePrefs(); }
+  else if (scope === 'pref') { prefs[k] = k === 'input' ? (v === 'touch' ? 'touch' : 'pencil') : v === 'true'; savePrefs(); }
   else if (scope === 'wires') doc.els.forEach(w => { if (w.type === 'wire' && sel.has(w.id)) w[k] = v; });
   else if (scope === 'syms' && k === 'sc') doc.els.filter(x => x.type === 'sym' && sel.has(x.id)).forEach(x => applyScale(x, parseFloat(v) || 1));
 }
@@ -2961,7 +3105,7 @@ document.addEventListener('keydown', e => {
   else if (k === 'delete' || k === 'backspace') { e.preventDefault(); deleteSel(); }
   else if (k === 'escape') { if (wireDraft) { wireDraft = null; renderOverlay(); updateBanner(); } else if (tool !== 'sel') setTool('sel'); else if (sim) setSim(false); else { sel.clear(); renderOverlay(); renderProps(); } }
   else if (k === 'enter' && wireDraft) finishDraft();
-  else if (k === 'r') { if (tool === 'place') placeRot = (placeRot + 1) % 4; else rotateSel(e.shiftKey ? -1 : 1); }
+  else if (k === 'r') { if (tool === 'place') { placeRot = (placeRot + 1) % 4; updateBanner(); } else rotateSel(e.shiftKey ? -1 : 1); }
   else if (k === 'w') setTool('wire');
   else if (k === 'v') setTool('sel');
   else if (k === 'h') setTool(tool === 'hand' ? 'sel' : 'hand');
@@ -3058,8 +3202,9 @@ function rebtCheck(){
   syms.forEach(s => symTerms(s).forEach((t, i) => T.push({k:'t:' + s.id + ':' + i, p:[t.x, t.y]})));
   const byKey = {};
   T.forEach(t => { const key = t.p[0].toFixed(2) + ',' + t.p[1].toFixed(2); find(t.k); if (byKey[key]) uni(t.k, byKey[key]); else byKey[key] = t.k; });
-  T.forEach(t => wires.forEach(w => { if (onWire(t.p, w.pts)) uni(t.k, 'w:' + w.id); }));
-  wires.forEach(w1 => { find('w:' + w1.id); [w1.pts[0], w1.pts[w1.pts.length - 1]].forEach(p => wires.forEach(w2 => { if (w2 !== w1 && onWire(p, w2.pts)) uni('w:' + w1.id, 'w:' + w2.id); })); });
+  const atR = wireIndex(wires);
+  T.forEach(t => atR(t.p).forEach(w => { if (onWire(t.p, w.pts)) uni(t.k, 'w:' + w.id); }));
+  wires.forEach(w1 => { find('w:' + w1.id); [w1.pts[0], w1.pts[w1.pts.length - 1]].forEach(p => atR(p).forEach(w2 => { if (w2 !== w1 && onWire(p, w2.pts)) uni('w:' + w1.id, 'w:' + w2.id); })); });
   const rem = {};
   syms.forEach(s => {
     if (s.k === 'remision') { const k = String(s.p.txt || '').trim().toUpperCase(); if (k) { if (rem[k]) uni('t:' + s.id + ':0', rem[k]); else rem[k] = 't:' + s.id + ':0'; } }
@@ -3162,7 +3307,7 @@ function rebtCheck(){
   /* Dibujo: cables sueltos */
   const loose = [];
   wires.forEach(w => [w.pts[0], w.pts[w.pts.length - 1]].forEach(p => {
-    const onT = T.some(t => eqp(t.p, p)), onW = wires.some(v => v !== w && onWire(p, v.pts));
+    const onT = T.some(t => eqp(t.p, p)), onW = atR(p).some(v => v !== w && onWire(p, v.pts));
     if (!onT && !onW) loose.push(w.id);
   }));
   if (loose.length) add('warn', `Hay ${loose.length} extremo${loose.length > 1 ? 's' : ''} de cable sin conectar a nada. Revisa que el cable llegue al borne.`, 'Dibujo', [...new Set(loose)]);
@@ -3171,7 +3316,7 @@ function rebtCheck(){
 function focusEls(ids){
   const els = ids.map(byId).filter(Boolean); if (!els.length) return;
   const b = els.map(elBox).reduce((a, c) => [Math.min(a[0], c[0]), Math.min(a[1], c[1]), Math.max(a[2], c[2]), Math.max(a[3], c[3])]);
-  const r = svg.getBoundingClientRect(), pad = 30;
+  const r = stage.getBoundingClientRect(), pad = 30;
   const s = clamp(Math.min((r.width - 2 * pad) / Math.max(20, b[2] - b[0]), (r.height - 2 * pad) / Math.max(20, b[3] - b[1])), 1.5, 9);
   view.s = s; view.x = (b[0] + b[2]) / 2 - r.width / 2 / s; view.y = (b[1] + b[3]) / 2 - r.height / 2 / s;
   sel = new Set(els.map(e => e.id)); renderProps(); applyView();
@@ -3379,7 +3524,7 @@ $('#m-gen').addEventListener('change', e => {
 $('#g-go').addEventListener('click', () => {
   const d = generate(G);
   Store.save(d); closeModals(); openDoc(d);
-  toast('Cuadro creado. Toca cualquier elemento para cambiarlo.', 3500);
+  toast('Cuadro creado.', 2500);
 });
 function generate(cfg){
   const d = newDoc(cfg.name || 'Vivienda');
@@ -3431,7 +3576,7 @@ try {
 } catch (e) {}
 
 /* ---------- Arranque ---------- */
-new ResizeObserver(() => applyView()).observe(stage);
+new ResizeObserver(() => { svgW = 0; applyView(); }).observe(stage);
 window.addEventListener('pagehide', persist);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persist(); });
 buildLib('');
@@ -3446,7 +3591,7 @@ else {
   if (any && normDoc(any)) openDoc(any);
   else { doc = newDoc('Esquema 1'); lastSnap = snapOf(); renderAll(); renderProps(); showHome(); }
 }
-window.__unifilar = {get doc(){ return doc; }, get sel(){ return [...sel]; }, toScreen(x, y){ const r = svg.getBoundingClientRect(); return [r.left + (x - view.x) * view.s, r.top + (y - view.y) * view.s]; }, generate, Store, simulate, junctions, exportPDF, docSVG, pdfOf, docPrims, pageSize,
+window.__unifilar = {get doc(){ return doc; }, get sel(){ return [...sel]; }, toScreen(x, y){ const r = stage.getBoundingClientRect(); return [r.left + (x - view.x) * view.s, r.top + (y - view.y) * view.s]; }, generate, Store, simulate, junctions, exportPDF, docSVG, pdfOf, docPrims, pageSize,
   get view(){ return Object.assign({}, view); }, get editing(){ return ed ? Object.assign({}, ed) : null; }, edOpen, edClose, insertSym, onlyCajetin, ddShow, ddClose, cajetinFields, symScale, symTerms, redraw(){ commit(); renderAll(); renderProps(); }};
 })();
 
