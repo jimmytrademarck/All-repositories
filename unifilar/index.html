@@ -1494,7 +1494,7 @@ function normDoc(d){
 /* ---------- Estado ---------- */
 let doc = null;
 let sel = new Set();
-let tool = 'sel', placeKind = null, placeRot = 0, placeMulti = false;
+let tool = 'sel', placeKind = null, placeRot = 0;
 let sim = false; const simAct = new Set(), simPress = new Set();
 let simOut = {}, simT = {}, simLatch = {}, simPrevE = {}, simWake = 0;
 let multi = false;
@@ -1736,7 +1736,7 @@ function elSVG(el, si){
   else if (el.type === 'wire') { hit = `<polyline class="hitw" points="${el.pts.map(p => f2(p[0]) + ',' + f2(p[1])).join(' ')}"/>`; const tb = wireTextBox(el); if (tb) hit += rect(tb, 0.6, 'hit'); }
   else if (el.type === 'text') hit = rect(textBox(el), 1, 'hit');
   else if (el.type === 'frame') { hit = `<rect class="hitf" x="${f2(el.x)}" y="${f2(el.y)}" width="${f2(el.w)}" height="${f2(el.h)}"/>`; if (el.s) hit += rect([el.x, el.y, el.x + 2 + textW(el.s, 2.8, true), el.y + 5], 0.5, 'hit'); }
-  return `<g data-id="${el.id}">${svgOf(elPrims(el, si, []))}${hit}</g>`;
+  return `<g data-id="${el.id}" data-o="${ORDER[el.type]}">${svgOf(elPrims(el, si, []))}${hit}</g>`;
 }
 let simInfo = null;
 function renderSheet(){
@@ -1761,7 +1761,7 @@ function rerenderEl(el){
   if (sim || !byId(el.id)) { renderEls(); return; }
   const o = ORDER[el.type];
   let before = null;
-  for (const n of gEls.children) { const e2 = byId(n.dataset.id); if (e2 && ORDER[e2.type] > o) { before = n; break; } }
+  for (const n of gEls.children) { if (+n.dataset.o > o) { before = n; break; } }
   gEls.insertBefore(tmp.firstChild, before);
 }
 function renderOverlay(){
@@ -1933,11 +1933,13 @@ function setWireLen(el, L){
   const pts = el.pts.map(p => [p[0], p[1]]);
   if (which === 0) pts.reverse();
   const e = pts[pts.length - 1], f = pts[pts.length - 2];
-  const seg = Math.hypot(e[0] - f[0], e[1] - f[1]) || 1, rest = wlen(pts.slice(0, -1));
+  const seg = Math.hypot(e[0] - f[0], e[1] - f[1]), rest = wlen(pts.slice(0, -1));
+  if (seg < 1e-6) return;
   const newSeg = Math.max(0.5, L - rest);
   pts[pts.length - 1] = [Math.round((f[0] + (e[0] - f[0]) / seg * newSeg) * 1000) / 1000, Math.round((f[1] + (e[1] - f[1]) / seg * newSeg) * 1000) / 1000];
   if (which === 0) pts.reverse();
-  el.pts = simplify(pts);
+  const out = simplify(pts);
+  if (out.length >= 2) el.pts = out;
 }
 function addWire(pts){
   pts = simplify(pts);
@@ -2535,10 +2537,16 @@ const IPAD = /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacInt
 const pencilOnly = () => (prefs.input || (IPAD ? 'pencil' : 'touch')) === 'pencil';
 const zt = new Map(), palm = new Set(), penIds = new Set();
 let zoomG = null, penUpAt = -1e9, hintAt = 0;
-const isPalm = e => (e.width || 0) > 46 || (e.height || 0) > 46;
+/* La palma da un contacto mucho más grande que un dedo (un dedo en el iPad mide unos 40–50 px). */
+const isPalm = e => (e.width || 0) > 90 || (e.height || 0) > 90;
+let penSeen = 0;
+/* Si el iPad no llegara a avisar de que el lápiz se levantó (pasa al cambiar de app o con un aviso del sistema),
+   no se queda bloqueado el zoom: un lápiz «apoyado» sin moverse ni un poco en 2 s se da por levantado. */
+const penBusy = () => { if (penIds.size && performance.now() - penSeen > 2000) penIds.clear(); return penIds.size > 0; };
+function inputReset(){ zt.clear(); palm.clear(); penIds.clear(); if (zoomG) { zoomG = null; vgEnd(); } }
 function zStart(){
   const [a, b] = [...zt.values()], r = stage.getBoundingClientRect(), m = [(a.x + b.x) / 2, (a.y + b.y) / 2];
-  edClose(true); vgStart();
+  vgStart();
   zoomG = {d0:Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), s0:view.s, wm:[view.x + (m[0] - r.left) / view.s, view.y + (m[1] - r.top) / view.s], left:r.left, top:r.top};
 }
 function zFrame(){
@@ -2556,8 +2564,10 @@ function fingerHint(){
 function tDown(e){
   e.preventDefault();
   const now = performance.now();
+  /* Primer dedo de un toque nuevo: si quedaba algo de antes (un aviso de «soltar» que no llegó), se olvida. */
+  if (e.isPrimary && (zt.size || palm.size)) { zt.clear(); palm.clear(); if (zoomG) { zoomG = null; vgEnd(); } }
   /* Palma: el lápiz está apoyado o se acaba de levantar, el contacto es grande, o ya hay dos dedos. */
-  if (penIds.size || now - penUpAt < 400 || isPalm(e) || zt.size >= 2) { palm.add(e.pointerId); return; }
+  if (penBusy() || now - penUpAt < 400 || isPalm(e) || zt.size >= 2) { palm.add(e.pointerId); return; }
   zt.set(e.pointerId, {x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY, t:now});
   try { svg.setPointerCapture(e.pointerId); } catch (er) {}
   if (zt.size === 2) zStart();
@@ -2589,10 +2599,10 @@ function pDown(e){
   if (byTouch(e)) {
     if (pencilOnly()) { tDown(e); return; }
     /* Con «Pencil y dedo», la palma también se ignora mientras se dibuja con el lápiz. */
-    if (penIds.size || performance.now() - penUpAt < 400 || isPalm(e)) { e.preventDefault(); palm.add(e.pointerId); return; }
+    if (penBusy() || performance.now() - penUpAt < 400 || isPalm(e)) { e.preventDefault(); palm.add(e.pointerId); return; }
   }
   if (e.pointerType === 'pen') {
-    penIds.add(e.pointerId);
+    penIds.add(e.pointerId); penSeen = performance.now();
     /* El lápiz manda: si había dedos ampliando, se dejan de tener en cuenta. */
     if (zt.size) { zt.forEach((v, id) => palm.add(id)); zt.clear(); zEnd(); }
     if (ptrs.size) { [...ptrs.keys()].forEach(id => { if (id !== e.pointerId) palm.add(id); }); }
@@ -2601,6 +2611,7 @@ function pDown(e){
   onDown(e);
 }
 function pMove(e){
+  if (e.pointerType === 'pen') penSeen = performance.now();
   if (palm.has(e.pointerId)) return;
   if (byTouch(e) && pencilOnly()) { tMove(e); return; }
   pendMove.set(e.pointerId, e);
@@ -2626,7 +2637,16 @@ svg.addEventListener('wheel', e => {
   clearTimeout(wheelT); wheelT = setTimeout(() => applyView(), 120);
 }, {passive:false});
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive:false}));
-svg.addEventListener('lostpointercapture', safe(e => { if (zt.has(e.pointerId) || palm.has(e.pointerId)) { tUp(e); palm.delete(e.pointerId); return; } if (ptrs.has(e.pointerId)) { flushMove(); onCancel(e); } }));
+svg.addEventListener('lostpointercapture', safe(e => {
+  if (e.pointerType === 'pen' && penIds.has(e.pointerId)) { penIds.delete(e.pointerId); penUpAt = performance.now(); }
+  if (zt.has(e.pointerId) || palm.has(e.pointerId)) { tUp(e); palm.delete(e.pointerId); return; }
+  if (ptrs.has(e.pointerId)) { flushMove(); onCancel(e); }
+}));
+/* Al cambiar de app, girar el iPad o perder el foco, cualquier gesto a medias se termina limpio. */
+const gestureReset = () => { try { flushMove(); if (act) cancelAct(); ptrs.clear(); inputReset(); vgEnd(); } catch (er) {} };
+window.addEventListener('blur', gestureReset);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') gestureReset(); });
+window.addEventListener('orientationchange', gestureReset);
 if (window.visualViewport) window.visualViewport.addEventListener('resize', () => requestAnimationFrame(() => { applyView(); edEnsureVisible(); if (!dd.hidden) ddPlace(); }));
 let lastPType = 'mouse';
 svg.addEventListener('pointerdown', e => { lastPType = e.pointerType; }, true);
@@ -2721,11 +2741,9 @@ function buildLib(q){
   let h = '';
   const recent = (prefs.recent || []).filter(k => SYM[k]);
   if (!q && recent.length) h += sect('_rec', 'Recientes', recent, !closed.includes('_rec'));
-  let total = 0;
   CATS.forEach(c => {
     const ks = Object.keys(SYM).filter(k => SYM[k].cat === c.k && (!q || norm(SYM[k].n).includes(q) || norm(c.n).includes(q) || k.toLowerCase().includes(q)));
     if (!ks.length) return;
-    total += ks.length;
     h += sect(c.k, c.n, ks, !!q || !closed.includes(c.k));
   });
   $('#lib-list').innerHTML = h || '<p class="hint" style="padding:10px 4px">No hay ningún símbolo con ese nombre.</p>';
@@ -2750,12 +2768,14 @@ function tileDrag(list, itemSel, onTap, onDrop){
   let tp = null, ghost = null;
   list.addEventListener('pointerdown', e => {
     const t = e.target.closest(itemSel); if (!t || (e.button && e.button !== 0)) return;
-    tp = {k:t.dataset.k, x:e.clientX, y:e.clientY, id:e.pointerId, moved:false};
+    tp = {k:t.dataset.k, x:e.clientX, y:e.clientY, id:e.pointerId, moved:false, finger:e.pointerType === 'touch' && pencilOnly()};
     try { t.setPointerCapture(e.pointerId); } catch (er) {}
   });
   list.addEventListener('pointermove', e => {
     if (!tp || e.pointerId !== tp.id) return;
     const dx = e.clientX - tp.x, dy = e.clientY - tp.y;
+    /* Con «Solo Apple Pencil», el dedo solo elige (toca) o desplaza la lista; arrastrar al plano es con el lápiz. */
+    if (tp.finger) { if (Math.hypot(dx, dy) > 10) tp.moved = true; return; }
     if (!tp.moved && Math.hypot(dx, dy) > 10 && Math.abs(dx) > Math.abs(dy) * 0.8) {
       tp.moved = true;
       ghost = document.createElement('div'); ghost.className = 'dragghost'; ghost.innerHTML = ICONS[tp.k] || (ICONS[tp.k] = iconSVG(tp.k));
@@ -2766,9 +2786,10 @@ function tileDrag(list, itemSel, onTap, onDrop){
   });
   const end = (e, cancel) => {
     if (!tp || e.pointerId !== tp.id) return;
-    const k = tp.k, moved = tp.moved; tp = null;
+    const k = tp.k, moved = tp.moved, finger = tp.finger; tp = null;
     if (ghost) { ghost.remove(); ghost = null; $('#app').classList.remove('dragging'); }
     if (cancel || !SYM[k]) return;
+    if (moved && finger) return;
     if (moved) {
       const r = stage.getBoundingClientRect();
       if (e.clientX > r.left && e.clientX < r.right && e.clientY > r.top && e.clientY < r.bottom) {
@@ -3345,7 +3366,7 @@ $('#rebt-body').addEventListener('click', e => {
 /* ---------- Mis esquemas ---------- */
 function openDoc(d){
   if (doc && doc.id !== d.id) commit();
-  doc = d; sel.clear(); undoS = []; redoS = []; lastSnap = snapOf(); wireDraft = null; simReset();
+  doc = d; sel.clear(); undoS = []; redoS = []; undoChars = 0; lastSnap = snapOf(); wireDraft = null; simReset();
   if (sim) setSim(false);
   setTool('sel');
   try { localStorage.setItem(K_LAST, d.id); } catch (e) {}
