@@ -1,5 +1,5 @@
 /* Service worker: guarda la app en la tableta para que funcione sin conexión. */
-const CACHE = "unifilar@0982945aeb";
+const CACHE = "unifilar@c1a15297ab";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 const APPS = [];
 const OPTS = {ignoreSearch: true, ignoreVary: true};

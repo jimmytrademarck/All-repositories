@@ -97,7 +97,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 #cv .boxsel{fill:rgba(31,111,235,.08);stroke:var(--sel);stroke-width:1px;stroke-dasharray:4 3;vector-effect:non-scaling-stroke;pointer-events:none}
 #cv .eraser{fill:rgba(215,38,30,.12);stroke:#D7261E;stroke-width:1.5px;vector-effect:non-scaling-stroke;pointer-events:none}
 .tb[data-tool="erase"][aria-pressed="true"]{background:#D7261E;color:#fff}
-#cv .handle{fill:#fff;stroke:var(--sel);stroke-width:2px;vector-effect:non-scaling-stroke}
+#cv .handle{fill:#fff;stroke:var(--sel);stroke-width:2px;vector-effect:non-scaling-stroke;cursor:nwse-resize}
 #cv .ghost{opacity:.55;pointer-events:none}
 
 .banner{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 20px);padding:6px 6px 6px 14px;border-radius:14px;background:var(--ink);color:var(--surface);box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:.92rem;z-index:3}
@@ -257,6 +257,33 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
 .dragghost{position:fixed;z-index:60;width:64px;height:64px;margin:-32px 0 0 -32px;pointer-events:none;background:#fff;border:2px solid var(--sel);border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,.25)}
 .dragghost svg{width:100%;height:100%}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Símbolos: menú desplegable */
+.tbl{display:inline-flex;align-items:center;gap:1px}
+.ddchev{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.tb[aria-expanded="true"]{background:var(--ink);color:var(--surface)}
+.dd{position:fixed;z-index:40;display:flex;flex-direction:column;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.28);overflow:hidden}
+.dd[hidden]{display:none}
+.dd-head{display:flex;gap:6px;align-items:center;padding:8px;border-bottom:1px solid var(--line)}
+.dd-head input{flex:1 1 auto;min-width:0;height:42px;border:1px solid var(--line-strong);border-radius:10px;background:var(--bg);padding:0 12px;font-size:16px}
+.dd-head .x{width:42px;height:42px;border:0;border-radius:10px;background:var(--sunk);font-size:1.5rem;line-height:1;flex:none}
+.dd-tip{margin:0;padding:6px 12px 0;font-size:.8rem;color:var(--muted)}
+.dd-list{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 8px 8px;flex:1 1 auto;min-height:0;touch-action:pan-y}
+.dd-grp{display:grid;gap:2px;padding:2px 0 6px}
+.dd-it{display:flex;align-items:center;gap:10px;width:100%;min-height:46px;padding:4px 6px;border:0;border-radius:9px;background:transparent;color:var(--ink);text-align:left;font-size:.95rem;line-height:1.2;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.dd-it:hover,.dd-it:focus{background:var(--sunk);outline:none}
+.dd-it:focus-visible{box-shadow:0 0 0 2px var(--sel) inset}
+.dd-it svg{width:40px;height:40px;flex:none;background:#fff;border:1px solid var(--line);border-radius:7px;pointer-events:none}
+.dd-it span{display:flex;flex-direction:column;pointer-events:none}
+.dd-it small{color:var(--muted);font-size:.74rem}
+.dd-foot{padding:8px;border-top:1px solid var(--line)}
+.dd-foot .btn{width:100%;min-height:40px;font-size:.88rem}
+/* Escribir en el plano */
+.ied{position:absolute;z-index:6;margin:0;padding:3px 5px;box-sizing:border-box;border:0;border-radius:4px;outline:2px solid var(--sel);outline-offset:0;background:#fff;color:#000;font-family:Helvetica,Arial,sans-serif;resize:none;overflow:hidden;white-space:pre;overflow-wrap:normal;box-shadow:0 4px 16px rgba(0,0,0,.22);-webkit-user-select:text;user-select:text;touch-action:manipulation;caret-color:var(--sel)}
+.ied[hidden],.ied-tip[hidden],.szbadge[hidden]{display:none}
+.ied::placeholder{color:#9AA19C}
+.ied-tip{position:absolute;z-index:6;max-width:calc(100% - 8px);box-sizing:border-box;padding:3px 8px;border-radius:7px;background:var(--ink);color:var(--surface);font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;opacity:.92}
+.szbadge{position:absolute;z-index:6;left:50%;bottom:calc(70px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:6px 14px;border-radius:999px;background:var(--ink);color:var(--surface);font-weight:700;pointer-events:none}
 </style>
 <script>
 /* Deja la app guardada en la tableta para usarla sin conexión y avisa de si está lista o de qué lo impide. */
@@ -293,7 +320,7 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
 <div id="app">
   <header class="bar" role="toolbar" aria-label="Herramientas">
     <button class="tb home" id="b-home" type="button"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span class="nl">Esquemas</span></button>
-    <button class="docname" id="b-name" type="button" title="Cambiar nombre"><b id="docname">Esquema</b><small id="docsave">Guardado en este iPad</small></button>
+    <button class="docname" id="b-name" type="button" title="Cambiar nombre"><b id="docname">Esquema</b><small id="docsave">Guardado</small></button>
     <span class="sep"></span>
     <button class="tb" data-tool="sel" type="button" title="Seleccionar y mover (V)"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3l12 8.5-5.2 1.2L10 18z"/></svg>Mover</button>
     <button class="tb" data-tool="hand" type="button" title="Solo mover y ampliar la hoja, sin tocar nada del esquema (H)"><svg class="ico" viewBox="0 0 24 24"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11M11 10.5V4.2a1.5 1.5 0 0 1 3 0v6.3M14 10.8V5.8a1.5 1.5 0 0 1 3 0v8c0 3.9-2.5 6.7-6 6.7-2.6 0-4.1-1.2-5.5-3.5L3.7 13.6a1.4 1.4 0 0 1 2.3-1.6L8 14.5"/></svg>Solo mover</button>
@@ -307,7 +334,7 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
     <button class="tb" id="b-undo" type="button" title="Deshacer"><svg class="ico" viewBox="0 0 24 24"><path d="M4 9h11a5 5 0 0 1 0 10H9"/><path d="M8 5L4 9l4 4"/></svg><span class="nl">Deshacer</span></button>
     <button class="tb" id="b-redo" type="button" title="Rehacer"><svg class="ico" viewBox="0 0 24 24"><path d="M20 9H9a5 5 0 0 0 0 10h6"/><path d="M16 5l4 4-4 4"/></svg><span class="nl">Rehacer</span></button>
     <span class="grow"></span>
-    <button class="tb" id="b-lib" type="button" aria-pressed="true" title="Mostrar u ocultar símbolos"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg><span class="nl">Símbolos</span></button>
+    <button class="tb" id="b-lib" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="dd" title="Símbolos: buscar, elegir e insertar"><span class="tbl"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg><svg class="ddchev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg></span><span class="nl">Símbolos</span></button>
     <button class="tb" id="b-props" type="button" aria-pressed="true" title="Mostrar u ocultar propiedades"><svg class="ico" viewBox="0 0 24 24"><path d="M4 7h9M18 7h2M4 17h4M13 17h7"/><circle cx="15.5" cy="7" r="2.2"/><circle cx="10.5" cy="17" r="2.2"/></svg><span class="nl">Propiedades</span></button>
     <button class="tb exp" id="b-export" type="button"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 12v7h14v-7"/></svg><span class="nl2">Exportar</span></button>
   </header>
@@ -331,6 +358,9 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
         <g id="g-dots" pointer-events="none"></g>
         <g id="g-ovl"></g>
       </svg>
+      <textarea id="ied" class="ied" hidden rows="1" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Texto"></textarea>
+      <div class="ied-tip" id="ied-tip" hidden></div>
+      <div class="szbadge" id="szbadge" hidden></div>
       <div class="banner" id="banner" hidden></div>
       <div class="zoom" role="group" aria-label="Zoom">
         <button type="button" id="z-out" aria-label="Alejar"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
@@ -347,13 +377,21 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
     </aside>
   </div>
 
+  <!-- Menú desplegable de símbolos -->
+  <div class="dd" id="dd" hidden role="dialog" aria-label="Símbolos">
+    <div class="dd-head"><input type="search" id="dd-q" placeholder="Buscar símbolo" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Buscar símbolo"><button class="x" type="button" id="dd-x" aria-label="Cerrar">×</button></div>
+    <p class="dd-tip">Toca un símbolo para ponerlo en la hoja, o arrástralo hasta su sitio.</p>
+    <div class="dd-list" id="dd-list" role="menu"></div>
+    <div class="dd-foot"><button type="button" class="btn" id="dd-panel">Dejar el panel de símbolos fijo a la izquierda</button></div>
+  </div>
+
   <!-- Mis esquemas -->
   <section class="screen" id="home" hidden aria-label="Mis esquemas">
     <div class="wrap">
       <header>
         <p class="kicker">Esquemas unifilares · funciona sin conexión</p>
         <h1>Mis esquemas</h1>
-        <p class="lede">Dibuja con los símbolos de la izquierda y une los bornes con cables, como en CADe SIMU. O genera el cuadro de una vivienda en un momento y retócalo.</p>
+        <p class="lede">Elige los símbolos en el menú «Símbolos» y une los bornes con cables, como en CADe SIMU. O genera el cuadro de una vivienda en un momento y retócalo.</p>
       </header>
       <div class="acts">
         <button class="btn pri" type="button" id="h-gen">Generar cuadro de vivienda</button>
@@ -943,12 +981,16 @@ function textW(s, size, bold){ let w = 0; textRuns(s).forEach(r => { w += runW(r
 function rotPt(x, y, r){ switch (((r % 4) + 4) % 4) { case 1: return [-y, x]; case 2: return [-x, -y]; case 3: return [y, -x]; default: return [x, y]; } }
 const DIRV = {n:[0,-1], s:[0,1], e:[1,0], w:[-1,0]};
 function rotDir(d, r){ const v = rotPt(DIRV[d][0], DIRV[d][1], r); return Math.abs(v[0]) > 0.5 ? 'h' : 'v'; }
+/* Tamaño de cada símbolo: 1 = normal; 0,5 = la mitad; 2 = el doble. */
+const symScale = el => { const k = +el.sc; return isFinite(k) && k > 0 ? k : 1; };
+const r3 = v => Math.round(v * 1000) / 1000;
 function symTerms(el){
   const d = SYM[el.k]; if (!d) return [];
-  return d.t.map(t => { const q = rotPt(t[0], t[1], el.r || 0); return {x:el.x + q[0], y:el.y + q[1], ax:rotDir(t[2], el.r || 0)}; });
+  const k = symScale(el);
+  return d.t.map(t => { const q = rotPt(t[0] * k, t[1] * k, el.r || 0); return {x:r3(el.x + q[0]), y:r3(el.y + q[1]), ax:rotDir(t[2], el.r || 0)}; });
 }
 function symBox(el){
-  const d = SYM[el.k]; const b = d ? d.bb : [-5,-10,5,10];
+  const d = SYM[el.k], k = symScale(el); const b = (d ? d.bb : [-5,-10,5,10]).map(v => v * k);
   const a = rotPt(b[0], b[1], el.r || 0), c = rotPt(b[2], b[3], el.r || 0);
   return [el.x + Math.min(a[0], c[0]), el.y + Math.min(a[1], c[1]), el.x + Math.max(a[0], c[0]), el.y + Math.max(a[1], c[1])];
 }
@@ -973,18 +1015,19 @@ function simplify(pts){
 }
 
 /* ---------- Lápiz: pasa del sistema local del símbolo al de la hoja ---------- */
-function Pen(ox, oy, r, out, base){
-  base = base || {};
-  const tf = (x, y) => { const q = rotPt(x, y, r); return [ox + q[0], oy + q[1]]; };
+function Pen(ox, oy, r, out, base, k){
+  base = base || {}; k = k > 0 ? k : 1;
+  /* k: tamaño del símbolo. Se agranda o se encoge el dibujo y sus letras; el grosor de línea es siempre el mismo. */
+  const tf = (x, y) => { const q = rotPt(x * k, y * k, r); return [ox + q[0], oy + q[1]]; };
   const st = o => ({w: o && o.w != null ? o.w : LW, c: (o && o.c) || base.c || '#000', fill: (o && o.fill) || null, dash: (o && o.dash) || null});
   return {
     l(x1, y1, x2, y2, o){ const a = tf(x1, y1), b = tf(x2, y2); out.push({t:'p', pts:[a, b], ...st(o)}); },
     p(pts, o){ out.push({t:'p', pts:pts.map(q => tf(q[0], q[1])), close:!!(o && o.close), ...st(o)}); },
     r(x, y, w, h, o){ this.p([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], Object.assign({}, o, {close:true})); },
-    c(x, y, rad, o){ const a = tf(x, y); out.push({t:'c', x:a[0], y:a[1], r:rad, ...st(o)}); },
-    e(x, y, rx, ry, o){ const a = tf(x, y); const sw = r % 2; out.push({t:'e', x:a[0], y:a[1], rx:sw ? ry : rx, ry:sw ? rx : ry, ...st(o)}); },
-    a(x, y, rad, a0, a1, o){ const a = tf(x, y); out.push({t:'a', x:a[0], y:a[1], r:rad, a0:a0 + r * 90, a1:a1 + r * 90, ...st(o)}); },
-    t(x, y, s, o){ const a = tf(x, y); out.push({t:'x', x:a[0], y:a[1], s:String(s), size:(o && o.size) || FS, anchor:(o && o.anchor) || 'middle', bold:!!(o && o.bold), rot:0, base:(o && o.base) || 'mid', c:(o && o.c) || base.c || '#000'}); }
+    c(x, y, rad, o){ const a = tf(x, y); out.push({t:'c', x:a[0], y:a[1], r:rad * k, ...st(o)}); },
+    e(x, y, rx, ry, o){ const a = tf(x, y); const sw = r % 2; out.push({t:'e', x:a[0], y:a[1], rx:(sw ? ry : rx) * k, ry:(sw ? rx : ry) * k, ...st(o)}); },
+    a(x, y, rad, a0, a1, o){ const a = tf(x, y); out.push({t:'a', x:a[0], y:a[1], r:rad * k, a0:a0 + r * 90, a1:a1 + r * 90, ...st(o)}); },
+    t(x, y, s, o){ const a = tf(x, y); out.push({t:'x', x:a[0], y:a[1], s:String(s), size:((o && o.size) || FS) * k, anchor:(o && o.anchor) || 'middle', bold:!!(o && o.bold), rot:0, base:(o && o.base) || 'mid', c:(o && o.c) || base.c || '#000'}); }
   };
 }
 
@@ -1006,7 +1049,7 @@ function labelOf(el){
   const n = lines.length, items = [];
   let bb;
   if (d.along) {
-    const tip = rotPt(0, 3, el.r || 0), dv = rotPt(0, side > 0 ? 1 : 1, el.r || 0);
+    const tip = rotPt(0, 3 * symScale(el), el.r || 0), dv = rotPt(0, side > 0 ? 1 : 1, el.r || 0);
     const P = [el.x + tip[0], el.y + tip[1]];
     const vert = Math.abs(dv[1]) > 0.5;
     lines.forEach((ln, i) => {
@@ -1040,7 +1083,7 @@ function symPrims(el, c, out){
   const d = SYM[el.k]; if (!d) return out;
   c = c || {};
   const hot = c.sim && c.live && d.kind !== 'earth' && (d.kind !== 'switch' || c.on);
-  d.draw(Pen(el.x, el.y, el.r || 0, out, hot ? {c:C_LIVE} : null), el.p || {}, c);
+  d.draw(Pen(el.x, el.y, el.r || 0, out, hot ? {c:C_LIVE} : null, symScale(el)), el.p || {}, c);
   const lab = labelOf(el);
   if (lab) lab.items.forEach(it => out.push({t:'x', x:it.x, y:it.y, s:it.s, size:FS, anchor:it.anchor, bold:it.b, rot:it.rot, base:'mid', c:'#000'}));
   return out;
@@ -1148,7 +1191,7 @@ function sheetPrims(doc, out){
   CAP(xs + 1.4, y0 + 2, 'INSTALADOR / AUTOR'); T(xs + 1.4, y0 + 5.9, fit(I.autor, rw, 2.6), 2.6);
   CAP(xs + 1.4, y0 + 10.6, 'FECHA'); T(xs + 1.4, y0 + 14.4, fit(I.fecha, hw, 2.6), 2.6);
   CAP(xm + 1.4, y0 + 10.6, 'PLANO Nº'); T(xm + 1.4, y0 + 14.4, fit(I.plano, hw, 2.6), 2.6);
-  CAP(xs + 1.4, y0 + 19.3, 'ESCALA'); T(xs + 1.4, y0 + 23.1, 'S/E', 2.6);
+  CAP(xs + 1.4, y0 + 19.3, 'ESCALA'); T(xs + 1.4, y0 + 23.1, fit(I.escala || 'S/E', hw, 2.6), 2.6);
   CAP(xm + 1.4, y0 + 19.3, 'HOJA'); T(xm + 1.4, y0 + 23.1, fit(I.hoja || '1/1', hw, 2.6), 2.6);
   return out;
 }
@@ -1157,6 +1200,24 @@ function cajetinBox(doc){
   const [W, H] = pageSize(doc.page), cw = Math.min(170, W - 20);
   return [W - 10 - cw, H - 10 - 26, W - 10, H - 10];
 }
+/* Casillas del cajetín que se pueden escribir: su recuadro y dónde va su texto (las mismas medidas que sheetPrims). */
+const CAJ_NAMES = {titulo:'Título', emplazamiento:'Emplazamiento', titular:'Titular', autor:'Instalador / autor', fecha:'Fecha', plano:'Plano nº', escala:'Escala', hoja:'Hoja'};
+function cajetinFields(doc){
+  const b = cajetinBox(doc); if (!b) return [];
+  const [x0, y0, x1, y1] = b, xs = x0 + (x1 - x0) * 0.62, xm = xs + (x1 - xs) / 2;
+  const F = (k, c, tx, ty, size, bold) => ({k, n:CAJ_NAMES[k], box:c, tx, ty, size, bold:!!bold});
+  return [
+    F('titulo', [x0, y0, xs, y0 + 11], x0 + 1.4, y0 + 6.6, 4, true),
+    F('emplazamiento', [x0, y0 + 11, xs, y0 + 18.5], x0 + 1.4, y0 + 16.2, 2.6),
+    F('titular', [x0, y0 + 18.5, xs, y1], x0 + 1.4, y0 + 23.6, 2.6),
+    F('autor', [xs, y0, x1, y0 + 8.7], xs + 1.4, y0 + 5.9, 2.6),
+    F('fecha', [xs, y0 + 8.7, xm, y0 + 17.4], xs + 1.4, y0 + 14.4, 2.6),
+    F('plano', [xm, y0 + 8.7, x1, y0 + 17.4], xm + 1.4, y0 + 14.4, 2.6),
+    F('escala', [xs, y0 + 17.4, xm, y1], xs + 1.4, y0 + 23.1, 2.6),
+    F('hoja', [xm, y0 + 17.4, x1, y1], xm + 1.4, y0 + 23.1, 2.6)
+  ];
+}
+function cajetinFieldAt(doc, w){ return cajetinFields(doc).find(f => w[0] >= f.box[0] && w[0] <= f.box[2] && w[1] >= f.box[1] && w[1] <= f.box[3]) || null; }
 
 /* ---------- Primitivas → SVG ---------- */
 const xesc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -1371,11 +1432,16 @@ const Store = {
 };
 const prefs = Object.assign({grid:true, lib:true, props:true}, (() => { try { return JSON.parse(localStorage.getItem(K_PREF) || '{}'); } catch (e) { return {}; } })());
 const savePrefs = () => { try { localStorage.setItem(K_PREF, JSON.stringify(prefs)); } catch (e) {} };
+/* Los símbolos ahora se sacan del menú desplegable «Símbolos»: el panel fijo de la izquierda queda oculto
+   para dejar más sitio a la hoja (se puede volver a fijar desde el mismo menú). */
+if (!prefs.dd1) { prefs.dd1 = 1; prefs.lib = false; savePrefs(); }
+/* Dónde se guarda: el texto dice el aparato real (iPad, iPhone o Mac). */
+const DEVN = /iPhone|iPod/.test(navigator.userAgent) ? 'este iPhone' : (/iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) ? 'este iPad' : /Mac/.test(navigator.platform || navigator.userAgent) ? 'este Mac' : 'este equipo';
 
 function newDoc(name){
   return {app:'unifilar', v:1, id:uid(), name:name || 'Esquema sin título', created:Date.now(), updated:Date.now(),
     page:{fmt:'a4', orient:'l', cajetin:true},
-    info:{titulo:'', emplazamiento:'', titular:'', autor:'', fecha:today(), plano:'', hoja:'1/1'},
+    info:{titulo:'', emplazamiento:'', titular:'', autor:'', fecha:today(), plano:'', escala:'S/E', hoja:'1/1'},
     els:[]};
 }
 /* Comprueba y limpia un esquema leído del iPad o de un archivo: lo que esté roto se descarta en vez de romper la app. */
@@ -1392,7 +1458,7 @@ function normDoc(d){
   d.page = {fmt: pg.fmt === 'a3' ? 'a3' : 'a4', orient: pg.orient === 'p' ? 'p' : 'l', cajetin: pg.cajetin !== false};
   const inf = d.info && typeof d.info === 'object' ? d.info : {};
   d.info = {};
-  ['titulo', 'emplazamiento', 'titular', 'autor', 'fecha', 'plano', 'hoja'].forEach(k => { d.info[k] = inf[k] == null || typeof inf[k] === 'object' ? (k === 'hoja' ? '1/1' : '') : String(inf[k]).slice(0, 300); });
+  ['titulo', 'emplazamiento', 'titular', 'autor', 'fecha', 'plano', 'escala', 'hoja'].forEach(k => { d.info[k] = inf[k] == null || typeof inf[k] === 'object' ? (k === 'hoja' ? '1/1' : k === 'escala' ? 'S/E' : '') : String(inf[k]).slice(0, 300); });
   const ids = new Set(), out = [];
   d.els.forEach(e => {
     if (!e || typeof e !== 'object') return;
@@ -1402,6 +1468,7 @@ function normDoc(d){
     if (e.type === 'sym' && typeof e.k === 'string' && SYM[e.k] && isNum(x) && isNum(y)) {
       n = {type:'sym', id, k:e.k, x, y, r:(((parseInt(e.r, 10) || 0) % 4) + 4) % 4, p:Object.assign(defaults(e.k), cleanP(e.p))};
       if (e.ls === 1 || e.ls === -1 || e.ls === 0) n.ls = e.ls;
+      const sc = +e.sc; if (isNum(sc) && Math.abs(sc - 1) > 1e-6) n.sc = clamp(Math.round(sc * 1000) / 1000, 0.25, 5);
     } else if (e.type === 'wire' && Array.isArray(e.pts)) {
       const pts = simplify(e.pts.filter(q => Array.isArray(q) && isNum(+q[0]) && isNum(+q[1])).map(q => [+q[0], +q[1]]));
       if (pts.length >= 2) n = {type:'wire', id, pts, k:['linea', 'barra', 'disc'].indexOf(e.k) >= 0 ? e.k : 'linea', n:String(e.n == null ? '' : e.n).replace(/[^0-9]/g, '').slice(0, 2), txt:String(e.txt == null ? '' : e.txt).slice(0, 300), col:typeof e.col === 'string' && (WCOL[e.col] || /^#[0-9a-f]{6}$/i.test(e.col)) ? e.col : 'negro'};
@@ -1435,6 +1502,8 @@ const byId = id => doc.els.find(e => e.id === id);
 const snapOf = () => JSON.stringify({els:doc.els, page:doc.page, info:doc.info, name:doc.name});
 let saveT = 0, commitT = 0;
 function pruneWires(){
+  /* Un texto vacío que ya no está seleccionado no sirve: se quita. */
+  if (doc.els.some(e => e.type === 'text' && !String(e.s == null ? '' : e.s).trim() && !sel.has(e.id) && !(ed && ed.id === e.id))) doc.els = doc.els.filter(e => e.type !== 'text' || String(e.s == null ? '' : e.s).trim() || sel.has(e.id) || (ed && ed.id === e.id));
   const bad = doc.els.filter(e => e.type === 'wire' && (!Array.isArray(e.pts) || simplify(e.pts).length < 2));
   if (!bad.length) return;
   const ids = new Set(bad.map(e => e.id));
@@ -1458,12 +1527,13 @@ function scheduleSave(){
   saveT = setTimeout(() => {
     const ok = Store.save(doc);
     const s = $('#docsave');
-    s.textContent = ok ? 'Guardado en este iPad' : 'No se pudo guardar: falta espacio';
+    s.textContent = ok ? 'Guardado en ' + DEVN : 'No se pudo guardar: falta espacio';
     s.style.color = ok ? '' : 'var(--ko)';
     if (!ok) toast('No queda espacio para guardar. Exporta el archivo del esquema y borra esquemas viejos.', 7000);
   }, 250);
 }
 function restore(snap){
+  if (ed) { ed = null; ied.hidden = true; $('#ied-tip').hidden = true; }
   const o = JSON.parse(snap);
   doc.els = o.els; doc.page = o.page; doc.info = o.info; doc.name = o.name;
   sel = new Set([...sel].filter(id => byId(id)));
@@ -1481,6 +1551,7 @@ function applyView(){
   svg.setAttribute('viewBox', `${view.x} ${view.y} ${r.width / view.s} ${r.height / view.s}`);
   $('#z-fit').textContent = Math.round(view.s / MM * 100) + ' %';
   renderOverlay();
+  edPlace();
 }
 function fit(){
   const [W, H] = pageSize(doc.page), r = svg.getBoundingClientRect();
@@ -1648,7 +1719,12 @@ function renderOverlay(){
     const el = byId(id); if (!el) return;
     if (el.type === 'wire') s += `<polyline class="selw" points="${el.pts.map(p => f2(p[0]) + ',' + f2(p[1])).join(' ')}"/>`;
     else s += rect(elBox(el), el.type === 'frame' ? 0 : 1.2, 'selr');
-    if (el.type === 'frame' && sel.size === 1) s += `<circle class="handle" data-h="resize" cx="${f2(el.x + el.w)}" cy="${f2(el.y + el.h)}" r="${f2(px(11))}"/>`;
+    if (sel.size === 1 && !sim && !(ed && ed.id === el.id)) {
+      if (el.type === 'frame') s += `<circle class="handle" data-h="resize" cx="${f2(el.x + el.w)}" cy="${f2(el.y + el.h)}" r="${f2(px(11))}"/>`;
+      /* El asa va un poco por fuera de la esquina para no tapar el dibujo ni el texto. */
+      else if (el.type === 'sym') { const b = symBox(el); s += `<circle class="handle" data-h="scale" cx="${f2(b[2] + px(7))}" cy="${f2(b[3] + px(7))}" r="${f2(px(10))}"><title>Arrastra para cambiar el tamaño</title></circle>`; }
+      else if (el.type === 'text') { const b = textBox(el); s += `<circle class="handle" data-h="tsize" cx="${f2(b[2] + 1.2 + px(8))}" cy="${f2(b[3] + px(8))}" r="${f2(px(10))}"><title>Arrastra para cambiar el tamaño de la letra</title></circle>`; }
+    }
   });
   if (wireDraft) {
     let pts = wireDraft.pts;
@@ -1788,15 +1864,157 @@ function placeSymbol(k, w){
   commit(); renderEls(); renderOverlay(); renderProps();
 }
 function addText(w){
-  const el = {type:'text', id:uid(), x:snapG(w[0], 1), y:snapG(w[1], 1), s:'Texto', size:3.5, b:false, rot:0};
+  /* Donde se toca queda el centro de la primera línea, y se escribe ahí mismo. */
+  const el = {type:'text', id:uid(), x:snapG(w[0], 1), y:snapG(w[1] - 3.5 * 0.625, 0.5), s:'', size:3.5, b:false, rot:0};
   doc.els.push(el); sel = new Set([el.id]);
-  commit(); setTool('sel'); renderEls(); renderOverlay(); renderProps();
-  const ta = $('#props-body textarea'); if (ta) { ta.focus(); ta.select(); }
+  setTool('sel'); renderEls(); renderOverlay();
+  edOpen('text', el.id, {isNew:true});
 }
 function addFrame(x, y, w, h){
   const el = {type:'frame', id:uid(), x, y, w:Math.max(10, w), h:Math.max(10, h), s:'CGMP', dash:true};
   doc.els.unshift(el); sel = new Set([el.id]);
   commit(); setTool('sel'); renderEls(); renderOverlay(); renderProps();
+}
+
+/* ---------- Escribir directamente en el plano y en el cajetín ----------
+   Un cuadro de escritura se pone encima del texto, en su sitio y con su tamaño, y lo escrito se ve en la hoja al momento.
+   Enter, Esc o tocar fuera terminan; Mayús+Enter hace otra línea en los textos; Tab pasa a la siguiente casilla del cajetín. */
+const ied = $('#ied'), iedTip = $('#ied-tip');
+let ed = null, lastTap = {id:null, t:0};
+function edSpec(){
+  if (!ed || !doc) return null;
+  if (ed.kind === 'info') {
+    const f = cajetinFields(doc).find(x => x.k === ed.k); if (!f) return null;
+    return {x:f.tx, cy:f.ty, size:f.size, bold:f.bold, minW:f.box[2] - f.tx - 1};
+  }
+  const el = byId(ed.id); if (!el) return null;
+  if (el.type === 'text') { const z = +el.size || 3.5; return {x:el.rot === -90 ? el.x - z * 0.2 : el.x, cy:el.y + z * 0.625, size:z, bold:!!el.b, minW:z * 4}; }
+  if (el.type === 'frame') return {x:el.x + 1.6, cy:el.y + 3.2, size:2.8, bold:true, minW:Math.min(Math.max(10, el.w - 3), 50)};
+  return null;
+}
+function edPlace(){
+  if (!ed) return;
+  const sp = edSpec(); if (!sp) { edClose(false); return; }
+  const sr = stage.getBoundingClientRect(), r = svg.getBoundingClientRect();
+  /* Si la letra en pantalla es muy pequeña, el cuadro se agranda para que se lea bien al escribir. */
+  const fpx = Math.max(15, sp.size * view.s), lh = Math.round(fpx * 1.25);
+  const lines = ied.value.split('\n'), shown = ied.value ? lines : [ied.placeholder || ''];
+  const tw = Math.max(...shown.map(l => textW(l, fpx, sp.bold)));
+  const w = Math.ceil(Math.max(sp.minW * view.s, tw + fpx * 1.2, 56)) + 10, h = Math.max(1, lines.length) * lh + 8;
+  const left = clamp(r.left - sr.left + (sp.x - view.x) * view.s - 5, 4, Math.max(4, sr.width - w - 4));
+  const top = clamp(r.top - sr.top + (sp.cy - view.y) * view.s - lh / 2 - 4, 4, Math.max(4, sr.height - h - 4));
+  const st = ied.style;
+  st.left = left + 'px'; st.top = top + 'px'; st.width = w + 'px'; st.height = h + 'px';
+  st.fontSize = fpx + 'px'; st.lineHeight = lh + 'px'; st.fontWeight = sp.bold ? '700' : '400';
+  const tw2 = iedTip.offsetWidth || 0, below = top + h + 4 + 26 < sr.height;
+  iedTip.style.left = clamp(left, 4, Math.max(4, sr.width - tw2 - 4)) + 'px';
+  iedTip.style.top = (below ? top + h + 4 : Math.max(4, top - 26)) + 'px';
+}
+/* En el iPad, si el teclado tapa lo que se escribe (el cajetín está abajo), la hoja se desplaza para verlo. */
+function edEnsureVisible(){
+  if (!ed) return;
+  const sp = edSpec(); if (!sp) return;
+  const sr = stage.getBoundingClientRect(), r = svg.getBoundingClientRect(), vv = window.visualViewport;
+  const lh = Math.max(15, sp.size * view.s) * 1.25;
+  const sy = r.top + (sp.cy - view.y) * view.s, sx = r.left + (sp.x - view.x) * view.s;
+  let bottom = Math.min(sr.bottom, vv ? vv.offsetTop + vv.height : innerHeight) - lh - 24;
+  const topL = sr.top + lh + 8, pr = $('#props');
+  /* En vertical, el panel de propiedades flota abajo: tampoco debe tapar lo que se escribe. */
+  if (isNarrow() && !pr.hidden) { const q = pr.getBoundingClientRect(); if (q.height && q.left < sx + 60) bottom = Math.min(bottom, q.top - lh - 16); }
+  let dx = 0, dy = 0;
+  if (sy > bottom) dy = sy - bottom; else if (sy < topL) dy = sy - topL;
+  if (sx < sr.left + 8) dx = sx - sr.left - 8; else if (sx > sr.right - 80) dx = sx - (sr.right - 80);
+  if (dx || dy) { view.x += dx / view.s; view.y += dy / view.s; applyView(); }
+}
+function edOpen(kind, ref, o){
+  o = o || {};
+  if (sim || !doc) return false;
+  if (ed) edClose(true);
+  let e;
+  if (kind === 'text' || kind === 'frame') {
+    const el = byId(ref); if (!el || el.type !== kind) return false;
+    e = {kind, id:el.id, multi:kind === 'text', orig:String(el.s == null ? '' : el.s), isNew:!!o.isNew};
+    sel = new Set([el.id]);
+  } else if (kind === 'info') {
+    if (!cajetinFields(doc).some(f => f.k === ref)) return false;
+    e = {kind, k:ref, multi:false, orig:String(doc.info[ref] == null ? '' : doc.info[ref])};
+    sel.clear();
+  } else return false;
+  e.t0 = performance.now();
+  ed = e;
+  ied.value = o.append != null ? e.orig + o.append : e.orig;
+  ied.placeholder = kind === 'info' ? (ref === 'titulo' ? doc.name : CAJ_NAMES[ref]) : kind === 'frame' ? 'Nombre del recuadro' : 'Escribe aquí';
+  ied.setAttribute('aria-label', kind === 'info' ? 'Cajetín: ' + CAJ_NAMES[ref] : kind === 'frame' ? 'Nombre del recuadro' : 'Texto');
+  iedTip.textContent = kind === 'info' ? 'Cajetín · ' + CAJ_NAMES[ref] + ' — Enter para terminar · Tab, siguiente casilla' : kind === 'text' ? 'Enter para terminar · Mayús+Enter, otra línea' : 'Enter para terminar';
+  ied.hidden = false; iedTip.hidden = false;
+  if (o.append != null) edApply(ied.value);
+  edPlace();
+  renderOverlay(); renderProps();
+  try { ied.focus({preventScroll:true}); } catch (er) { ied.focus(); }
+  if (o.selectAll) ied.select(); else { const n = ied.value.length; try { ied.setSelectionRange(n, n); } catch (er) {} }
+  edEnsureVisible();
+  return true;
+}
+function edApply(v){
+  if (!ed) return;
+  if (ed.kind === 'info') { doc.info[ed.k] = v.slice(0, 300); renderSheet(); }
+  else { const el = byId(ed.id); if (!el) return; el.s = v.slice(0, ed.kind === 'frame' ? 200 : 2000); rerenderEl(el); renderOverlay(); }
+}
+/* soft: se sigue escribiendo el mismo texto en el panel de propiedades; no se quita aunque esté vacío ni se rehace el panel. */
+function edClose(keep, soft){
+  if (!ed) return;
+  const e = ed; ed = null;
+  ied.hidden = true; iedTip.hidden = true;
+  if (document.activeElement === ied) ied.blur();
+  if (e.kind === 'info') { if (!keep) doc.info[e.k] = e.orig; }
+  else {
+    const el = byId(e.id);
+    if (el && !keep) el.s = e.orig;
+    /* Un texto que se queda vacío se quita. */
+    if (el && el.type === 'text' && !soft && !String(el.s).trim()) { doc.els = doc.els.filter(x => x !== el); sel.delete(el.id); }
+  }
+  commit();
+  renderAll();
+  if (!soft) renderProps();
+}
+/* ¿El foco va al mismo dato en el panel de propiedades? */
+const samePropField = t => !!(ed && t && t.closest && t.closest('#props-body') && ((ed.kind === 'info' && t.dataset.scope === 'info' && t.dataset.k === ed.k) || (ed.kind !== 'info' && t.dataset.scope === 'el' && t.dataset.k === 's')));
+ied.addEventListener('input', () => {
+  if (!ed) return;
+  if (!ed.multi && /[\r\n]/.test(ied.value)) ied.value = ied.value.replace(/[\r\n]+/g, ' ');
+  edApply(ied.value); edPlace();
+});
+ied.addEventListener('keydown', e => {
+  e.stopPropagation();
+  if (!ed || e.isComposing || e.keyCode === 229) return;
+  if (e.key === 'Enter' && !(ed.multi && (e.shiftKey || e.altKey))) { e.preventDefault(); edClose(true); }
+  else if (e.key === 'Escape') { e.preventDefault(); edClose(true); }
+  else if (e.key === 'Tab' && ed.kind === 'info') {
+    e.preventDefault();
+    const ks = cajetinFields(doc).map(f => f.k), i = ks.indexOf(ed.k), nk = ks[(i + (e.shiftKey ? -1 : 1) + ks.length) % ks.length];
+    edClose(true); edOpen('info', nk, {selectAll:true});
+  }
+});
+ied.addEventListener('blur', e => {
+  if (!ed) return;
+  /* Si el navegador quita el foco justo al abrir (sin ir a ningún otro sitio), se devuelve: así siempre se puede escribir. */
+  if (performance.now() - ed.t0 < 450 && (!e.relatedTarget || e.relatedTarget === document.body) && !ied.hidden) { setTimeout(() => { if (ed && document.activeElement !== ied) { try { ied.focus({preventScroll:true}); } catch (er) { ied.focus(); } } }, 0); return; }
+  edClose(true, samePropField(e.relatedTarget));
+});
+/* Un clic en la hoja no debe llevarse el foco del cuadro de escritura ni seleccionar nada de la página. */
+svg.addEventListener('mousedown', e => e.preventDefault());
+/* Tocar o hacer clic en cualquier otro sitio termina la escritura (Safari no quita el foco al pulsar un botón). */
+document.addEventListener('pointerdown', e => { if (ed && e.target !== ied) edClose(true, samePropField(e.target)); }, true);
+/* Muestra el tamaño mientras se arrastra el asa. */
+let sizeT = 0;
+function showSize(txt){ const t = $('#szbadge'); t.textContent = txt; t.hidden = false; clearTimeout(sizeT); }
+function hideSize(){ clearTimeout(sizeT); sizeT = setTimeout(() => { $('#szbadge').hidden = true; }, 500); }
+/* Doble toque en un símbolo: se abren sus datos para escribirlos. */
+function focusProps(){
+  if (isNarrow()) propsManual = true; else if (!prefs.props) { prefs.props = true; savePrefs(); }
+  setPropsMin(false); renderProps();
+  const f = $('#props-body input[type="text"], #props-body textarea');
+  if (f) { try { f.focus({preventScroll:false}); f.select(); } catch (er) {} }
 }
 
 /* ---------- Selección: mover, girar, copiar, borrar ---------- */
@@ -1839,6 +2057,17 @@ function endDrag(){
     commit();
   }
   renderEls(); renderOverlay();
+}
+/* Cambia el tamaño de un símbolo. Los cables que llegaban a sus bornes se vuelven a enganchar en el sitio nuevo. */
+function applyScale(el, sc, t0, att){
+  t0 = t0 || symTerms(el);
+  if (att) att.forEach(a => { a.w.pts = a.orig.map(p => [p[0], p[1]]); });
+  sc = clamp(Math.round((+sc || 1) * 1000) / 1000, 0.25, 5);
+  if (Math.abs(sc - 1) < 1e-6) delete el.sc; else el.sc = sc;
+  reattach(t0, symTerms(el));
+}
+function attachedTo(terms){
+  return doc.els.filter(w => w.type === 'wire' && terms.some(t => eqp([t.x, t.y], w.pts[0]) || eqp([t.x, t.y], w.pts[w.pts.length - 1]))).map(w => ({w, orig:w.pts.map(p => [p[0], p[1]])}));
 }
 function rotateSel(dir){
   let n = 0;
@@ -1913,6 +2142,8 @@ function cancelAct(){
   if (act.type === 'drag') { gOvl.removeAttribute('transform'); gDots.style.opacity = ''; $('#app').classList.remove('dragging'); renderEls(); }
   if (act.type === 'seg') { act.el.pts = act.orig; renderEls(); }
   if (act.type === 'resize') { act.el.w = act.ow; act.el.h = act.oh; renderEls(); }
+  if (act.type === 'scale') { applyScale(act.el, act.sc0, act.t0, act.att); renderEls(); }
+  if (act.type === 'tsize') { act.el.size = act.z0; renderEls(); }
   act = null; renderOverlay();
 }
 function startPinch(){
@@ -1965,8 +2196,14 @@ function onDown(e){
   if (tool === 'place' && !target) { act = Object.assign(base, {type:'place'}); return; }
   if (tool === 'text') { act = Object.assign(base, {type:'textplace'}); return; }
   if (tool === 'frame') { act = Object.assign(base, {type:'framedraw'}); return; }
-  if (hEl && hEl.dataset.h === 'resize') { const f = byId([...sel][0]); if (f) { act = Object.assign(base, {type:'resize', el:f, ow:f.w, oh:f.h}); return; } }
+  if (hEl && hEl.dataset.h && sel.size === 1) {
+    const f = byId([...sel][0]), h = hEl.dataset.h;
+    if (f && h === 'resize' && f.type === 'frame') { act = Object.assign(base, {type:'resize', el:f, ow:f.w, oh:f.h}); return; }
+    if (f && h === 'scale' && f.type === 'sym') { const b = symBox(f), t0 = symTerms(f); act = Object.assign(base, {type:'scale', el:f, sc0:symScale(f), v0:[b[2] - f.x, b[3] - f.y], t0, att:attachedTo(t0)}); return; }
+    if (f && h === 'tsize' && f.type === 'text') { const b = textBox(f); act = Object.assign(base, {type:'tsize', el:f, z0:+f.size || 3.5, v0:[b[2] - f.x, b[3] - f.y]}); return; }
+  }
   if (target) {
+    base.wasSel = sel.size === 1 && sel.has(target.id);
     if (multi || e.shiftKey || e.metaKey) { act = Object.assign(base, {type:'toggle'}); return; }
     if (!sel.has(target.id)) { sel = new Set([target.id]); renderOverlay(); renderProps(); }
     if (target.type === 'wire' && sel.size === 1) { act = Object.assign(base, {type:'seg', el:target, segI:nearestSeg(target.pts, w), orig:target.pts.map(p => [p[0], p[1]])}); return; }
@@ -2002,6 +2239,18 @@ function onMove(e){
       break;
     }
     case 'resize': act.el.w = Math.max(10, snapG(act.ow + w[0] - act.w0[0])); act.el.h = Math.max(10, snapG(act.oh + w[1] - act.w0[1])); rerenderEl(act.el); renderOverlay(); break;
+    case 'scale': case 'tsize': {
+      /* Se mide cuánto se ha alejado el dedo del punto de anclaje en la dirección de la esquina. */
+      const v = act.v0, L = v[0] * v[0] + v[1] * v[1] || 1, f = ((w[0] - act.el.x) * v[0] + (w[1] - act.el.y) * v[1]) / L;
+      if (act.type === 'scale') {
+        const sc = clamp(Math.round(act.sc0 * f * 4) / 4, 0.5, 4);
+        if (sc !== symScale(act.el)) { applyScale(act.el, sc, act.t0, act.att); renderEls(); renderOverlay(); showSize(Math.round(sc * 100) + ' %'); }
+      } else {
+        const z = clamp(Math.round(act.z0 * f * 2) / 2, 1, 40);
+        if (z !== act.el.size) { act.el.size = z; rerenderEl(act.el); renderOverlay(); showSize(fmtN(z) + ' mm'); }
+      }
+      break;
+    }
     case 'boxsel': case 'framedraw': act.box = [act.w0[0], act.w0[1], w[0], w[1]]; renderOverlay(); break;
     case 'toggle': act.type = 'boxsel'; act.add = true; act.box = [act.w0[0], act.w0[1], w[0], w[1]]; renderOverlay(); break;
     case 'wire': {
@@ -2034,7 +2283,13 @@ function onUp(e){
       }
       break;
     case 'place': if (!a.moved) { const k = placeKind; placeSymbol(k, w); if (!placeMulti) setTool('sel'); } break;
-    case 'textplace': if (!a.moved) addText(w); break;
+    case 'textplace':
+      if (a.moved) break;
+      /* Con «Texto»: sobre un texto se edita ese texto; sobre el cajetín se escribe en su casilla; si no, texto nuevo. */
+      if (a.target && (a.target.type === 'text' || a.target.type === 'frame')) { setTool('sel'); edOpen(a.target.type, a.target.id); break; }
+      if (!a.target) { const f = cajetinFieldAt(doc, w); if (f) { setTool('sel'); edOpen('info', f.k); break; } }
+      addText(w);
+      break;
     case 'framedraw':
       if (a.moved && a.box) { const b = a.box.map(v => snapG(v)); addFrame(Math.min(b[0], b[2]), Math.min(b[1], b[3]), Math.abs(b[2] - b[0]), Math.abs(b[3] - b[1])); }
       else addFrame(snapG(w[0]), snapG(w[1]), 60, 40);
@@ -2047,12 +2302,27 @@ function onUp(e){
       renderOverlay();
       break;
     }
-    case 'drag': if (a.moved) { act = a; endDrag(); act = null; } break;
+    case 'drag':
+      if (a.moved) { act = a; endDrag(); act = null; break; }
+      /* Tocar otra vez un texto ya seleccionado (o hacer doble clic) abre la escritura en el plano. */
+      if (a.target && a.wasSel && (a.target.type === 'text' || a.target.type === 'frame')) { edOpen(a.target.type, a.target.id); break; }
+      if (a.target && a.target.type === 'sym') {
+        const now = Date.now();
+        if (lastTap.id === a.target.id && now - lastTap.t < 450) { lastTap = {id:null, t:0}; focusProps(); break; }
+        lastTap = {id:a.target.id, t:now};
+      }
+      break;
     case 'erase': if (a.pending) { act = a; eraseAt(a.lx, a.ly); act = null; } endErase(a); break;
     case 'seg':
       if (a.moved) { a.el.pts = simplify(a.el.pts); gDots.style.opacity = ''; commit(); renderEls(); }
       break;
     case 'resize': commit(); renderOverlay(); renderProps(); break;
+    case 'scale': case 'tsize':
+      hideSize();
+      if (a.moved) { commit(); renderEls(); renderProps(); }
+      /* Un toque en el asa de un texto, sin arrastrar, también abre la escritura. */
+      else if (a.type === 'tsize') edOpen('text', a.el.id);
+      break;
     case 'toggle':
       if (a.target) { if (sel.has(a.target.id)) sel.delete(a.target.id); else sel.add(a.target.id); renderProps(); }
       break;
@@ -2062,17 +2332,19 @@ function onUp(e){
         if (!a.add) sel.clear();
         doc.els.forEach(el => { const b = elBox(el); if (b[0] >= x0 && b[2] <= x1 && b[1] >= y0 && b[3] <= y1) sel.add(el.id); });
       } else {
-        const cb = cajetinBox(doc), had = sel.size;
         if (!a.add) sel.clear();
-        if (!had && cb && w[0] >= cb[0] && w[0] <= cb[2] && w[1] >= cb[1] && w[1] <= cb[3]) { openCajetin(); break; }
+        /* Con ratón: un clic en una casilla del cajetín y se escribe en ella. */
+        const f = !a.add && cajetinFieldAt(doc, w);
+        if (f) { edOpen('info', f.k); break; }
       }
       renderProps();
       break;
     case 'pan': case 'boxsel-tap':
       if (!a.moved && !a.hand) {
+        /* Con el dedo: si había algo seleccionado, el primer toque solo lo suelta (así no sale el teclado sin querer). */
         if (sel.size) { sel.clear(); renderProps(); break; }
-        const cb = cajetinBox(doc);
-        if (cb && w[0] >= cb[0] && w[0] <= cb[2] && w[1] >= cb[1] && w[1] <= cb[3]) openCajetin();
+        const f = cajetinFieldAt(doc, w);
+        if (f) edOpen('info', f.k);
       }
       break;
   }
@@ -2099,7 +2371,7 @@ svg.addEventListener('wheel', e => {
 }, {passive:false});
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive:false}));
 svg.addEventListener('lostpointercapture', safe(e => { if (ptrs.has(e.pointerId)) onCancel(e); }));
-if (window.visualViewport) window.visualViewport.addEventListener('resize', () => requestAnimationFrame(applyView));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', () => requestAnimationFrame(() => { applyView(); edEnsureVisible(); if (!dd.hidden) ddPlace(); }));
 let lastPType = 'mouse';
 svg.addEventListener('pointerdown', e => { lastPType = e.pointerType; }, true);
 svg.addEventListener('dblclick', e => { e.preventDefault(); if (tool === 'wire' && wireDraft && lastPType === 'mouse') finishDraft(); });
@@ -2119,6 +2391,7 @@ function setTool(t, kind){
   updateBanner(); renderOverlay();
 }
 function setSim(on){
+  if (on) edClose(true);
   sim = on; bannerMin = false;
   if (on) { simReset(); if (wireDraft) finishDraft(); tool = 'sel'; placeKind = null; sel.clear(); document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', 'false')); document.querySelectorAll('.tile').forEach(b => b.setAttribute('aria-pressed', 'false')); }
   else { simReset(); document.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === tool))); }
@@ -2239,12 +2512,11 @@ function addRecent(k){
   if (!$('#lib-q').value.trim()) { const L = $('#lib-list'), top = L.scrollTop; buildLib(''); L.scrollTop = top; }
 }
 $('#lib-q').addEventListener('input', e => buildLib(e.target.value));
-(function(){
-  /* Toca un símbolo para elegirlo, o arrástralo hasta la hoja. */
+/* Toca un símbolo para elegirlo, o arrástralo hasta la hoja. Sirve para el panel y para el menú desplegable. */
+function tileDrag(list, itemSel, onTap, onDrop){
   let tp = null, ghost = null;
-  const list = $('#lib-list');
   list.addEventListener('pointerdown', e => {
-    const t = e.target.closest('.tile'); if (!t) return;
+    const t = e.target.closest(itemSel); if (!t || (e.button && e.button !== 0)) return;
     tp = {k:t.dataset.k, x:e.clientX, y:e.clientY, id:e.pointerId, moved:false};
     try { t.setPointerCapture(e.pointerId); } catch (er) {}
   });
@@ -2253,7 +2525,7 @@ $('#lib-q').addEventListener('input', e => buildLib(e.target.value));
     const dx = e.clientX - tp.x, dy = e.clientY - tp.y;
     if (!tp.moved && Math.hypot(dx, dy) > 10 && Math.abs(dx) > Math.abs(dy) * 0.8) {
       tp.moved = true;
-      ghost = document.createElement('div'); ghost.className = 'dragghost'; ghost.innerHTML = ICONS[tp.k];
+      ghost = document.createElement('div'); ghost.className = 'dragghost'; ghost.innerHTML = ICONS[tp.k] || (ICONS[tp.k] = iconSVG(tp.k));
       $('#app').classList.add('dragging');
       document.body.appendChild(ghost);
     }
@@ -2263,23 +2535,126 @@ $('#lib-q').addEventListener('input', e => buildLib(e.target.value));
     if (!tp || e.pointerId !== tp.id) return;
     const k = tp.k, moved = tp.moved; tp = null;
     if (ghost) { ghost.remove(); ghost = null; $('#app').classList.remove('dragging'); }
-    if (cancel) return;
+    if (cancel || !SYM[k]) return;
     if (moved) {
       const r = stage.getBoundingClientRect();
       if (e.clientX > r.left && e.clientX < r.right && e.clientY > r.top && e.clientY < r.bottom) {
         if (sim) setSim(false);
         setTool('sel'); placeSymbol(k, toWorld(e.clientX, e.clientY));
-        if (isPhone()) { libPhone = false; updatePanels(); }
+        if (onDrop) onDrop(k);
       }
-    } else {
-      if (sim) setSim(false);
-      if (tool === 'place' && placeKind === k) setTool('sel'); else setTool('place', k);
-      if (isPhone() && tool === 'place') { libPhone = false; updatePanels(); }
-    }
+    } else onTap(k);
   };
   list.addEventListener('pointerup', e => end(e, false));
   list.addEventListener('pointercancel', e => end(e, true));
-})();
+}
+tileDrag($('#lib-list'), '.tile', k => {
+  if (sim) setSim(false);
+  if (tool === 'place' && placeKind === k) setTool('sel'); else setTool('place', k);
+  if (isPhone() && tool === 'place') { libPhone = false; updatePanels(); }
+}, () => { if (isPhone()) { libPhone = false; updatePanels(); } });
+
+/* ---------- Menú desplegable «Símbolos»: buscar, elegir e insertar ---------- */
+const dd = $('#dd'), ddList = $('#dd-list'), ddQ = $('#dd-q');
+const ddCats = new Set(['_rec']);
+const normS = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const catName = k => { const c = CATS.find(x => x.k === k); return c ? c.n : ''; };
+function ddBuild(){
+  const q = normS(ddQ.value.trim());
+  const item = (k, sub) => { ICONS[k] = ICONS[k] || iconSVG(k); return `<button class="dd-it" type="button" role="menuitem" data-k="${k}">${ICONS[k]}<span>${hesc(SYM[k].n)}${sub ? `<small>${hesc(sub)}</small>` : ''}</span></button>`; };
+  let h = '';
+  if (q) {
+    /* Primero lo que se llama justo así, luego lo que empieza así, luego lo que lo contiene. */
+    const rank = k => { const n = normS(SYM[k].n); return n === q ? 0 : n.startsWith(q) ? 1 : new RegExp('(^|[^a-z0-9])' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(n) ? 2 : n.includes(q) ? 3 : k.toLowerCase().includes(q) ? 4 : normS(catName(SYM[k].cat)).includes(q) ? 5 : 9; };
+    const ks = Object.keys(SYM).map(k => [k, rank(k)]).filter(x => x[1] < 9).sort((a, b) => a[1] - b[1]).map(x => x[0]);
+    h = ks.length ? ks.slice(0, 120).map(k => item(k, catName(SYM[k].cat))).join('') : '<p class="hint" style="padding:12px 6px">No hay ningún símbolo con ese nombre.</p>';
+  } else {
+    const sect = (key, name, ks) => { const open = ddCats.has(key); return `<button class="cat dd-cat" type="button" data-cat="${key}" aria-expanded="${open}"><span>${hesc(name)}</span><small>${ks.length}</small><svg class="chev" viewBox="0 0 24 24"><path d="M8 10l4 4 4-4"/></svg></button>` + (open ? `<div class="dd-grp" role="group">${ks.map(k => item(k)).join('')}</div>` : ''); };
+    const recent = (prefs.recent || []).filter(k => SYM[k]);
+    if (recent.length) h += sect('_rec', 'Recientes', recent);
+    CATS.forEach(c => { const ks = Object.keys(SYM).filter(k => SYM[k].cat === c.k); if (ks.length) h += sect(c.k, c.n, ks); });
+  }
+  ddList.innerHTML = h;
+  const libOn = isPhone() ? libPhone : prefs.lib;
+  $('#dd-panel').textContent = libOn ? 'Quitar el panel de símbolos de la izquierda' : 'Dejar el panel de símbolos fijo a la izquierda';
+}
+function ddPlace(){
+  const b = $('#b-lib').getBoundingClientRect(), vw = innerWidth, vh = window.visualViewport ? window.visualViewport.height : innerHeight;
+  const W = Math.min(380, vw - 12), left = clamp(b.left + b.width / 2 - W / 2, 6, vw - W - 6), top = b.bottom + 6;
+  dd.style.width = W + 'px'; dd.style.left = left + 'px'; dd.style.top = top + 'px';
+  dd.style.maxHeight = Math.max(220, vh - top - 10) + 'px';
+}
+function ddShow(){
+  if (sim) setSim(false);
+  edClose(true);
+  ddQ.value = '';
+  dd.hidden = false; $('#b-lib').setAttribute('aria-expanded', 'true');
+  ddBuild(); ddPlace(); ddList.scrollTop = 0;
+  /* Con ratón o trackpad se puede escribir enseguida para buscar; en el iPad no se abre el teclado sin pedirlo. */
+  if (window.matchMedia('(hover:hover) and (pointer:fine)').matches) { try { ddQ.focus({preventScroll:true}); } catch (er) {} }
+}
+function ddClose(){ if (dd.hidden) return; dd.hidden = true; $('#b-lib').setAttribute('aria-expanded', 'false'); if (document.activeElement && dd.contains(document.activeElement)) document.activeElement.blur(); }
+/* Pone el símbolo en el centro de lo que se ve de la hoja (sin pisar otro símbolo ni el cajetín) y lo deja seleccionado. */
+function insertSym(k){
+  if (!SYM[k] || !doc) return;
+  if (sim) setSim(false);
+  if (wireDraft) finishDraft();
+  edClose(true);
+  setTool('sel');
+  const [W, H] = pageSize(doc.page), r = svg.getBoundingClientRect();
+  const c = toWorld(r.left + r.width / 2, r.top + r.height * (isNarrow() ? 0.3 : 0.45));
+  let x = clamp(snapG(c[0]), 25, snapG(W - 25)), y = clamp(snapG(c[1]), 25, snapG(H - 25));
+  const cb = cajetinBox(doc);
+  if (cb && x >= cb[0] - 12 && y >= cb[1] - 14) y = snapG(cb[1] - 20);
+  /* Si ahí ya hay algo dibujado, se busca al lado un hueco libre. */
+  const others = doc.els.filter(e => e.type === 'sym' || e.type === 'text').map(elBox).concat(cb ? [cb] : []);
+  const busy = (x, y) => { const b = elBox({type:'sym', k, x, y, r:0, p:defaults(k)}); return others.some(o => b[0] < o[2] + 2 && b[2] > o[0] - 2 && b[1] < o[3] + 2 && b[3] > o[1] - 2); };
+  for (let i = 0; i < 60 && busy(x, y); i++) { x += GRID * 3; if (x > W - 25) { x = 25; y = y + GRID * 5 > H - 25 ? 25 : y + GRID * 5; } }
+  placeSymbol(k, [x, y]);
+  ddClose();
+  const sp = [r.left + (x - view.x) * view.s, r.top + (y - view.y) * view.s];
+  if (sp[0] < r.left + 20 || sp[0] > r.right - 20 || sp[1] < r.top + 20 || sp[1] > r.bottom - 20) { view.x = x - r.width / 2 / view.s; view.y = y - r.height / 2 / view.s; applyView(); }
+  toast('«' + SYM[k].n + '» puesto en la hoja. Arrástralo a su sitio.');
+}
+$('#b-lib').addEventListener('click', () => { if (dd.hidden) ddShow(); else ddClose(); });
+$('#dd-x').addEventListener('click', ddClose);
+ddQ.addEventListener('input', () => { ddBuild(); ddList.scrollTop = 0; });
+ddList.addEventListener('click', e => {
+  const c = e.target.closest('[data-cat]');
+  if (c) { const k = c.dataset.cat; if (ddCats.has(k)) ddCats.delete(k); else ddCats.add(k); const top = ddList.scrollTop; ddBuild(); ddList.scrollTop = top; const nb = ddList.querySelector(`[data-cat="${k}"]`); if (nb && e.detail === 0) nb.focus(); return; }
+  /* Con el teclado (Enter o espacio sobre un símbolo) también se inserta. */
+  const it = e.target.closest('.dd-it'); if (it && e.detail === 0) insertSym(it.dataset.k);
+});
+tileDrag(ddList, '.dd-it', insertSym, () => ddClose());
+$('#dd-panel').addEventListener('click', () => { if (isPhone()) libPhone = !libPhone; else { prefs.lib = !prefs.lib; savePrefs(); } updatePanels(); ddClose(); });
+dd.addEventListener('keydown', e => {
+  e.stopPropagation();
+  if (e.key === 'Escape') { e.preventDefault(); ddClose(); return; }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const items = [ddQ, ...ddList.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+    const n = clamp((i < 0 ? 0 : i) + (e.key === 'ArrowDown' ? 1 : -1), 0, items.length - 1);
+    items[n].focus(); if (items[n] !== ddQ) items[n].scrollIntoView({block:'nearest'});
+  } else if (e.key === 'Enter' && e.target === ddQ) {
+    e.preventDefault();
+    const f = ddList.querySelector('.dd-it');
+    if (f) insertSym(f.dataset.k);
+    else { const c = ddList.querySelector('[data-cat]'); if (c) c.click(); }
+  }
+});
+document.addEventListener('pointerdown', e => { if (!dd.hidden && !dd.contains(e.target) && !$('#b-lib').contains(e.target)) ddClose(); }, true);
+window.addEventListener('resize', () => { if (!dd.hidden) ddPlace(); });
+
+/* ---------- Dejar solo el cajetín ---------- */
+function onlyCajetin(){
+  if (sim) setSim(false);
+  if (wireDraft) { wireDraft = null; hoverPt = null; }
+  edClose(true);
+  if (!doc.els.length && doc.page.cajetin !== false) { toast('La hoja ya está en blanco, solo con el cajetín.'); return; }
+  doc.els = []; doc.page.cajetin = true; sel.clear();
+  setTool('sel'); commit(); renderAll(); renderProps(); fit();
+  toast('Listo: en la hoja solo queda el cajetín.', 8000, {label:'Deshacer', fn:undo});
+}
 
 /* ---------- Panel de propiedades ---------- */
 function openCajetin(){
@@ -2297,13 +2672,11 @@ let libPhone = false;
 function updatePanels(){
   const libOn = isPhone() ? libPhone : prefs.lib;
   $('#lib').hidden = !libOn;
-  $('#b-lib').setAttribute('aria-pressed', String(libOn));
   const show = isNarrow() ? (sel.size > 0 || propsManual) : prefs.props;
   $('#props').hidden = !show;
   $('#b-props').setAttribute('aria-pressed', String(show));
   requestAnimationFrame(applyView);
 }
-$('#b-lib').addEventListener('click', () => { if (isPhone()) libPhone = !libPhone; else { prefs.lib = !prefs.lib; savePrefs(); } updatePanels(); });
 window.matchMedia('(max-width:700px)').addEventListener('change', updatePanels);
 $('#b-props').addEventListener('click', () => {
   if (isNarrow()) { const vis = !$('#props').hidden; if (vis) { propsManual = false; if (sel.size) { sel.clear(); renderOverlay(); renderProps(); } } else propsManual = true; }
@@ -2352,25 +2725,29 @@ function renderProps(){
     title.textContent = 'Hoja';
     const I = doc.info, P = doc.page;
     h = fieldHTML('doc', 'name', 'Nombre del esquema', doc.name)
+      + '<div class="row"><button class="btn grow1" type="button" data-act="onlycaj">Dejar solo el cajetín</button></div><p class="hint" style="margin-top:-4px">Quita todo lo dibujado y deja la hoja en blanco con su cajetín. Se puede deshacer.</p>'
       + segHTML('Tamaño', 'page', 'fmt', P.fmt, ['a4', 'a3'], ['A4', 'A3'])
       + segHTML('Orientación', 'page', 'orient', P.orient, ['l', 'p'], ['Horizontal', 'Vertical'])
       + segHTML('Cajetín', 'page', 'cajetin', String(P.cajetin !== false), ['true', 'false'], ['Sí', 'No'])
       + segHTML('Rejilla en pantalla', 'pref', 'grid', String(prefs.grid), ['true', 'false'], ['Sí', 'No'])
-      + `<p class="sect">Datos del cajetín</p><p class="hint">El cajetín está abajo a la derecha de la hoja. Lo que escribas aquí aparece en él y en el PDF.</p>`
+      + `<p class="sect">Datos del cajetín</p><p class="hint">El cajetín está abajo a la derecha de la hoja. Puedes escribir aquí o directamente en él: toca una casilla del cajetín y escribe. Sale igual en el PDF.</p>`
       + fieldHTML('info', 'titulo', 'Título', I.titulo, {ph:doc.name})
       + fieldHTML('info', 'emplazamiento', 'Emplazamiento', I.emplazamiento, {ph:'Calle, número, localidad'})
       + fieldHTML('info', 'titular', 'Titular', I.titular)
       + fieldHTML('info', 'autor', 'Instalador / autor', I.autor)
-      + `<div class="two"><div>${fieldHTML('info', 'fecha', 'Fecha', I.fecha)}</div><div>${fieldHTML('info', 'hoja', 'Hoja', I.hoja)}</div></div>`
-      + fieldHTML('info', 'plano', 'Plano nº', I.plano)
-      + `<p class="sect">Cómo se usa</p><p class="hint">Toca un símbolo de la izquierda y luego la hoja para colocarlo (o arrástralo). Con «Cable», arrastra de un borne a otro. Toca un elemento para cambiar sus datos y arrástralo para moverlo. Un dedo mueve la hoja; dos dedos hacen zoom. En un cable seleccionado, arrastra un tramo para desplazarlo.</p>`;
+      + `<div class="two"><div>${fieldHTML('info', 'fecha', 'Fecha', I.fecha)}</div><div>${fieldHTML('info', 'plano', 'Plano nº', I.plano)}</div></div>`
+      + `<div class="two"><div>${fieldHTML('info', 'escala', 'Escala', I.escala, {ph:'S/E'})}</div><div>${fieldHTML('info', 'hoja', 'Hoja', I.hoja)}</div></div>`
+      + `<p class="sect">Cómo se usa</p><p class="hint">Abre «Símbolos» arriba y toca uno para ponerlo en la hoja (o arrástralo a su sitio). Con «Cable», arrastra de un borne a otro. Toca un elemento para cambiar sus datos y arrástralo para moverlo; el círculo de su esquina cambia el tamaño. Para escribir, usa «Texto» o toca dos veces un texto. Un dedo mueve la hoja; dos dedos hacen zoom.</p>`;
   } else if (sel.size === 1) {
     const el = byId([...sel][0]);
     if (el.type === 'sym') {
       const d = SYM[el.k];
       title.textContent = d.n;
+      const sc = symScale(el), scs = ['0.5', '0.75', '1', '1.5', '2'];
       h = d.props.map(f => fieldHTML('p', f.k, f.l, el.p[f.k] == null ? '' : el.p[f.k], {u:f.u, chips:f.chips, ph:f.ph})).join('')
         + segHTML('Texto del símbolo', 'el', 'ls', String(el.ls == null ? (d.lside || 1) : el.ls), ['-1', '1', '0'], ['Izquierda', 'Derecha', 'Oculto'])
+        + segHTML('Tamaño' + (scs.includes(String(sc)) ? '' : ' · ' + Math.round(sc * 100) + ' %'), 'el', 'sc', String(sc), scs, ['50 %', '75 %', '100 %', '150 %', '200 %'])
+        + '<p class="hint" style="margin-top:-4px">También puedes arrastrar el círculo de su esquina. Los cables le siguen.</p>'
         + ACTS(true);
     } else if (el.type === 'wire') {
       title.textContent = el.k === 'barra' ? 'Barra' : 'Cable';
@@ -2383,7 +2760,8 @@ function renderProps(){
     } else if (el.type === 'text') {
       title.textContent = 'Texto';
       h = fieldHTML('el', 's', 'Texto', el.s, {area:true})
-        + segHTML('Tamaño (mm)', 'el', 'size', String(el.size), ['2', '2.5', '3.5', '5', '7'], ['2', '2,5', '3,5', '5', '7'])
+        + '<p class="hint" style="margin-top:-4px">O escribe en el plano: toca otra vez el texto, o selecciónalo y escribe.</p>'
+        + fieldHTML('el', 'size', 'Tamaño de letra', String(el.size), {u:'mm', num:true}) + chipsHTML('el', 'size', String(el.size), ['2', '2.5', '3.5', '5', '7'], ['2', '2,5', '3,5', '5', '7'])
         + segHTML('Negrita', 'el', 'b', String(!!el.b), ['false', 'true'], ['No', 'Sí'])
         + segHTML('Dirección', 'el', 'rot', String(el.rot || 0), ['0', '-90'], ['Horizontal', 'Vertical'])
         + ACTS(false);
@@ -2398,7 +2776,11 @@ function renderProps(){
   } else {
     title.textContent = sel.size + ' elementos';
     const nw = doc.els.filter(e => sel.has(e.id) && e.type === 'wire');
-    h = '<p class="hint">Arrastra cualquiera de ellos para moverlos juntos.</p>' + (nw.length ? paletteHTML('wires', nw.every(w => (w.col || 'negro') === (nw[0].col || 'negro')) ? nw[0].col : '').replace('Color del cable', 'Color de los ' + nw.length + ' cables') : '') + ACTS(true);
+    const ns = doc.els.filter(e => sel.has(e.id) && e.type === 'sym');
+    const scs = ns.length ? String(symScale(ns[0])) : '';
+    h = '<p class="hint">Arrastra cualquiera de ellos para moverlos juntos.</p>' + (nw.length ? paletteHTML('wires', nw.every(w => (w.col || 'negro') === (nw[0].col || 'negro')) ? nw[0].col : '').replace('Color del cable', 'Color de los ' + nw.length + ' cables') : '')
+      + (ns.length ? segHTML('Tamaño de los ' + ns.length + ' símbolos', 'syms', 'sc', ns.every(e => String(symScale(e)) === scs) ? scs : '', ['0.5', '0.75', '1', '1.5', '2'], ['50 %', '75 %', '100 %', '150 %', '200 %']) : '')
+      + ACTS(true);
   }
   body.innerHTML = h;
   updatePanels();
@@ -2406,8 +2788,9 @@ function renderProps(){
 function setVal(scope, k, v, el){
   if (scope === 'p') el.p[k] = v;
   else if (scope === 'el') {
-    if (k === 'ls' || k === 'rot') el[k] = +v;
-    else if (k === 'size' || k === 'w' || k === 'h') { const n = parseFloat(String(v).replace(',', '.')); if (!isNaN(n) && n > 0) el[k] = k === 'size' ? n : Math.max(5, n); }
+    if (k === 'sc') { if (el.type === 'sym') applyScale(el, parseFloat(v) || 1); }
+    else if (k === 'ls' || k === 'rot') el[k] = +v;
+    else if (k === 'size' || k === 'w' || k === 'h') { const n = parseFloat(String(v).replace(',', '.')); if (!isNaN(n) && n > 0) el[k] = k === 'size' ? clamp(n, 1, 40) : Math.min(2000, Math.max(5, n)); }
     else if (k === 'b' || k === 'dash') el[k] = v === 'true';
     else el[k] = v;
   }
@@ -2416,6 +2799,7 @@ function setVal(scope, k, v, el){
   else if (scope === 'page') doc.page[k] = k === 'cajetin' ? v === 'true' : v;
   else if (scope === 'pref') { prefs[k] = v === 'true'; savePrefs(); }
   else if (scope === 'wires') doc.els.forEach(w => { if (w.type === 'wire' && sel.has(w.id)) w[k] = v; });
+  else if (scope === 'syms' && k === 'sc') doc.els.filter(x => x.type === 'sym' && sel.has(x.id)).forEach(x => applyScale(x, parseFloat(v) || 1));
 }
 $('#props-body').addEventListener('input', e => {
   const t = e.target; if (!t.dataset || !t.dataset.scope) return;
@@ -2442,6 +2826,7 @@ $('#props-body').addEventListener('click', e => {
   }
   const b = e.target.closest('[data-act]'); if (!b) return;
   const a = b.dataset.act;
+  if (a === 'onlycaj') { onlyCajetin(); return; }
   if (a === 'wcdef') { const w = byId([...sel][0]); if (w) { prefs.wireCol = w.col || 'negro'; savePrefs(); toast('Los cables nuevos serán ' + wireColName(prefs.wireCol).toLowerCase()); } return; }
   if (a === 'del') deleteSel();
   else if (a === 'dup') duplicateSel();
@@ -2451,10 +2836,22 @@ $('#props-body').addEventListener('click', e => {
 
 /* ---------- Teclado (Mac o teclado del iPad) ---------- */
 document.addEventListener('keydown', e => {
-  const tag = (e.target.tagName || '').toLowerCase();
-  if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+  /* Mientras se escribe en un campo, las teclas son para escribir: ningún atajo se dispara. */
+  const t = e.target || {}, tag = (t.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || t.isContentEditable || ed) return;
+  if (e.isComposing || e.keyCode === 229 || !e.key) return;
+  if (!dd.hidden) { if (e.key === 'Escape') ddClose(); return; }
   if (!$('#home').hidden || document.querySelector('.modal:not([hidden])')) return;
   const mod = e.metaKey || e.ctrlKey, k = e.key.toLowerCase();
+  /* Con un texto seleccionado basta con empezar a escribir; Enter (o F2) lo abre para cambiarlo. */
+  if (!mod && !sim && sel.size === 1) {
+    const el = byId([...sel][0]);
+    if (el && (el.type === 'text' || el.type === 'frame')) {
+      if (e.key === 'Enter' || e.key === 'F2') { e.preventDefault(); edOpen(el.type, el.id); return; }
+      if (el.type === 'text' && e.key.length === 1) { e.preventDefault(); edOpen('text', el.id, {append:e.key}); return; }
+      if (el.type === 'text' && e.key === 'Dead') { edOpen('text', el.id); return; }
+    }
+  }
   if (mod && k === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
   else if (mod && k === 'y') { e.preventDefault(); redo(); }
   else if (mod && k === 'c') { copySel(); }
@@ -2702,6 +3099,7 @@ function openDoc(d){
 function fmtDate(t){ const d = new Date(t); return d.toLocaleDateString('es-ES', {day:'numeric', month:'short', year:'numeric'}) + ', ' + d.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'}); }
 const persist = () => { if (doc && (doc.els.length || Store.load(doc.id))) { commit(); Store.save(doc); } };
 function showHome(){
+  edClose(true); ddClose();
   persist();
   if (sim) setSim(false);
   const docs = Store.all().sort((a, b) => b.updated - a.updated);
@@ -2887,6 +3285,7 @@ new ResizeObserver(() => applyView()).observe(stage);
 window.addEventListener('pagehide', persist);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persist(); });
 buildLib('');
+$('#docsave').textContent = 'Guardado en ' + DEVN;
 updatePanels();
 const lastId = (() => { try { return localStorage.getItem(K_LAST); } catch (e) { return null; } })();
 const first = lastId && Store.load(lastId);
@@ -2896,7 +3295,8 @@ else {
   if (any && normDoc(any)) openDoc(any);
   else { doc = newDoc('Esquema 1'); lastSnap = snapOf(); renderAll(); renderProps(); showHome(); }
 }
-window.__unifilar = {get doc(){ return doc; }, get sel(){ return [...sel]; }, toScreen(x, y){ const r = svg.getBoundingClientRect(); return [r.left + (x - view.x) * view.s, r.top + (y - view.y) * view.s]; }, generate, Store, simulate, junctions, exportPDF, docSVG, pdfOf, docPrims, pageSize};
+window.__unifilar = {get doc(){ return doc; }, get sel(){ return [...sel]; }, toScreen(x, y){ const r = svg.getBoundingClientRect(); return [r.left + (x - view.x) * view.s, r.top + (y - view.y) * view.s]; }, generate, Store, simulate, junctions, exportPDF, docSVG, pdfOf, docPrims, pageSize,
+  get view(){ return Object.assign({}, view); }, get editing(){ return ed ? Object.assign({}, ed) : null; }, edOpen, edClose, insertSym, onlyCajetin, ddShow, ddClose, cajetinFields, symScale, symTerms};
 })();
 
 </script>
