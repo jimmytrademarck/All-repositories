@@ -98,6 +98,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 #cv .eraser{fill:rgba(215,38,30,.12);stroke:#D7261E;stroke-width:1.5px;vector-effect:non-scaling-stroke;pointer-events:none}
 .tb[data-tool="erase"][aria-pressed="true"]{background:#D7261E;color:#fff}
 #cv .handle{fill:#fff;stroke:var(--sel);stroke-width:2px;vector-effect:non-scaling-stroke;cursor:nwse-resize}
+#cv .handle.wend{fill:var(--sel);fill-opacity:.25;cursor:move}
 #cv .ghost{opacity:.55;pointer-events:none}
 
 .banner{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 20px);padding:6px 6px 6px 14px;border-radius:14px;background:var(--ink);color:var(--surface);box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:.92rem;z-index:3}
@@ -428,7 +429,7 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
   <div class="modal" id="m-gen" hidden>
     <div class="mbox wide" role="dialog" aria-modal="true" aria-labelledby="mg-t">
       <div class="mhead"><h2 id="mg-t">Generar cuadro de vivienda</h2><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
-      <p class="hint">Rellena el cuadro y pulsa «Crear esquema». Los circuitos C1–C13 vienen con el interruptor y la sección de la ITC-BT-25. Después puedes mover, cambiar o añadir lo que quieras.</p>
+      <p class="hint">Rellena el cuadro y pulsa «Crear esquema». En «Circuito» escribe el que quieras (C4.1, C14, Piscina…): si es uno de la ITC-BT-25, se ponen solos su descripción, magnetotérmico y cable. Después puedes mover, cambiar o añadir lo que quieras.</p>
       <div class="row" id="g-presets"></div>
       <div class="two">
         <label class="f"><span class="fl">Nombre del esquema</span><input type="text" id="g-name"></label>
@@ -440,6 +441,7 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
         <div class="f"><span class="fl">Protección contra sobretensiones</span><div class="chips" id="g-sob"></div></div>
       </div>
       <div id="g-groups" style="display:grid;gap:12px"></div>
+      <datalist id="g-circs"><option value="C1">Iluminación</option><option value="C2">Tomas de uso general</option><option value="C3">Cocina y horno</option><option value="C4">Lavadora, lavavajillas y termo</option><option value="C4.1">Lavadora (C4 desdoblado)</option><option value="C4.2">Lavavajillas (C4 desdoblado)</option><option value="C4.3">Termo eléctrico (C4 desdoblado)</option><option value="C5">Baño y cuarto de cocina</option><option value="C6">Iluminación adicional</option><option value="C7">Tomas adicionales</option><option value="C8">Calefacción</option><option value="C9">Aire acondicionado</option><option value="C10">Secadora</option><option value="C11">Automatización</option><option value="C12">Circuito adicional</option><option value="C13">Recarga vehículo eléctrico</option></datalist>
       <div class="row"><button class="btn" type="button" id="g-addgrp">+ Añadir diferencial</button></div>
       <div class="row"><button class="btn pri grow1" type="button" id="g-go">Crear esquema</button></div>
     </div>
@@ -492,7 +494,11 @@ const P_IN = (d, chips) => ({k:'In', l:'Intensidad', u:'A', d:d, chips:chips || 
 const P_POL = (d, chips) => ({k:'polos', l:'Polos', d:d, chips:chips || ['1P','1P+N','2P','3P','3P+N','4P']});
 const P_CUR = {k:'curva', l:'Curva', d:'C', chips:['B','C','D']};
 const P_PDC = {k:'pdc', l:'Poder de corte', u:'kA', d:'', chips:['4,5','6','10','15','25']};
-const P_SENS = {k:'sens', l:'Sensibilidad', u:'mA', d:'30', chips:['10','30','300','500']};
+/* Sensibilidades de diferencial que hay en el mercado (en mA). De 1000 mA en adelante se escriben en A: 1 A, 3 A… */
+const SENS_V = ['10','30','100','300','500','1000','3000'];
+const sensTxt = v => { const t = (v == null ? '' : String(v)).trim(); if (!isNum(t)) return t; const n = parseFloat(t.replace(',', '.')); return n >= 1000 ? String(+(n / 1000).toFixed(3)).replace('.', ',') + ' A' : t + ' mA'; };
+const SENS_L = SENS_V.map(sensTxt);
+const P_SENS = {k:'sens', l:'Sensibilidad', u:'mA', d:'30', chips:SENS_V, cl:SENS_L};
 const P_CLASE = {k:'clase', l:'Tipo', d:'AC', chips:['AC','A','A-SI','F','B']};
 const P_POT = (u, d, chips) => ({k:'pot', l:'Potencia', u:u, d:d || '', chips:chips || []});
 
@@ -550,11 +556,11 @@ function toroid(g, y){ g.e(0, y, 2.6, 1.1); }
 SYM.dif = {n:'Diferencial (ID)', cat:'prot', kind:'switch', pre:'Q', t:[[0,-10,'n'],[0,10,'s']], bb:[-6.5,-10,3,10],
   props:[P_REF(''), P_IN('40', ['25','40','63','80']), P_SENS, P_POL('2P', ['2P','4P']), P_CLASE],
   draw(g, p, c){ g.l(0, -10, 0, -4); blade(g, c, 3, -4); g.l(0, 3, 0, 10); toroid(g, 6.2); g.l(-2.6, 6.2, -5.6, 6.2); g.l(-5.6, 6.2, -5.6, -0.6); g.l(-5.6, -0.6, -2.3, -0.6, {dash:[0.8, 0.6]}); poleMarks(g, p.polos, -7.3); },
-  lines: p => [[p.ref, 1], [un(p.In, 'A')], [un(p.sens, 'mA')], [jn(p.polos, p.clase ? 'tipo ' + p.clase : '')]]};
+  lines: p => [[p.ref, 1], [un(p.In, 'A')], [sensTxt(p.sens)], [jn(p.polos, p.clase ? 'tipo ' + p.clase : '')]]};
 SYM.mtdif = {n:'Magnetotérmico diferencial', cat:'prot', kind:'switch', pre:'Q', t:[[0,-10,'n'],[0,10,'s']], bb:[-6.5,-10,3,10],
   props:[P_REF(''), P_IN('16'), P_CUR, P_SENS, P_POL('1P+N'), P_CLASE],
   draw(g, p, c){ g.l(0, -10, 0, -4); cross(g, -4); blade(g, c, 3, -4); g.l(0, 3, 0, 10); toroid(g, 6.2); g.l(-2.6, 6.2, -5.6, 6.2); g.l(-5.6, 6.2, -5.6, -0.6); g.l(-5.6, -0.6, -2.3, -0.6, {dash:[0.8, 0.6]}); poleMarks(g, p.polos, -7.6); },
-  lines: p => [[p.ref, 1], [p.curva && isNum(p.In) ? p.curva + p.In : un(p.In, 'A')], [un(p.sens, 'mA')], [jn(p.polos, p.clase ? 'tipo ' + p.clase : '')]]};
+  lines: p => [[p.ref, 1], [p.curva && isNum(p.In) ? p.curva + p.In : un(p.In, 'A')], [sensTxt(p.sens)], [jn(p.polos, p.clase ? 'tipo ' + p.clase : '')]]};
 SYM.fusible = {n:'Fusible', cat:'prot', kind:'cond', pre:'F', t:[[0,-10,'n'],[0,10,'s']], bb:[-1.5,-10,1.5,10],
   props:[P_REF(''), P_IN('16', ['2','6','10','16','25','40','63','100','160']), {k:'tipo', l:'Clase', d:'gG', chips:['gG','aM','gPV']}],
   draw(g){ g.l(0, -10, 0, 10); g.r(-1.5, -5, 3, 10); },
@@ -572,9 +578,9 @@ SYM.termico = {n:'Relé térmico', cat:'prot', kind:'cond', pre:'F', t:[[0,-10,'
   draw(g){ g.l(0, -10, 0, -3); g.r(-3, -3, 6, 6); g.p([[-2,1.4],[-1,1.4],[-1,-1.4],[1,-1.4],[1,1.4],[2,1.4]]); g.l(0, 3, 0, 10); },
   lines: p => [[p.ref, 1], [un(p.In, 'A')]]};
 SYM.reledif = {n:'Relé diferencial + toroidal', cat:'prot', kind:'cond', pre:'', t:[[0,-10,'n'],[0,10,'s']], bb:[-3,-10,12,10],
-  props:[P_REF(''), {k:'sens', l:'Sensibilidad', u:'mA', d:'300', chips:['30','300','1000','3000']}, {k:'ret', l:'Retardo', u:'ms', d:''}],
+  props:[P_REF(''), {k:'sens', l:'Sensibilidad', u:'mA', d:'300', chips:['30','100','300','500','1000','3000','5000','10000','30000'], cl:['30 mA','100 mA','300 mA','500 mA','1 A','3 A','5 A','10 A','30 A']}, {k:'ret', l:'Retardo', u:'ms', d:'', chips:['0','60','150','300','500','1000']}],
   draw(g){ g.l(0, -10, 0, 10); g.e(0, 0, 3, 1.3); g.l(3, 0, 5, 0); g.r(5, -3, 7, 6); g.t(8.5, 0, 'IΔ', {size:2.4, bold:true}); },
-  lines: p => [[p.ref, 1], [un(p.sens, 'mA')], [un(p.ret, 'ms')]], lside:-1};
+  lines: p => [[p.ref, 1], [sensTxt(p.sens)], [un(p.ret, 'ms')]], lside:-1};
 
 /* ---------- Maniobra ---------- */
 SYM.interruptor = {n:'Interruptor', cat:'man', kind:'switch', pre:'S', t:[[0,-10,'n'],[0,10,'s']], bb:[-5,-10,2,10],
@@ -820,7 +826,7 @@ SYM.fusec = {n:'Fusible seccionador', cat:'prot', kind:'switch', pre:'F', t:T2, 
 SYM.difrearme = {n:'Diferencial con rearme automático', cat:'prot', kind:'switch', pre:'Q', t:T2, bb:[-10.6,-10,3,10],
   props:[P_REF(''), P_IN('40', ['25','40','63']), P_SENS, P_POL('2P', ['2P','4P']), P_CLASE],
   draw(g, p, c){ SYM.dif.draw(g, p, c); g.r(-10.6, -3, 3.6, 4); g.t(-8.8, -1, 'R', {size:2.2, bold:true}); g.l(-7, -1, -5.6, -1); },
-  lines: p => [[p.ref, 1], [un(p.In, 'A')], [un(p.sens, 'mA')], [jn(p.polos, p.clase ? 'tipo ' + p.clase : '')]]};
+  lines: p => [[p.ref, 1], [un(p.In, 'A')], [sensTxt(p.sens)], [jn(p.polos, p.clase ? 'tipo ' + p.clase : '')]]};
 SYM.releU = {n:'Relé de máxima / mínima tensión', cat:'prot', kind:'load', pre:'F', t:T1, bb:[-4,-10,4,4],
   props:[P_REF(''), {k:'tipo', l:'Tipo', d:'U>', chips:['U>','U<','U<>']}],
   draw(g, p){ g.l(0, -10, 0, -4); g.r(-4, -4, 8, 8); g.t(0, 0, p.tipo || 'U', {size:2.4, bold:true}); },
@@ -1721,6 +1727,7 @@ function renderOverlay(){
     else s += rect(elBox(el), el.type === 'frame' ? 0 : 1.2, 'selr');
     if (sel.size === 1 && !sim && !(ed && ed.id === el.id)) {
       if (el.type === 'frame') s += `<circle class="handle" data-h="resize" cx="${f2(el.x + el.w)}" cy="${f2(el.y + el.h)}" r="${f2(px(11))}"/>`;
+      else if (el.type === 'wire') [0, 1].forEach(i => { const q = i ? el.pts[el.pts.length - 1] : el.pts[0]; s += `<circle class="handle wend" data-h="wend${i}" cx="${f2(q[0])}" cy="${f2(q[1])}" r="${f2(px(9))}"><title>Arrastra para alargar o acortar el cable</title></circle>`; });
       /* El asa va un poco por fuera de la esquina para no tapar el dibujo ni el texto. */
       else if (el.type === 'sym') { const b = symBox(el); s += `<circle class="handle" data-h="scale" cx="${f2(b[2] + px(7))}" cy="${f2(b[3] + px(7))}" r="${f2(px(10))}"><title>Arrastra para cambiar el tamaño</title></circle>`; }
       else if (el.type === 'text') { const b = textBox(el); s += `<circle class="handle" data-h="tsize" cx="${f2(b[2] + 1.2 + px(8))}" cy="${f2(b[3] + px(8))}" r="${f2(px(10))}"><title>Arrastra para cambiar el tamaño de la letra</title></circle>`; }
@@ -1818,6 +1825,65 @@ function reattach(before, after){
       else if (eqp(w.pts[w.pts.length - 1], [t.x, t.y])) w.pts = simplify(fixEnd(w.pts, 1, [nt.x, nt.y]));
     });
   });
+}
+/* ---------- Estirar un cable desde un extremo, al milímetro ----------
+   El extremo va de 1 en 1 mm; si pasa cerca de un borne o de otro cable se engancha a él. Si el cable es recto y el
+   dedo se mueve en su misma dirección, solo se alarga o se acorta; si se va hacia un lado, el cable hace una esquina. */
+const wlen = pts => { let L = 0; for (let i = 0; i < pts.length - 1; i++) L += Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); return Math.round(L * 10) / 10; };
+function endSnap(w, wire){
+  const R = Math.min(18 / view.s, 3.5);
+  let best = null, bd = R;
+  doc.els.forEach(el => { if (el.type === 'sym') symTerms(el).forEach(t => { const d = Math.hypot(t.x - w[0], t.y - w[1]); if (d < bd) { bd = d; best = {p:[t.x, t.y], kind:'term'}; } }); });
+  if (best) return best;
+  bd = R;
+  doc.els.forEach(el => {
+    if (el.type !== 'wire' || el === wire) return;
+    for (let i = 0; i < el.pts.length - 1; i++) {
+      const a = el.pts[i], b = el.pts[i + 1];
+      if (near(a[0], b[0])) { const y = clamp(Math.round(w[1]), Math.min(a[1], b[1]), Math.max(a[1], b[1])); const d = Math.hypot(a[0] - w[0], y - w[1]); if (d < bd) { bd = d; best = {p:[a[0], y], kind:'wire'}; } }
+      else if (near(a[1], b[1])) { const x = clamp(Math.round(w[0]), Math.min(a[0], b[0]), Math.max(a[0], b[0])); const d = Math.hypot(x - w[0], a[1] - w[1]); if (d < bd) { bd = d; best = {p:[x, a[1]], kind:'wire'}; } }
+    }
+  });
+  if (best) return best;
+  return {p:[Math.round(w[0]), Math.round(w[1])], kind:'mm'};
+}
+function stretchEnd(orig, which, np){
+  let pts = orig.map(p => [p[0], p[1]]);
+  if (which === 1) pts.reverse();
+  const a = pts[0], b = pts[1];
+  const vert = near(a[0], b[0]) && !near(a[1], b[1]), horiz = near(a[1], b[1]) && !near(a[0], b[0]);
+  /* Si el dedo se separa poco de la línea del cable (menos de 12 px), el cable sigue recto. */
+  const tol = 12 / view.s;
+  if (vert && Math.abs(np[0] - a[0]) < tol) np = [a[0], np[1]];
+  else if (horiz && Math.abs(np[1] - a[1]) < tol) np = [np[0], a[1]];
+  if (pts.length === 2) {
+    /* Cable recto que se lleva hacia un lado: esquina en ángulo recto, entrando al otro extremo por donde entraba. */
+    if (vert && !near(np[0], a[0])) pts = [np, [b[0], np[1]], b];
+    else if (horiz && !near(np[1], a[1])) pts = [np, [np[0], b[1]], b];
+    else pts[0] = np;
+  } else {
+    pts[0] = np;
+    if (vert) pts[1] = [np[0], pts[1][1]];
+    else if (horiz) pts[1] = [pts[1][0], np[1]];
+  }
+  if (which === 1) pts.reverse();
+  return pts;
+}
+/* Largo exacto escrito a mano: se mueve el extremo que no está en un borne, en la dirección de su último tramo. */
+function setWireLen(el, L){
+  if (!(L > 0) || !Array.isArray(el.pts) || el.pts.length < 2) return;
+  const terms = [];
+  doc.els.forEach(s => { if (s.type === 'sym') symTerms(s).forEach(t => terms.push([t.x, t.y])); });
+  const onT = p => terms.some(t => eqp(t, p));
+  const n = el.pts.length, which = onT(el.pts[n - 1]) && !onT(el.pts[0]) ? 0 : 1;
+  const pts = el.pts.map(p => [p[0], p[1]]);
+  if (which === 0) pts.reverse();
+  const e = pts[pts.length - 1], f = pts[pts.length - 2];
+  const seg = Math.hypot(e[0] - f[0], e[1] - f[1]) || 1, rest = wlen(pts.slice(0, -1));
+  const newSeg = Math.max(0.5, L - rest);
+  pts[pts.length - 1] = [Math.round((f[0] + (e[0] - f[0]) / seg * newSeg) * 1000) / 1000, Math.round((f[1] + (e[1] - f[1]) / seg * newSeg) * 1000) / 1000];
+  if (which === 0) pts.reverse();
+  el.pts = simplify(pts);
 }
 function addWire(pts){
   pts = simplify(pts);
@@ -2144,6 +2210,7 @@ function cancelAct(){
   if (act.type === 'resize') { act.el.w = act.ow; act.el.h = act.oh; renderEls(); }
   if (act.type === 'scale') { applyScale(act.el, act.sc0, act.t0, act.att); renderEls(); }
   if (act.type === 'tsize') { act.el.size = act.z0; renderEls(); }
+  if (act.type === 'wend') { act.el.pts = act.orig; hideSize(); gDots.style.opacity = ''; renderEls(); }
   act = null; renderOverlay();
 }
 function startPinch(){
@@ -2199,6 +2266,7 @@ function onDown(e){
   if (hEl && hEl.dataset.h && sel.size === 1) {
     const f = byId([...sel][0]), h = hEl.dataset.h;
     if (f && h === 'resize' && f.type === 'frame') { act = Object.assign(base, {type:'resize', el:f, ow:f.w, oh:f.h}); return; }
+    if (f && (h === 'wend0' || h === 'wend1') && f.type === 'wire') { act = Object.assign(base, {type:'wend', el:f, which:h === 'wend1' ? 1 : 0, orig:f.pts.map(p => [p[0], p[1]])}); return; }
     /* f0: dónde se cogió el asa; el tamaño cambia según cuánto se aleja el dedo desde ahí (sin saltos al empezar). */
     const proj = (v, p) => ((p[0] - f.x) * v[0] + (p[1] - f.y) * v[1]) / ((v[0] * v[0] + v[1] * v[1]) || 1);
     if (f && h === 'scale' && f.type === 'sym') { const b = symBox(f), t0 = symTerms(f), v0 = [b[2] - f.x, b[3] - f.y]; act = Object.assign(base, {type:'scale', el:f, sc0:symScale(f), v0, f0:Math.max(0.2, proj(v0, w)), t0, att:attachedTo(t0)}); return; }
@@ -2207,6 +2275,16 @@ function onDown(e){
   if (target) {
     base.wasSel = sel.size === 1 && sel.has(target.id);
     if (multi || e.shiftKey || e.metaKey) { act = Object.assign(base, {type:'toggle'}); return; }
+    /* Pinchar en el extremo de un cable (aunque no esté seleccionado) lo estira desde ahí. */
+    if (target.type === 'wire') {
+      const tolE = (e.pointerType === 'touch' ? 16 : 10) / view.s, p0 = target.pts[0], p1 = target.pts[target.pts.length - 1];
+      const d0 = Math.hypot(w[0] - p0[0], w[1] - p0[1]), d1 = Math.hypot(w[0] - p1[0], w[1] - p1[1]);
+      if (Math.min(d0, d1) <= tolE) {
+        sel = new Set([target.id]); renderOverlay(); renderProps();
+        act = Object.assign(base, {type:'wend', el:target, which:d1 < d0 ? 1 : 0, orig:target.pts.map(p => [p[0], p[1]])});
+        return;
+      }
+    }
     if (!sel.has(target.id)) { sel = new Set([target.id]); renderOverlay(); renderProps(); }
     if (target.type === 'wire' && sel.size === 1) { act = Object.assign(base, {type:'seg', el:target, segI:nearestSeg(target.pts, w), orig:target.pts.map(p => [p[0], p[1]])}); return; }
     act = Object.assign(base, {type:'drag'}, prepareDrag());
@@ -2241,6 +2319,15 @@ function onMove(e){
       break;
     }
     case 'resize': act.el.w = Math.max(10, snapG(act.ow + w[0] - act.w0[0])); act.el.h = Math.max(10, snapG(act.oh + w[1] - act.w0[1])); rerenderEl(act.el); renderOverlay(); break;
+    case 'wend': {
+      const sn = endSnap(w, act.el), other = act.orig[act.which ? 0 : act.orig.length - 1];
+      if (eqp(sn.p, other)) break;
+      act.el.pts = stretchEnd(act.orig, act.which, sn.p);
+      act.snap = sn.kind;
+      rerenderEl(act.el); renderOverlay(); gDots.style.opacity = '0';
+      showSize('Largo ' + fmtN(wlen(simplify(act.el.pts))) + ' mm' + (sn.kind === 'term' ? ' · en el borne' : sn.kind === 'wire' ? ' · sobre el cable' : ''));
+      break;
+    }
     case 'scale': case 'tsize': {
       /* Se mide cuánto se ha alejado el dedo del punto de anclaje en la dirección de la esquina. */
       const v = act.v0, L = v[0] * v[0] + v[1] * v[1] || 1, f = ((w[0] - act.el.x) * v[0] + (w[1] - act.el.y) * v[1]) / L / act.f0;
@@ -2319,6 +2406,14 @@ function onUp(e){
       if (a.moved) { a.el.pts = simplify(a.el.pts); gDots.style.opacity = ''; commit(); renderEls(); }
       break;
     case 'resize': commit(); renderOverlay(); renderProps(); break;
+    case 'wend':
+      hideSize(); gDots.style.opacity = '';
+      if (a.moved) {
+        const pts = simplify(a.el.pts);
+        a.el.pts = pts.length >= 2 ? pts : a.orig;
+        commit(); renderEls(); renderProps();
+      }
+      break;
     case 'scale': case 'tsize':
       hideSize();
       if (a.moved) { commit(); renderEls(); renderProps(); }
@@ -2712,7 +2807,7 @@ function fieldHTML(scope, k, label, val, o){
   const unit = o.u ? `<small>${hesc(o.u)}</small>` : '';
   const inp = o.area ? `<textarea data-scope="${scope}" data-k="${k}" rows="3">${hesc(val)}</textarea>`
     : `<input type="${o.num ? 'number' : 'text'}" ${o.num ? 'inputmode="decimal"' : ''} data-scope="${scope}" data-k="${k}" value="${hesc(val)}" placeholder="${hesc(o.ph || '')}" autocomplete="off" autocapitalize="off" spellcheck="false">`;
-  return `<label class="f"><span class="fl">${hesc(label)}${unit}</span>${inp}</label>${o.chips && o.chips.length ? chipsHTML(scope, k, val, o.chips) : ''}`;
+  return `<label class="f"><span class="fl">${hesc(label)}${unit}</span>${inp}</label>${o.chips && o.chips.length ? chipsHTML(scope, k, val, o.chips, o.cl) : ''}`;
 }
 const segHTML = (label, scope, k, val, vals, labels) => `<div class="f"><span class="fl">${hesc(label)}</span>${chipsHTML(scope, k, val, vals, labels)}</div>`;
 const ACTS = (rot) => `<div class="row">${rot ? '<button class="btn grow1" type="button" data-act="rotl">↺ Girar</button><button class="btn grow1" type="button" data-act="rotr">Girar ↻</button>' : ''}</div><div class="row"><button class="btn grow1" type="button" data-act="dup">Duplicar</button><button class="btn del grow1" type="button" data-act="del">Borrar</button></div>`;
@@ -2746,7 +2841,7 @@ function renderProps(){
       const d = SYM[el.k];
       title.textContent = d.n;
       const sc = symScale(el), scs = ['0.5', '0.75', '1', '1.5', '2'];
-      h = d.props.map(f => fieldHTML('p', f.k, f.l, el.p[f.k] == null ? '' : el.p[f.k], {u:f.u, chips:f.chips, ph:f.ph})).join('')
+      h = d.props.map(f => fieldHTML('p', f.k, f.l, el.p[f.k] == null ? '' : el.p[f.k], {u:f.u, chips:f.chips, cl:f.cl, ph:f.ph})).join('')
         + segHTML('Texto del símbolo', 'el', 'ls', String(el.ls == null ? (d.lside || 1) : el.ls), ['-1', '1', '0'], ['Izquierda', 'Derecha', 'Oculto'])
         + segHTML('Tamaño' + (scs.includes(String(sc)) ? '' : ' · ' + Math.round(sc * 100) + ' %'), 'el', 'sc', String(sc), scs, ['50 %', '75 %', '100 %', '150 %', '200 %'])
         + '<p class="hint" style="margin-top:-4px">También puedes arrastrar el círculo de su esquina. Los cables le siguen.</p>'
@@ -2757,7 +2852,8 @@ function renderProps(){
         + segHTML('Tipo de línea', 'el', 'k', el.k || 'linea', ['linea', 'barra', 'disc'], ['Línea', 'Barra', 'Discontinua'])
         + segHTML('Marcas de conductores', 'el', 'n', String(el.n || ''), ['', '2', '3', '4', '5'], ['No', '2', '3', '4', '5'])
         + fieldHTML('el', 'txt', 'Texto junto al cable', el.txt || '', {chips:CABLES, ph:'2×2,5+T mm²'})
-        + '<p class="hint">Arrastra un tramo del cable para moverlo. Si mueves un símbolo, sus cables le siguen.</p>'
+        + fieldHTML('el', 'len', el.pts.length > 2 ? 'Largo total' : 'Largo', String(wlen(el.pts)), {u:'mm', num:true})
+        + '<p class="hint">Arrastra uno de sus extremos (los círculos) para alargarlo o acortarlo de milímetro en milímetro; se engancha solo a los bornes. O escribe el largo exacto. Arrastra un tramo para moverlo.</p>'
         + '<div class="row"><button class="btn del grow1" type="button" data-act="del">Borrar cable</button></div>';
     } else if (el.type === 'text') {
       title.textContent = 'Texto';
@@ -2791,6 +2887,7 @@ function setVal(scope, k, v, el){
   if (scope === 'p') el.p[k] = v;
   else if (scope === 'el') {
     if (k === 'sc') { if (el.type === 'sym') applyScale(el, parseFloat(v) || 1); }
+    else if (k === 'len') { const n = parseFloat(String(v).replace(',', '.')); if (el.type === 'wire' && n > 0 && n <= 5000) setWireLen(el, n); }
     else if (k === 'ls' || k === 'rot') el[k] = +v;
     else if (k === 'size' || k === 'w' || k === 'h') { const n = parseFloat(String(v).replace(',', '.')); if (!isNaN(n) && n > 0) el[k] = k === 'size' ? clamp(n, 1, 40) : Math.min(2000, Math.max(5, n)); }
     else if (k === 'b' || k === 'dash') el[k] = v === 'true';
@@ -2807,7 +2904,7 @@ $('#props-body').addEventListener('input', e => {
   const t = e.target; if (!t.dataset || !t.dataset.scope) return;
   const el = sel.size === 1 ? byId([...sel][0]) : null;
   setVal(t.dataset.scope, t.dataset.k, t.value, el);
-  if (el) { rerenderEl(el); renderOverlay(); if (t.dataset.k === 'txt' || el.type === 'sym') renderDots(); }
+  if (el) { rerenderEl(el); renderOverlay(); if (t.dataset.k === 'txt' || t.dataset.k === 'len' || el.type === 'sym') renderDots(); }
   else if (t.dataset.scope === 'wires') { renderEls(); renderOverlay(); }
   else renderSheet();
   if (t.type === 'color') { const lab = t.closest('.sw'); if (lab) { lab.style.background = t.value; lab.parentNode.querySelectorAll('.sw').forEach(x => x.classList.toggle('on', x === lab)); } }
@@ -2932,7 +3029,7 @@ $('#b-name').addEventListener('click', () => {
 /* ---------- Revisar REBT (viviendas, ITC-BT-25) ----------
    Recorre el esquema siguiendo los cables: de cada circuito busca hacia arriba su magnetotérmico y su diferencial,
    y de cada diferencial cuenta los circuitos que cuelgan de él. Solo revisa lo que está dibujado. */
-const TAB1 = {C1:[10, 1.5], C2:[16, 2.5], C3:[25, 6], C4:[20, 4], C5:[16, 2.5], C6:[10, 1.5], C7:[16, 2.5], C8:[25, 6], C9:[25, 6], C10:[16, 2.5], C11:[10, 1.5], C13:[null, 2.5]};
+const TAB1 = {C1:[10, 1.5], C2:[16, 2.5], C3:[25, 6], C4:[20, 4], 'C4.1':[16, 2.5], 'C4.2':[16, 2.5], 'C4.3':[16, 2.5], C5:[16, 2.5], C6:[10, 1.5], C7:[16, 2.5], C8:[25, 6], C9:[25, 6], C10:[16, 2.5], C11:[10, 1.5], C13:[null, 2.5]};
 const PROT = new Set(['iga', 'pia', 'icp', 'mtdif', 'magnetico', 'mccb', 'guardamotor', 'fusible', 'fusec']);
 const DIFS = new Set(['dif', 'mtdif', 'difrearme', 'reledif']);
 const numOf = v => { const m = /(\d+(?:[.,]\d+)?)/.exec(String(v == null ? '' : v)); return m ? parseFloat(m[1].replace(',', '.')) : NaN; };
@@ -3007,21 +3104,32 @@ function rebtCheck(){
   });
 
   /* Diferenciales */
+  const cname = s => circKey(String(s.p.circ || '').trim().toUpperCase().replace(/\s/g, ''));
+  /* Nombre del circuito que protege cada aparato (por las «Salidas a circuito» que cuelgan de él). */
+  const salProt = new Map(salidas.map(s => [s, up([tn(s, 0)], x => PROT.has(x.k))]));
+  const circOf = f => f.k === 'salida' ? [cname(f)] : salidas.filter(s => salProt.get(s) === f).map(cname);
   difs.forEach(d => {
-    const sens = numOf(d.p.sens);
-    if (!isNaN(sens) && sens > 30) add('ko', `${nameOf(d)}: ${fmtN(sens)} mA. En viviendas, todos los circuitos con diferencial de 30 mA como máximo.`, 'ITC-BT-25, 2.1', [d.id]);
+    const sens = numOf(d.p.sens), sTxt = sensTxt(String(d.p.sens || '').trim());
+    const circ = d.k === 'mtdif' ? [] : down(d);
+    if (!isNaN(sens) && sens > 30) {
+      /* Un diferencial de más de 30 mA vale en cabecera (selectivo) si cada circuito de debajo lleva otro de 30 mA o menos. */
+      const allLow = circ.length && circ.every(c => DIFS.has(c.k) && numOf(c.p.sens) <= 30);
+      if (allLow) add('ok', `${nameOf(d)}: ${sTxt}, de cabecera; debajo, cada circuito lleva un diferencial de 30 mA o menos.`, 'ITC-BT-25, 2.1', [d.id]);
+      else add('ko', `${nameOf(d)}: ${sTxt}. En viviendas, todos los circuitos con diferencial de 30 mA como máximo.`, 'ITC-BT-25, 2.1', [d.id]);
+    }
     if (d.k === 'mtdif') return;
-    const circ = down(d);
-    if (circ.length > 5) add('ko', `${nameOf(d)}: tiene ${circ.length} circuitos. Hace falta un diferencial por cada 5 circuitos como máximo.`, 'ITC-BT-25, 2.1', [d.id].concat(circ.map(c => c.id)));
-    else if (circ.length) add('ok', `${nameOf(d)}: ${circ.length} circuito${circ.length > 1 ? 's' : ''} (máximo 5).`, 'ITC-BT-25, 2.1', [d.id]);
-    if (!isNaN(sens) && sens <= 30) add('ok', `${nameOf(d)}: ${fmtN(sens)} mA.`, 'ITC-BT-25, 2.1', [d.id]);
+    /* C4 desdoblado (C4.1, C4.2, C4.3) cuenta como un solo circuito: no pide un diferencial más (Tabla 1, nota 8). */
+    const keys = new Set(circ.map(c => { const n = circOf(c); return n.length && n.every(x => /^C4\.\d+$/.test(x)) ? 'C4' : c.id; }));
+    const n = keys.size, split = keys.size < circ.length;
+    if (n > 5) add('ko', `${nameOf(d)}: tiene ${n} circuitos${split ? ' (C4 desdoblado cuenta como uno)' : ''}. Hace falta un diferencial por cada 5 circuitos como máximo.`, 'ITC-BT-25, 2.1', [d.id].concat(circ.map(c => c.id)));
+    else if (n) add('ok', `${nameOf(d)}: ${n} circuito${n > 1 ? 's' : ''} (máximo 5)${split ? '; C4.1, C4.2 y C4.3 cuentan como uno' : ''}.`, split ? 'ITC-BT-25, 2.1 y Tabla 1, nota 8' : 'ITC-BT-25, 2.1', [d.id]);
+    if (!isNaN(sens) && sens <= 30) add('ok', `${nameOf(d)}: ${sTxt}.`, 'ITC-BT-25, 2.1', [d.id]);
   });
   const unprot = breakers.filter(b => !DIFS.has(b.k) && !up(ins(b), s => DIFS.has(s.k)));
   if (unprot.length) add('ko', `${unprot.length === 1 ? 'Un magnetotérmico no tiene' : unprot.length + ' magnetotérmicos no tienen'} diferencial por encima: ${unprot.map(nameOf).join(', ')}.`, 'ITC-BT-25, 2.1', unprot.map(b => b.id));
   else if (breakers.length && difs.length) add('ok', 'Todos los magnetotérmicos tienen un diferencial por encima.', 'ITC-BT-25, 2.1');
 
   /* Circuitos: calibre y sección según la Tabla 1 */
-  const cname = s => String(s.p.circ || '').trim().toUpperCase().replace(/\s/g, '');
   salidas.forEach(s => {
     const c = cname(s), lab = sp(s.p.circ, s.p.desc) || 'Salida sin nombre';
     const b = up([tn(s, 0)], x => PROT.has(x.k));
@@ -3040,9 +3148,11 @@ function rebtCheck(){
       if (d && d.k !== 'mtdif' && down(d).length > 1) add('ko', `${lab}: la recarga del vehículo tiene que llevar su propio diferencial, y ${nameOf(d)} protege más circuitos.`, 'ITC-BT-52', [s.id, d.id]);
     }
   });
-  const named = salidas.map(cname).filter(c => /^C\d+$/.test(c));
+  const named = salidas.map(cname).filter(c => /^C\d+(\.\d+)?$/.test(c));
   if (named.length) {
-    const miss = ['C1', 'C2', 'C3', 'C4', 'C5'].filter(c => !named.includes(c));
+    /* El C4 puede estar como C4 o desdoblado en C4.1, C4.2 y C4.3. */
+    const base = named.map(c => c.replace(/\.\d+$/, ''));
+    const miss = ['C1', 'C2', 'C3', 'C4', 'C5'].filter(c => !base.includes(c));
     if (miss.length) add('warn', `Faltan circuitos de la electrificación básica: ${miss.join(', ')}. Si están, pon su nombre en la «Salida a circuito».`, 'ITC-BT-25, 2.3.1');
     else add('ok', 'Están los circuitos mínimos C1 a C5.', 'ITC-BT-25, 2.3.1');
     const dup = named.filter((c, i) => named.indexOf(c) !== i && c !== 'C12');
@@ -3166,32 +3276,58 @@ const CIRC = {
   C7:['Tomas adicionales', '16', '2×2,5+T mm²'], C8:['Calefacción', '25', '2×6+T mm²'], C9:['Aire acondicionado', '25', '2×6+T mm²'],
   C10:['Secadora', '16', '2×2,5+T mm²'], C11:['Automatización', '10', '2×1,5+T mm²'], C12:['Circuito adicional', '16', '2×2,5+T mm²'], C13:['Recarga vehículo eléctrico', '', '2×2,5+T mm²']
 };
-const mkc = c => ({c, d:CIRC[c][0], In:CIRC[c][1], cable:CIRC[c][2]});
+/* C4 desdoblado en un circuito por aparato (ITC-BT-25, Tabla 1, nota 8): 16 A y 2,5 mm² cada uno. */
+const CIRC_X = {'C4.1':['Lavadora', '16', '2×2,5+T mm²'], 'C4.2':['Lavavajillas', '16', '2×2,5+T mm²'], 'C4.3':['Termo eléctrico', '16', '2×2,5+T mm²']};
+const circInfo = c => { const k = circKey(c); return CIRC_X[k] || CIRC[k] || null; };
+/* Nombre de circuito normalizado: «c4.1», «C4-1» o «C 4,1» → «C4.1». Lo que no se reconoce se deja tal cual. */
+function circKey(c){
+  const t = String(c == null ? '' : c).trim().toUpperCase().replace(/\s+/g, '').replace(/[,\-_]/g, '.');
+  return /^C\d+(\.\d+)?$/.test(t) ? t : String(c == null ? '' : c).trim();
+}
+const mkc = c => { const i = circInfo(c) || ['Circuito', '16', '2×2,5+T mm²']; return {c:circKey(c), d:i[0], In:i[1], cable:i[2]}; };
 const PRESETS = {
   basica:{label:'Básica (C1–C5)', iga:'25', grupos:[{In:'40', sens:'30', clase:'AC', circ:['C1','C2','C3','C4','C5'].map(mkc)}]},
   elevada:{label:'Elevada (C1–C10)', iga:'40', grupos:[{In:'40', sens:'30', clase:'AC', circ:['C1','C2','C3','C4','C5'].map(mkc)}, {In:'40', sens:'30', clase:'AC', circ:['C6','C7','C8','C9','C10'].map(mkc)}]},
-  ve:{label:'Básica + recarga VE', iga:'40', grupos:[{In:'40', sens:'30', clase:'AC', circ:['C1','C2','C3','C4','C5'].map(mkc)}, {In:'40', sens:'30', clase:'A', circ:['C13'].map(mkc)}]}
+  ve:{label:'Básica + recarga VE', iga:'40', grupos:[{In:'40', sens:'30', clase:'AC', circ:['C1','C2','C3','C4','C5'].map(mkc)}, {In:'40', sens:'30', clase:'A', circ:['C13'].map(mkc)}]},
+  c4d:{label:'Básica con C4 desdoblado', iga:'25', grupos:[{In:'40', sens:'30', clase:'AC', circ:['C1','C2','C3','C4.1','C4.2','C4.3','C5'].map(mkc)}]}
 };
+/* Sensibilidades para el generador (mA) y cómo se leen. */
+const GSENS = ['10', '30', '100', '300', '500', '1000', '3000'];
+const sensLab = v => sensTxt(v);
 let G = null;
 function genReset(p){
   const P = PRESETS[p || 'basica'];
   G = {preset:p || 'basica', name:G && G.name ? G.name : 'Vivienda', di:G && G.di ? G.di : 'DI 2×10+T mm²', tri:G ? G.tri : false, iga:P.iga, sob:G ? G.sob : true, grupos:clone(P.grupos)};
 }
+/* Al rehacer la lista, el campo que tenía el foco desaparece; se suelta antes para que el navegador no dispare
+   otro «change» a mitad del cambio (y nunca se rehace dos veces a la vez). */
+let genBusy = false;
 function genRender(){
+  if (genBusy) return;
+  genBusy = true;
+  try {
+    const ae = document.activeElement;
+    if (ae && ae !== document.body && $('#m-gen').contains(ae) && ae.blur) ae.blur();
+    genRender0();
+  } finally { genBusy = false; }
+}
+function genRender0(){
   $('#g-presets').innerHTML = Object.keys(PRESETS).map(k => `<button class="chip" type="button" data-gp="${k}" aria-pressed="${G.preset === k}">${PRESETS[k].label}</button>`).join('');
   $('#g-name').value = G.name; $('#g-di').value = G.di;
   $('#g-sum').innerHTML = `<button class="chip" type="button" data-gs="0" aria-pressed="${!G.tri}">Monofásico 230 V</button><button class="chip" type="button" data-gs="1" aria-pressed="${G.tri}">Trifásico 400 V</button>`;
   $('#g-iga').innerHTML = ['25','32','40','50','63'].map(v => `<button class="chip" type="button" data-gi="${v}" aria-pressed="${G.iga === v}">${v}</button>`).join('');
   $('#g-sob').innerHTML = `<button class="chip" type="button" data-gb="1" aria-pressed="${G.sob}">Sí</button><button class="chip" type="button" data-gb="0" aria-pressed="${!G.sob}">No</button>`;
-  const opts = (vals, v) => vals.map(x => `<option value="${x}"${String(x) === String(v) ? ' selected' : ''}>${x === '' ? '—' : x}</option>`).join('');
+  const opts = (vals, v, labs) => vals.map((x, i) => `<option value="${hesc(x)}"${String(x) === String(v) ? ' selected' : ''}>${x === '' ? '—' : hesc(labs ? labs[i] : x)}</option>`).join('');
+  /* Si el valor guardado no está en la lista (por ejemplo, de un archivo), se añade para no perderlo. */
+  const withV = (vals, v) => v != null && String(v) !== '' && !vals.includes(String(v)) ? vals.concat([String(v)]) : vals;
   $('#g-groups').innerHTML = G.grupos.map((g, gi) => `<div class="grp" data-g="${gi}">
     <div class="grp-h"><b>Diferencial ${gi + 1}</b>
-      <label class="f"><span class="fl">Intensidad <small>A</small></span><select data-gf="In">${opts(['25','40','63','80'], g.In)}</select></label>
-      <label class="f"><span class="fl">Sensibilidad <small>mA</small></span><select data-gf="sens">${opts(['30','300'], g.sens)}</select></label>
-      <label class="f"><span class="fl">Tipo</span><select data-gf="clase">${opts(['AC','A','A-SI','F','B'], g.clase)}</select></label>
+      <label class="f"><span class="fl">Intensidad <small>A</small></span><select data-gf="In">${opts(withV(['25','40','63','80','100','125'], g.In), g.In)}</select></label>
+      <label class="f"><span class="fl">Sensibilidad</span><select data-gf="sens">${(() => { const v = withV(GSENS, g.sens); return opts(v, g.sens, v.map(sensLab)); })()}</select></label>
+      <label class="f"><span class="fl">Tipo</span><select data-gf="clase">${opts(withV(['AC','A','A-SI','F','B','B+'], g.clase), g.clase)}</select></label>
       ${G.grupos.length > 1 ? '<button class="btn del" type="button" data-grm>Quitar</button>' : ''}</div>
     <div class="crow crow-h"><span>Circuito</span><span>Descripción</span><span>PIA (A)</span><span>Cable</span><span></span></div>
-    ${g.circ.map((c, ci) => `<div class="crow" data-c="${ci}"><select data-cf="c">${opts(Object.keys(CIRC).concat(['Otro']), CIRC[c.c] ? c.c : 'Otro')}</select><input type="text" data-cf="d" value="${hesc(c.d)}" aria-label="Descripción"><select class="c-in" data-cf="In">${opts(['','6','10','16','20','25','32','40'], c.In)}</select><input class="c-cable" type="text" data-cf="cable" value="${hesc(c.cable)}" aria-label="Cable"><button class="rm" type="button" data-crm aria-label="Quitar circuito">×</button></div>`).join('')}
+    ${g.circ.map((c, ci) => `<div class="crow" data-c="${ci}"><input type="text" class="c-c" data-cf="c" list="g-circs" value="${hesc(c.c)}" placeholder="C4.1" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Circuito"><input type="text" data-cf="d" value="${hesc(c.d)}" aria-label="Descripción"><select class="c-in" data-cf="In">${opts(withV(['','2','4','6','10','13','16','20','25','32','40','50','63'], c.In), c.In)}</select><input class="c-cable" type="text" data-cf="cable" value="${hesc(c.cable)}" aria-label="Cable"><button class="rm" type="button" data-crm aria-label="Quitar circuito">×</button></div>`).join('')}
     <div class="row"><button class="btn" type="button" data-cadd>+ Añadir circuito</button></div></div>`).join('');
 }
 function genOpen(){ if (!G) genReset('basica'); genRender(); openModal('#m-gen'); }
@@ -3206,10 +3342,14 @@ $('#m-gen').addEventListener('click', e => {
   if (t.closest('[data-grm]') && g) { G.grupos.splice(+grp.dataset.g, 1); genRender(); return; }
   if (t.closest('[data-crm]') && g) { g.circ.splice(+t.closest('[data-c]').dataset.c, 1); genRender(); return; }
   if (t.closest('[data-cadd]') && g) {
-    const used = new Set(G.grupos.flatMap(x => x.circ.map(c => c.c)));
-    const next = Object.keys(CIRC).find(k => !used.has(k));
-    g.circ.push(next ? mkc(next) : {c:'Otro', d:'Circuito', In:'16', cable:'2×2,5+T mm²'});
-    genRender(); return;
+    const used = new Set(G.grupos.flatMap(x => x.circ.map(c => circKey(c.c))));
+    const next = Object.keys(CIRC).find(k => !used.has(k) && k !== 'C12');
+    g.circ.push(next ? mkc(next) : {c:'C12', d:'Circuito adicional', In:'16', cable:'2×2,5+T mm²'});
+    genRender();
+    /* El nombre del circuito nuevo queda listo para escribirlo (C4.1, C14, Piscina…). */
+    const rows = $('#m-gen').querySelectorAll(`[data-g="${G.grupos.indexOf(g)}"] [data-cf="c"]`); const last = rows[rows.length - 1];
+    if (last && window.matchMedia('(hover:hover) and (pointer:fine)').matches) { last.focus(); last.select(); }
+    return;
   }
 });
 $('#g-addgrp').addEventListener('click', () => { G.grupos.push({In:'40', sens:'30', clase:'AC', circ:[]}); genRender(); });
@@ -3217,7 +3357,7 @@ $('#m-gen').addEventListener('input', e => {
   const t = e.target;
   if (t.id === 'g-name') G.name = t.value;
   else if (t.id === 'g-di') G.di = t.value;
-  else if (t.dataset.cf === 'd' || t.dataset.cf === 'cable') { const grp = t.closest('[data-g]'), row = t.closest('[data-c]'); if (grp && row) G.grupos[+grp.dataset.g].circ[+row.dataset.c][t.dataset.cf] = t.value; }
+  else if (t.dataset.cf === 'd' || t.dataset.cf === 'cable') { const grp = t.closest('[data-g]'), row = t.closest('[data-c]'); if (grp && row) G.grupos[+grp.dataset.g].circ[+row.dataset.c][t.dataset.cf] = t.value.slice(0, 120); }
 });
 $('#m-gen').addEventListener('change', e => {
   const t = e.target, grp = t.closest('[data-g]'); if (!grp) return;
@@ -3225,7 +3365,15 @@ $('#m-gen').addEventListener('change', e => {
   if (t.dataset.gf) { g[t.dataset.gf] = t.value; return; }
   const row = t.closest('[data-c]'); if (!row) return;
   const c = g.circ[+row.dataset.c], f = t.dataset.cf;
-  if (f === 'c') { if (CIRC[t.value]) Object.assign(c, mkc(t.value)); else c.c = 'Otro'; genRender(); }
+  if (f === 'c') {
+    /* Se escribe el circuito que se quiera. Si es uno de la ITC-BT-25 (C1…C13, C4.1, C4.2, C4.3), se rellenan su
+       descripción, magnetotérmico y cable, salvo que ya se hubieran cambiado a mano. */
+    const prev = circInfo(c.c), info = circInfo(t.value);
+    const untouched = fld => !String(c[fld] || '').trim() || (prev && String(c[fld]) === prev[fld === 'd' ? 0 : fld === 'In' ? 1 : 2]) || String(c[fld]) === 'Circuito';
+    c.c = circKey(t.value).slice(0, 40);
+    if (info) { if (untouched('d')) c.d = info[0]; if (untouched('In')) c.In = info[1]; if (untouched('cable')) c.cable = info[2]; }
+    genRender();
+  }
   else c[f] = t.value;
 });
 $('#g-go').addEventListener('click', () => {
@@ -3269,7 +3417,7 @@ function generate(cfg){
     g.circ.forEach((c, j) => {
       sym('pia', cx[j], Y.pia, {In:c.In || '', curva:'C', polos:'1P+N', tipo:''});
       wire([[cx[j], Y.pia + 10], [cx[j], Y.out - 10]]);
-      sym('salida', cx[j], Y.out, {circ: c.c === 'Otro' ? '' : c.c, desc:c.d || '', cable:c.cable || '', pot:'', extra:''});
+      sym('salida', cx[j], Y.out, {circ: c.c === 'Otro' ? '' : String(c.c || '').trim(), desc:c.d || '', cable:c.cable || '', pot:'', extra:''});
     });
   });
   return d;
@@ -3299,7 +3447,7 @@ else {
   else { doc = newDoc('Esquema 1'); lastSnap = snapOf(); renderAll(); renderProps(); showHome(); }
 }
 window.__unifilar = {get doc(){ return doc; }, get sel(){ return [...sel]; }, toScreen(x, y){ const r = svg.getBoundingClientRect(); return [r.left + (x - view.x) * view.s, r.top + (y - view.y) * view.s]; }, generate, Store, simulate, junctions, exportPDF, docSVG, pdfOf, docPrims, pageSize,
-  get view(){ return Object.assign({}, view); }, get editing(){ return ed ? Object.assign({}, ed) : null; }, edOpen, edClose, insertSym, onlyCajetin, ddShow, ddClose, cajetinFields, symScale, symTerms};
+  get view(){ return Object.assign({}, view); }, get editing(){ return ed ? Object.assign({}, ed) : null; }, edOpen, edClose, insertSym, onlyCajetin, ddShow, ddClose, cajetinFields, symScale, symTerms, redraw(){ commit(); renderAll(); renderProps(); }};
 })();
 
 </script>
