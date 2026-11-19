@@ -98,6 +98,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 #cv .term.used{fill:var(--sel)}
 #cv .draft{fill:none;stroke:var(--sel);stroke-width:2px;stroke-dasharray:6 4;vector-effect:non-scaling-stroke;pointer-events:none}
 #cv .draft0{fill:var(--sel);pointer-events:none}
+#cv .snapt{fill:rgba(31,111,235,.14);stroke:var(--sel);stroke-width:2px;vector-effect:non-scaling-stroke;pointer-events:none}
+#cv .snapx{fill:none;stroke:var(--sel);stroke-width:1.5px;vector-effect:non-scaling-stroke;pointer-events:none}
 #cv .boxsel{fill:rgba(31,111,235,.08);stroke:var(--sel);stroke-width:1px;stroke-dasharray:4 3;vector-effect:non-scaling-stroke;pointer-events:none}
 #cv .eraser{fill:rgba(215,38,30,.12);stroke:#D7261E;stroke-width:1.5px;vector-effect:non-scaling-stroke;pointer-events:none}
 .tb[data-tool="erase"][aria-pressed="true"]{background:#D7261E;color:#fff}
@@ -1352,7 +1354,7 @@ const pageRect = $('#page'), pgrid = $('#pgrid'), stage = $('#stage');
 /* ---------- Si algo falla, la app se recupera: suelta el gesto a medias y vuelve a dibujar ---------- */
 let errAt = 0;
 function recover(){
-  try { act = null; ptrs.clear(); simPress.clear(); $('#app').classList.remove('dragging'); gOvl.removeAttribute('transform'); gDots.style.opacity = ''; vg = null; svg.style.transform = ''; svg.classList.remove('vgest'); } catch (e) {}
+  try { act = null; ptrs.clear(); $('#szbadge').hidden = true; simPress.clear(); $('#app').classList.remove('dragging'); gOvl.removeAttribute('transform'); gDots.style.opacity = ''; vg = null; svg.style.transform = ''; svg.classList.remove('vgest'); } catch (e) {}
   try { if (doc) { renderAll(); renderProps(); } } catch (e) {}
   if (Date.now() - errAt > 8000) { errAt = Date.now(); try { toast('Algo ha fallado, pero la app se ha recuperado. Tu esquema sigue guardado.', 5000); } catch (e) {} }
 }
@@ -1769,9 +1771,18 @@ function renderOverlay(){
   let s = '';
   const px = v => v / view.s;
   if (tool === 'wire' && !sim) {
-    const used = new Set();
-    doc.els.forEach(w => { if (w.type === 'wire') { used.add(w.pts[0][0].toFixed(2) + ',' + w.pts[0][1].toFixed(2)); const b = w.pts[w.pts.length - 1]; used.add(b[0].toFixed(2) + ',' + b[1].toFixed(2)); } });
-    doc.els.forEach(el => { if (el.type === 'sym') symTerms(el).forEach(t => { s += `<circle class="term${used.has(t.x.toFixed(2) + ',' + t.y.toFixed(2)) ? ' used' : ''}" cx="${f2(t.x)}" cy="${f2(t.y)}" r="${f2(px(5))}"/>`; }); });
+    /* Los bornes se dibujan una vez y se reutilizan mientras no cambie el plano ni el zoom (trazar va más suelto). */
+    const T = allTerms();
+    if (!termCache || termCache.T !== T || termCache.s !== view.s) {
+      const used = new Set();
+      doc.els.forEach(w => { if (w.type === 'wire') { used.add(w.pts[0][0].toFixed(2) + ',' + w.pts[0][1].toFixed(2)); const b = w.pts[w.pts.length - 1]; used.add(b[0].toFixed(2) + ',' + b[1].toFixed(2)); } });
+      termCache = {T, s:view.s, svg:T.map(t => `<circle class="term${used.has(t.x.toFixed(2) + ',' + t.y.toFixed(2)) ? ' used' : ''}" cx="${f2(t.x)}" cy="${f2(t.y)}" r="${f2(px(5))}"/>`).join('')};
+    }
+    s += termCache.svg;
+    /* Imán: dónde se engancha (borne o cable) o, si va suelto, el punto exacto en milímetros. */
+    const mark = q => !q ? '' : q.kind === 'term' || q.kind === 'wire' ? `<circle class="snapt" cx="${f2(q.p[0])}" cy="${f2(q.p[1])}" r="${f2(px(9))}"/>` : `<path class="snapx" d="M${f2(q.p[0] - px(7))} ${f2(q.p[1])}h${f2(px(14))}M${f2(q.p[0])} ${f2(q.p[1] - px(7))}v${f2(px(14))}"/>`;
+    if (act && act.type === 'wire') s += mark(act.s0) + mark(act.snapE);
+    else s += mark(hoverPt);
   }
   sel.forEach(id => {
     const el = byId(id); if (!el) return;
@@ -1800,8 +1811,11 @@ function renderAll(){ renderSheet(); renderEls(); renderOverlay(); updateHeader(
 function updateHeader(){ $('#docname').textContent = doc.name; document.title = doc.name + ' · Unifilar'; }
 
 /* ---------- Cables: enganche, rutas y edición ---------- */
-let tcache = null;
+let tcache = null, termCache = null;
 const allTerms = () => tcache || (tcache = doc.els.filter(el => el.type === 'sym').flatMap(el => symTerms(el)));
+/* Paso de los cables: 1 mm (al milímetro) o 5 mm (la rejilla), según se elija en la barra del cable. */
+const wstep = () => prefs.wstep === 5 ? 5 : 1;
+const snapW = v => Math.round(v / wstep()) * wstep();
 function wireSnap(w, not){
   const R = Math.min(18 / view.s, 3.5);
   let best = null, bd = R;
@@ -1813,26 +1827,49 @@ function wireSnap(w, not){
     if (wireDraft && el === wireDraft.el) return;
     for (let i = 0; i < el.pts.length - 1; i++) {
       const a = el.pts[i], b = el.pts[i + 1];
-      if (near(a[0], b[0])) { const y = clamp(snapG(w[1]), Math.min(a[1], b[1]), Math.max(a[1], b[1])); const d = Math.hypot(a[0] - w[0], y - w[1]); if (d < bd) { bd = d; best = {p:[a[0], y], kind:'wire', ax:'h'}; } }
-      else if (near(a[1], b[1])) { const x = clamp(snapG(w[0]), Math.min(a[0], b[0]), Math.max(a[0], b[0])); const d = Math.hypot(x - w[0], a[1] - w[1]); if (d < bd) { bd = d; best = {p:[x, a[1]], kind:'wire', ax:'v'}; } }
+      if (near(a[0], b[0])) { const y = clamp(snapW(w[1]), Math.min(a[1], b[1]), Math.max(a[1], b[1])); const d = Math.hypot(a[0] - w[0], y - w[1]); if (d < bd) { bd = d; best = {p:[a[0], y], kind:'wire', ax:'h'}; } }
+      else if (near(a[1], b[1])) { const x = clamp(snapW(w[0]), Math.min(a[0], b[0]), Math.max(a[0], b[0])); const d = Math.hypot(x - w[0], a[1] - w[1]); if (d < bd) { bd = d; best = {p:[x, a[1]], kind:'wire', ax:'v'}; } }
     }
   });
   if (best) return best;
-  return {p:[snapG(w[0]), snapG(w[1])], kind:'grid', ax:null};
+  return {p:[snapW(w[0]), snapW(w[1])], kind:'grid', ax:null};
 }
 function route(a, b, da, db){
   if (near(a[0], b[0]) || near(a[1], b[1])) return [a, b];
   da = da || (db === 'v' ? 'h' : db === 'h' ? 'v' : null) || (Math.abs(b[1] - a[1]) >= Math.abs(b[0] - a[0]) ? 'v' : 'h');
-  if (da === 'v' && db === 'v') { const m = snapG((a[1] + b[1]) / 2); return [a, [a[0], m], [b[0], m], b]; }
-  if (da === 'h' && db === 'h') { const m = snapG((a[0] + b[0]) / 2); return [a, [m, a[1]], [m, b[1]], b]; }
+  if (da === 'v' && db === 'v') { const m = snapW((a[1] + b[1]) / 2); return [a, [a[0], m], [b[0], m], b]; }
+  if (da === 'h' && db === 'h') { const m = snapW((a[0] + b[0]) / 2); return [a, [m, a[1]], [m, b[1]], b]; }
   if (da === 'v') return [a, [a[0], b[1]], b];
   return [a, [b[0], a[1]], b];
+}
+/* Si el punto suelto queda casi en línea con el anterior (a menos de 12 px en pantalla), el cable sale recto:
+   así un trazo a mano alzada no deja «escalones» de un milímetro. */
+function lockStraight(from, s){
+  if (s.kind !== 'grid') return s;
+  const tol = 12 / view.s, dx = Math.abs(s.p[0] - from[0]), dy = Math.abs(s.p[1] - from[1]);
+  if (dx < tol && dy >= dx) return Object.assign({}, s, {p:[from[0], s.p[1]]});
+  if (dy < tol && dx > dy) return Object.assign({}, s, {p:[s.p[0], from[1]]});
+  return s;
 }
 function draftRoute(s){
   const pts = wireDraft.pts, last = pts[pts.length - 1];
   let ax = wireDraft.ax;
   if (pts.length > 1) { const p = pts[pts.length - 2]; ax = near(p[0], last[0]) ? 'h' : 'v'; }
+  s = lockStraight(last, s);
   return route(last, s.p, ax, s.kind === 'grid' ? null : s.ax);
+}
+/* Cable que se está trazando de un punto a otro: lo mismo se ve mientras se arrastra y lo mismo queda al soltar. */
+function wirePlan(a, w){
+  const s = lockStraight(a.s0.p, wireSnap(w, a.s0.p));
+  /* Desde un punto suelto, el primer tramo sigue la dirección en que empezó el trazo. */
+  const da = a.s0.kind === 'grid' ? (a.dir || null) : a.s0.ax;
+  return {s, pts:route(a.s0.p, s.p, da, s.kind === 'grid' ? null : s.ax)};
+}
+/* Medida en directo: largo total y, si hace esquina, cada tramo. */
+function wireBadge(pts, kind){
+  const P = simplify(pts), segs = [];
+  for (let i = 0; i < P.length - 1; i++) segs.push(Math.round(Math.hypot(P[i + 1][0] - P[i][0], P[i + 1][1] - P[i][1]) * 10) / 10);
+  return 'Largo ' + fmtN(wlen(P)) + ' mm' + (segs.length > 1 ? ' (' + segs.map(fmtN).join(' + ') + ')' : '') + (kind === 'term' ? ' · en el borne' : kind === 'wire' ? ' · sobre el cable' : '');
 }
 function fixEnd(orig, which, np){
   let pts = orig.map(p => [p[0], p[1]]);
@@ -1887,19 +1924,19 @@ const wlen = pts => { let L = 0; for (let i = 0; i < pts.length - 1; i++) L += M
 function endSnap(w, wire){
   const R = Math.min(18 / view.s, 3.5);
   let best = null, bd = R;
-  doc.els.forEach(el => { if (el.type === 'sym') symTerms(el).forEach(t => { const d = Math.hypot(t.x - w[0], t.y - w[1]); if (d < bd) { bd = d; best = {p:[t.x, t.y], kind:'term'}; } }); });
+  allTerms().forEach(t => { const d = Math.hypot(t.x - w[0], t.y - w[1]); if (d < bd) { bd = d; best = {p:[t.x, t.y], kind:'term'}; } });
   if (best) return best;
   bd = R;
   doc.els.forEach(el => {
     if (el.type !== 'wire' || el === wire) return;
     for (let i = 0; i < el.pts.length - 1; i++) {
       const a = el.pts[i], b = el.pts[i + 1];
-      if (near(a[0], b[0])) { const y = clamp(Math.round(w[1]), Math.min(a[1], b[1]), Math.max(a[1], b[1])); const d = Math.hypot(a[0] - w[0], y - w[1]); if (d < bd) { bd = d; best = {p:[a[0], y], kind:'wire'}; } }
-      else if (near(a[1], b[1])) { const x = clamp(Math.round(w[0]), Math.min(a[0], b[0]), Math.max(a[0], b[0])); const d = Math.hypot(x - w[0], a[1] - w[1]); if (d < bd) { bd = d; best = {p:[x, a[1]], kind:'wire'}; } }
+      if (near(a[0], b[0])) { const y = clamp(snapW(w[1]), Math.min(a[1], b[1]), Math.max(a[1], b[1])); const d = Math.hypot(a[0] - w[0], y - w[1]); if (d < bd) { bd = d; best = {p:[a[0], y], kind:'wire'}; } }
+      else if (near(a[1], b[1])) { const x = clamp(snapW(w[0]), Math.min(a[0], b[0]), Math.max(a[0], b[0])); const d = Math.hypot(x - w[0], a[1] - w[1]); if (d < bd) { bd = d; best = {p:[x, a[1]], kind:'wire'}; } }
     }
   });
   if (best) return best;
-  return {p:[Math.round(w[0]), Math.round(w[1])], kind:'mm'};
+  return {p:[snapW(w[0]), snapW(w[1])], kind:'mm'};
 }
 function stretchEnd(orig, which, np){
   let pts = orig.map(p => [p[0], p[1]]);
@@ -1951,11 +1988,12 @@ function addWire(pts){
 }
 function finishDraft(){
   if (wireDraft && wireDraft.pts.length > 1) addWire(wireDraft.pts);
-  wireDraft = null; hoverPt = null;
+  wireDraft = null; hoverPt = null; hideSize();
   renderOverlay(); updateBanner();
 }
 function draftAdd(s){
   const last = wireDraft.pts[wireDraft.pts.length - 1];
+  s = lockStraight(last, s);
   if (eqp(last, s.p)) { finishDraft(); return; }
   wireDraft.pts = wireDraft.pts.concat(draftRoute(s).slice(1));
   if (s.kind !== 'grid') finishDraft(); else { renderOverlay(); updateBanner(); }
@@ -2276,7 +2314,8 @@ function cancelAct(){
   if (act.type === 'resize') { act.el.w = act.ow; act.el.h = act.oh; renderEls(); }
   if (act.type === 'scale') { applyScale(act.el, act.sc0, act.t0, act.att); renderEls(); }
   if (act.type === 'tsize') { act.el.size = act.z0; renderEls(); }
-  if (act.type === 'wend') { act.el.pts = act.orig; hideSize(); gDots.style.opacity = ''; renderEls(); }
+  if (act.type === 'wend') { act.el.pts = act.orig; gDots.style.opacity = ''; renderEls(); }
+  if (act.type === 'wire' || act.type === 'seg' || act.type === 'wend') hideSize();
   act = null; renderOverlay();
 }
 function startPinch(){
@@ -2363,7 +2402,11 @@ function onDown(e){
 }
 function onMove(e){
   if (!ptrs.has(e.pointerId)) {
-    if (tool === 'wire' && wireDraft && e.pointerType !== 'touch') { hoverPt = wireSnap(toWorld(e.clientX, e.clientY)); renderOverlay(); }
+    if (tool === 'wire' && e.pointerType !== 'touch' && !sim) {
+      hoverPt = wireSnap(toWorld(e.clientX, e.clientY));
+      if (wireDraft) showSize(wireBadge(draftRoute(hoverPt), hoverPt.kind));
+      renderOverlay();
+    }
     else if (tool === 'erase' && e.pointerType !== 'touch') { eraserPt = toWorld(e.clientX, e.clientY); renderOverlay(); }
     return;
   }
@@ -2381,9 +2424,10 @@ function onMove(e){
     case 'drag': moveDrag(w); break;
     case 'erase': eraseAlong(act.lx, act.ly, e.clientX, e.clientY); act.lx = e.clientX; act.ly = e.clientY; eraserPt = w; renderOverlay(); break;
     case 'seg': {
-      const d = [snapG(w[0] - act.w0[0]), snapG(w[1] - act.w0[1])];
+      const d = [snapW(w[0] - act.w0[0]), snapW(w[1] - act.w0[1])];
       act.el.pts = moveSegPts(act.orig, act.segI, d);
       rerenderEl(act.el); renderOverlay(); gDots.style.opacity = '0';
+      { const a0 = act.orig[act.segI], b0 = act.orig[act.segI + 1]; showSize('Tramo movido ' + fmtN(near(a0[1], b0[1]) ? Math.abs(d[1]) : Math.abs(d[0])) + ' mm'); }
       break;
     }
     case 'resize': act.el.w = Math.max(10, snapG(act.ow + w[0] - act.w0[0])); act.el.h = Math.max(10, snapG(act.oh + w[1] - act.w0[1])); rerenderEl(act.el); renderOverlay(); break;
@@ -2411,9 +2455,11 @@ function onMove(e){
     case 'boxsel': case 'framedraw': act.box = [act.w0[0], act.w0[1], w[0], w[1]]; renderOverlay(); break;
     case 'toggle': act.type = 'boxsel'; act.add = true; act.box = [act.w0[0], act.w0[1], w[0], w[1]]; renderOverlay(); break;
     case 'wire': {
-      const s = wireSnap(w);
-      if (wireDraft) { hoverPt = s; act.preview = null; }
-      else { const s2 = wireSnap(w, act.s0.p); act.preview = route(act.s0.p, s2.p, act.s0.kind === 'grid' ? null : act.s0.ax, s2.kind === 'grid' ? null : s2.ax); }
+      if (wireDraft) { hoverPt = wireSnap(w); act.preview = null; showSize(wireBadge(draftRoute(hoverPt), hoverPt.kind)); renderOverlay(); break; }
+      if (!act.dir) act.dir = Math.abs(dxp) >= Math.abs(dyp) ? 'h' : 'v';
+      const pl = wirePlan(act, w);
+      act.preview = pl.pts; act.snapE = pl.s;
+      showSize(wireBadge(pl.pts, pl.s.kind));
       renderOverlay();
       break;
     }
@@ -2454,9 +2500,13 @@ function onUp(e){
       else addFrame(snapG(w[0]), snapG(w[1]), 60, 40);
       break;
     case 'wire': {
-      const s = wireSnap(w, wireDraft || !a.moved ? null : a.s0.p);
-      if (wireDraft) draftAdd(s);
-      else if (a.moved) { const pts = route(a.s0.p, s.p, a.s0.kind === 'grid' ? null : a.s0.ax, s.kind === 'grid' ? null : s.ax); if (!eqp(a.s0.p, s.p)) addWire(pts); }
+      hideSize();
+      if (wireDraft) draftAdd(wireSnap(w));
+      else if (a.moved) {
+        if (!a.dir) a.dir = Math.abs(e.clientX - a.x0) >= Math.abs(e.clientY - a.y0) ? 'h' : 'v';
+        const pl = wirePlan(a, w);
+        if (!eqp(a.s0.p, pl.s.p)) addWire(pl.pts);
+      }
       else { wireDraft = {pts:[a.s0.p], ax:a.s0.kind === 'grid' ? null : a.s0.ax}; updateBanner(); }
       renderOverlay();
       break;
@@ -2473,6 +2523,7 @@ function onUp(e){
       break;
     case 'erase': if (a.pending) { act = a; eraseAt(a.lx, a.ly); act = null; } endErase(a); break;
     case 'seg':
+      hideSize();
       if (a.moved) { a.el.pts = simplify(a.el.pts); gDots.style.opacity = ''; commit(); rerenderEl(a.el); if (sim) renderEls(); else renderDots(); }
       break;
     case 'resize': commit(); renderOverlay(); renderProps(); break;
@@ -2628,7 +2679,7 @@ svg.addEventListener('pointerdown', safe(pDown));
 svg.addEventListener('pointermove', safe(pMove));
 svg.addEventListener('pointerup', safe(e => pEnd(e, false)));
 svg.addEventListener('pointercancel', safe(e => pEnd(e, true)));
-svg.addEventListener('pointerleave', e => { if (e.pointerType !== 'touch' && hoverPt) { hoverPt = null; renderOverlay(); } });
+svg.addEventListener('pointerleave', e => { if (e.pointerType !== 'touch' && hoverPt) { pendMove.delete(e.pointerId); hoverPt = null; if (!wireDraft) hideSize(); renderOverlay(); } });
 let wheelT = 0;
 svg.addEventListener('wheel', e => {
   e.preventDefault();
@@ -2655,6 +2706,7 @@ svg.addEventListener('contextmenu', e => e.preventDefault());
 
 /* ---------- Herramientas y avisos ---------- */
 function setTool(t, kind){
+  hoverPt = null; hideSize();
   if (wireDraft && t !== 'wire') finishDraft();
   if (sim && t !== 'sim') setSim(false);
   if ((t === 'hand' || t === 'erase') && sel.size) { sel.clear(); renderProps(); }
@@ -2686,7 +2738,7 @@ function updateBanner(){
   } else if (tool === 'wire') {
     const dot = `<span class="dot" style="${swStyle(prefs.wireCol || 'negro')}"></span>`;
     if (wireDraft) h = `<span class="mtag">Cable: toca para hacer esquinas</span><button class="bb pri" data-b="wfinish" type="button">Terminar</button><button class="bb" data-b="wcancel" type="button">Cancelar</button>`;
-    else h = `<button class="bb${wireKind === 'linea' ? ' on' : ''}" data-b="wk-linea" type="button">Línea</button><button class="bb${wireKind === 'barra' ? ' on' : ''}" data-b="wk-barra" type="button">Barra</button><button class="bb${wirePal ? ' on' : ''}" data-b="wcol" type="button" aria-label="Color del cable">${dot}Color</button>`
+    else h = `<button class="bb${wireKind === 'linea' ? ' on' : ''}" data-b="wk-linea" type="button">Línea</button><button class="bb${wireKind === 'barra' ? ' on' : ''}" data-b="wk-barra" type="button">Barra</button><button class="bb${wirePal ? ' on' : ''}" data-b="wcol" type="button" aria-label="Color del cable">${dot}Color</button><button class="bb${wstep() === 1 ? ' on' : ''}" data-b="ws-1" type="button" title="Los cables van de milímetro en milímetro">1 mm</button><button class="bb${wstep() === 5 ? ' on' : ''}" data-b="ws-5" type="button" title="Los cables van por la rejilla de 5 mm">5 mm</button>`
       + (wirePal ? `<div class="bpal">${Object.keys(WCOL).map(k => `<button type="button" class="sw${(prefs.wireCol || 'negro') === k ? ' on' : ''}" data-b="wc-${k}" style="${swStyle(k)}" title="${hesc(wireColName(k))}" aria-label="${hesc(wireColName(k))}"></button>`).join('')}<label class="sw sw-any" title="Otro color"><input type="color" id="wc-any" value="${/^#/.test(prefs.wireCol || '') ? prefs.wireCol : '#ff00aa'}" aria-label="Otro color"></label><span class="bpal-n">${hesc(wireColName(prefs.wireCol || 'negro'))}</span></div>` : '');
   } else if (tool === 'place' && SYM[placeKind]) {
     h = `<span class="mtag">${ICONS[placeKind] ? `<span class="micon">${ICONS[placeKind]}</span>` : ''}${hesc(SYM[placeKind].n)}</span><button class="bb" data-b="prot" type="button">Girar ↻${placeRot ? ' ' + placeRot * 90 + '°' : ''}</button>`;
@@ -2704,11 +2756,12 @@ $('#banner').addEventListener('click', e => {
   if (k === 'simoff') setSim(false);
   else if (k === 'simreset') { simReset(); renderEls(); }
   else if (k === 'wfinish') finishDraft();
-  else if (k === 'wcancel') { wireDraft = null; hoverPt = null; renderOverlay(); updateBanner(); }
+  else if (k === 'wcancel') { wireDraft = null; hoverPt = null; hideSize(); renderOverlay(); updateBanner(); }
   else if (k === 'wk-linea' || k === 'wk-barra') { wireKind = k.slice(3); updateBanner(); }
   else if (k === 'wcol') { wirePal = !wirePal; updateBanner(); }
   else if (k.startsWith('wc-')) { prefs.wireCol = k.slice(3); savePrefs(); wirePal = false; updateBanner(); }
   else if (k === 'prot') { placeRot = (placeRot + 1) % 4; updateBanner(); }
+  else if (k === 'ws-1' || k === 'ws-5') { prefs.wstep = k === 'ws-5' ? 5 : 1; savePrefs(); updateBanner(); }
   else if (k === 'done') setTool('sel');
 });
 document.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
@@ -3124,7 +3177,7 @@ document.addEventListener('keydown', e => {
   else if (mod && k === 'd') { e.preventDefault(); duplicateSel(); }
   else if (mod && k === 'a') { e.preventDefault(); sel = new Set(doc.els.map(x => x.id)); renderOverlay(); renderProps(); }
   else if (k === 'delete' || k === 'backspace') { e.preventDefault(); deleteSel(); }
-  else if (k === 'escape') { if (wireDraft) { wireDraft = null; renderOverlay(); updateBanner(); } else if (tool !== 'sel') setTool('sel'); else if (sim) setSim(false); else { sel.clear(); renderOverlay(); renderProps(); } }
+  else if (k === 'escape') { if (wireDraft) { wireDraft = null; hoverPt = null; hideSize(); renderOverlay(); updateBanner(); } else if (tool !== 'sel') setTool('sel'); else if (sim) setSim(false); else { sel.clear(); renderOverlay(); renderProps(); } }
   else if (k === 'enter' && wireDraft) finishDraft();
   else if (k === 'r') { if (tool === 'place') { placeRot = (placeRot + 1) % 4; updateBanner(); } else rotateSel(e.shiftKey ? -1 : 1); }
   else if (k === 'w') setTool('wire');
