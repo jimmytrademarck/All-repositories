@@ -99,6 +99,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 #cv .draft{fill:none;stroke:var(--sel);stroke-width:2px;stroke-dasharray:6 4;vector-effect:non-scaling-stroke;pointer-events:none}
 #cv .draft0{fill:var(--sel);pointer-events:none}
 #cv .snapt{fill:rgba(31,111,235,.14);stroke:var(--sel);stroke-width:2px;vector-effect:non-scaling-stroke;pointer-events:none}
+#cv .guide{stroke:#d6336c;stroke-width:1px;stroke-dasharray:5 4;vector-effect:non-scaling-stroke;pointer-events:none}
+#cv .ghost{opacity:.45;pointer-events:none}
+.nudge{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.nudge .btn{min-height:44px;font-size:20px;padding:0;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 #cv .snapx{fill:none;stroke:var(--sel);stroke-width:1.5px;vector-effect:non-scaling-stroke;pointer-events:none}
 #cv .boxsel{fill:rgba(31,111,235,.08);stroke:var(--sel);stroke-width:1px;stroke-dasharray:4 3;vector-effect:non-scaling-stroke;pointer-events:none}
 #cv .eraser{fill:rgba(215,38,30,.12);stroke:#D7261E;stroke-width:1.5px;vector-effect:non-scaling-stroke;pointer-events:none}
@@ -362,6 +366,7 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2rem,6v
         <g id="g-els" stroke-linecap="round" stroke-linejoin="round"></g>
         <g id="g-dots" pointer-events="none"></g>
         <g id="g-ovl"></g>
+        <g id="g-guide" pointer-events="none"></g>
       </svg>
       <textarea id="ied" class="ied" hidden rows="1" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Texto"></textarea>
       <div class="ied-tip" id="ied-tip" hidden></div>
@@ -1348,13 +1353,13 @@ const clone = o => JSON.parse(JSON.stringify(o));
 const today = () => { const d = new Date(); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); };
 const MM = 96 / 25.4;
 
-const svg = $('#cv'), gSheet = $('#g-sheet'), gEls = $('#g-els'), gDots = $('#g-dots'), gOvl = $('#g-ovl');
+const svg = $('#cv'), gSheet = $('#g-sheet'), gEls = $('#g-els'), gDots = $('#g-dots'), gOvl = $('#g-ovl'), gGuide = $('#g-guide');
 const pageRect = $('#page'), pgrid = $('#pgrid'), stage = $('#stage');
 
 /* ---------- Si algo falla, la app se recupera: suelta el gesto a medias y vuelve a dibujar ---------- */
 let errAt = 0;
 function recover(){
-  try { act = null; ptrs.clear(); $('#szbadge').hidden = true; simPress.clear(); $('#app').classList.remove('dragging'); gOvl.removeAttribute('transform'); gDots.style.opacity = ''; vg = null; svg.style.transform = ''; svg.classList.remove('vgest'); } catch (e) {}
+  try { act = null; ptrs.clear(); $('#szbadge').hidden = true; guideKey = ''; gGuide.innerHTML = ''; placePt = null; simPress.clear(); $('#app').classList.remove('dragging'); gOvl.removeAttribute('transform'); gDots.style.opacity = ''; vg = null; svg.style.transform = ''; svg.classList.remove('vgest'); } catch (e) {}
   try { if (doc) { renderAll(); renderProps(); } } catch (e) {}
   if (Date.now() - errAt > 8000) { errAt = Date.now(); try { toast('Algo ha fallado, pero la app se ha recuperado. Tu esquema sigue guardado.', 5000); } catch (e) {} }
 }
@@ -1796,6 +1801,9 @@ function renderOverlay(){
       else if (el.type === 'text') { const b = textBox(el); s += `<circle class="handle" data-h="tsize" cx="${f2(b[2] + 1.2 + px(8))}" cy="${f2(b[3] + px(8))}" r="${f2(px(10))}"><title>Arrastra para cambiar el tamaño de la letra</title></circle>`; }
     }
   });
+  if (tool === 'place' && placePt && SYM[placeKind] && !sim && !(act && act.type === 'pan')) {
+    s += `<g class="ghost">${svgOf(elPrims({type:'sym', id:'ghost', k:placeKind, x:placePt[0], y:placePt[1], r:placeRot, p:defaults(placeKind)}, null, []))}</g>`;
+  }
   if (wireDraft) {
     let pts = wireDraft.pts;
     if (hoverPt) pts = pts.concat(draftRoute(hoverPt).slice(1));
@@ -1813,8 +1821,88 @@ function updateHeader(){ $('#docname').textContent = doc.name; document.title = 
 /* ---------- Cables: enganche, rutas y edición ---------- */
 let tcache = null, termCache = null;
 const allTerms = () => tcache || (tcache = doc.els.filter(el => el.type === 'sym').flatMap(el => symTerms(el)));
-/* Paso de los cables: 1 mm (al milímetro) o 5 mm (la rejilla), según se elija en la barra del cable. */
-const wstep = () => prefs.wstep === 5 ? 5 : 1;
+/* Paso al dibujar y mover (cables, símbolos, textos y recuadros): 1 mm (al milímetro) o 5 mm (la rejilla). */
+const wstep = () => +prefs.wstep === 5 ? 5 : 1;
+/* Guías de alineación: al mover o colocar, si un borne (o el centro de un símbolo) queda en línea con otro,
+   se ve una línea y, si está a menos de medio milímetro, se alinea exacto. Nunca impide moverlo 1 mm. */
+function alignTargets(excl){
+  const xs = [], ys = [];
+  doc.els.forEach(e => {
+    if (excl && excl.has(e.id)) return;
+    if (e.type === 'sym') { xs.push(e.x); ys.push(e.y); symTerms(e).forEach(t => { xs.push(t.x); ys.push(t.y); }); }
+    else if (e.type === 'wire') e.pts.forEach(p => { xs.push(p[0]); ys.push(p[1]); });
+    else if (e.type === 'text' || e.type === 'frame') { xs.push(e.x); ys.push(e.y); }
+  });
+  const u = a => Float64Array.from(new Set(a.filter(v => isFinite(v)).map(v => Math.round(v * 100) / 100))).sort();
+  return {xs:u(xs), ys:u(ys)};
+}
+function nearestIn(arr, v){
+  if (!arr || !arr.length) return null;
+  let lo = 0, hi = arr.length - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < v) lo = m + 1; else hi = m; }
+  return lo > 0 && Math.abs(arr[lo - 1] - v) < Math.abs(arr[lo] - v) ? arr[lo - 1] : arr[lo];
+}
+function alignMove(refs, T, rdx, rdy, step){
+  const tol = Math.min(4 / view.s, 0.6);
+  const one = (i, rd, arr) => {
+    const d0 = Math.round(rd / step) * step;
+    let best = null, bd = tol;
+    for (const r of refs) { const v = r[i] + rd, t = nearestIn(arr, v); if (t != null && Math.abs(t - v) < bd) { bd = Math.abs(t - v); best = {d:Math.round((t - r[i]) * 100) / 100, at:t}; } }
+    if (best) return best;
+    for (const r of refs) { const v = r[i] + d0, t = nearestIn(arr, v); if (t != null && Math.abs(t - v) < 0.01) return {d:d0, at:t}; }
+    return {d:d0, at:null};
+  };
+  const ax = one(0, rdx, T.xs), ay = one(1, rdy, T.ys);
+  return {dx:ax.d, dy:ay.d, gx:ax.at, gy:ay.at};
+}
+let guideKey = '';
+function setGuides(gx, gy){
+  const on = gx != null || gy != null;
+  const k = on ? [gx, gy, view.x, view.y, view.s].join('|') : '';
+  if (k === guideKey) return;
+  guideKey = k;
+  if (!on) { gGuide.innerHTML = ''; return; }
+  if (!svgW) { const r = stage.getBoundingClientRect(); svgW = r.width; svgH = r.height; }
+  const x0 = view.x, y0 = view.y, x1 = view.x + svgW / view.s, y1 = view.y + svgH / view.s;
+  gGuide.innerHTML = (gx != null ? `<line class="guide" x1="${f2(gx)}" y1="${f2(y0)}" x2="${f2(gx)}" y2="${f2(y1)}"/>` : '') + (gy != null ? `<line class="guide" x1="${f2(x0)}" y1="${f2(gy)}" x2="${f2(x1)}" y2="${f2(gy)}"/>` : '');
+}
+const moveBadge = (dx, dy, al) => (dx || dy ? 'Movido ' + [dx ? fmtN(Math.abs(dx)) + ' mm ' + (dx > 0 ? '→' : '←') : '', dy ? fmtN(Math.abs(dy)) + ' mm ' + (dy > 0 ? '↓' : '↑') : ''].filter(Boolean).join(' · ') : 'Sin mover') + (al ? ' · alineado' : '');
+/* Colocar un símbolo: se ve dónde queda (en gris) al pasar el lápiz o el ratón, y se coloca al milímetro. */
+let placePt = null, placeT = null;
+const placeRel = {};
+function placePos(k, w){
+  const rk = k + '|' + placeRot;
+  if (!placeRel[rk]) placeRel[rk] = [[0, 0]].concat(symTerms({type:'sym', k, x:0, y:0, r:placeRot, p:defaults(k)}).map(t => [t.x, t.y]));
+  const key = allTerms();
+  if (!placeT || placeT.key !== key || placeT.n !== doc.els.length) placeT = {key, n:doc.els.length, T:alignTargets(null)};
+  const m = alignMove(placeRel[rk], placeT.T, w[0], w[1], wstep());
+  return {p:[m.dx, m.dy], gx:m.gx, gy:m.gy};
+}
+function placeHover(w){
+  if (!SYM[placeKind]) return;
+  const q = placePos(placeKind, w);
+  placePt = q.p; setGuides(q.gx, q.gy); renderOverlay();
+}
+/* Mover lo seleccionado 1 mm (flechas del teclado o botones del panel). Los cables enganchados le siguen. */
+let nudgeAcc = {dx:0, dy:0, t:0};
+function nudgeSel(dx, dy){
+  if (!doc || !sel.size || sim || act || (!dx && !dy)) return;
+  const a = prepareDrag();
+  if (!a.moving.length) return;
+  a.moving.concat(a.trans).forEach(e => translateEl(e, dx, dy));
+  a.att.forEach(t => { attCur(t, dx, dy); t.w.pts = simplify(t.cur); });
+  tcache = null; pruneWires();
+  const changed = a.moving.concat(a.trans, a.att.map(t => t.w));
+  if (changed.length > 250) renderEls();
+  else { changed.forEach(e => { if (byId(e.id)) rerenderEl(e); else dropEl(e); }); renderDots(); }
+  renderOverlay(); if (ed) edPlace();
+  commitSoon();
+  const now = Date.now();
+  if (now - nudgeAcc.t > 1500) nudgeAcc = {dx:0, dy:0, t:now};
+  nudgeAcc.dx = Math.round((nudgeAcc.dx + dx) * 100) / 100; nudgeAcc.dy = Math.round((nudgeAcc.dy + dy) * 100) / 100; nudgeAcc.t = now;
+  showSize(moveBadge(nudgeAcc.dx, nudgeAcc.dy, false));
+  clearTimeout(sizeT); sizeT = setTimeout(() => { $('#szbadge').hidden = true; }, 1400);
+}
 const snapW = v => Math.round(v / wstep()) * wstep();
 function wireSnap(w, not){
   const R = Math.min(18 / view.s, 3.5);
@@ -1877,8 +1965,8 @@ function fixEnd(orig, which, np){
   const a = pts[0], b = pts[1];
   const vert = near(a[0], b[0]) ? true : near(a[1], b[1]) ? false : true;
   if (pts.length === 2) {
-    if (vert) { const my = snapG((np[1] + b[1]) / 2); pts = [np, [np[0], my], [b[0], my], b]; }
-    else { const mx = snapG((np[0] + b[0]) / 2); pts = [np, [mx, np[1]], [mx, b[1]], b]; }
+    if (vert) { const my = Math.round((np[1] + b[1]) / 2); pts = [np, [np[0], my], [b[0], my], b]; }
+    else { const mx = Math.round((np[0] + b[0]) / 2); pts = [np, [mx, np[1]], [mx, b[1]], b]; }
   } else {
     pts[0] = np;
     pts[1] = vert ? [np[0], pts[1][1]] : [pts[1][0], np[1]];
@@ -2017,7 +2105,8 @@ function placeSymbol(k, w){
   const p = defaults(k);
   if ('ref' in p && d.pre) p.ref = nextRef(d.pre);
   if (k === 'salida') p.circ = nextCirc();
-  const el = {type:'sym', id:uid(), k, x:snapG(w[0]), y:snapG(w[1]), r:placeRot, p};
+  const q = placePos(k, w).p;
+  const el = {type:'sym', id:uid(), k, x:q[0], y:q[1], r:placeRot, p};
   doc.els.push(el);
   addRecent(k);
   sel = new Set([el.id]);
@@ -2198,14 +2287,25 @@ function prepareDrag(){
     if (ea && eb) trans.push(w); else if (ea || eb) att.push({w, orig:w.pts.map(p => [p[0], p[1]]), ea, eb});
   });
   const fine = moving.every(e => e.type === 'text');
-  return {moving, trans, att, step: fine ? 1 : GRID, dx:0, dy:0};
+  const excl = new Set(moving.map(e => e.id)); trans.forEach(w => excl.add(w.id)); att.forEach(a => excl.add(a.w.id));
+  const refs = [];
+  for (const e of moving) {
+    if (refs.length >= 60) break;
+    if (e.type === 'sym') { refs.push([e.x, e.y]); symTerms(e).forEach(t => refs.push([t.x, t.y])); }
+    else if (e.type === 'wire') e.pts.forEach(p => refs.push([p[0], p[1]]));
+    else refs.push([e.x, e.y]);
+  }
+  return {moving, trans, att, step: fine ? 1 : wstep(), dx:0, dy:0, refs:refs.slice(0, 60), excl, T:null};
 }
 function attCur(a, dx, dy){
   const L = a.orig.length - 1;
   a.cur = a.ea ? fixEnd(a.orig, 0, [a.orig[0][0] + dx, a.orig[0][1] + dy]) : fixEnd(a.orig, 1, [a.orig[L][0] + dx, a.orig[L][1] + dy]);
 }
 function moveDrag(w){
-  const dx = snapG(w[0] - act.w0[0], act.step), dy = snapG(w[1] - act.w0[1], act.step);
+  if (!act.T) act.T = alignTargets(act.excl);
+  const m = alignMove(act.refs, act.T, w[0] - act.w0[0], w[1] - act.w0[1], act.step), dx = m.dx, dy = m.dy;
+  setGuides(m.gx, m.gy);
+  showSize(moveBadge(dx, dy, m.gx != null || m.gy != null));
   if (dx === act.dx && dy === act.dy) return;
   act.dx = dx; act.dy = dy;
   act.moving.concat(act.trans).forEach(e => { const g = gEls.querySelector(`[data-id="${e.id}"]`); if (g) g.setAttribute('transform', `translate(${dx} ${dy})`); });
@@ -2216,6 +2316,7 @@ function moveDrag(w){
 }
 function endDrag(){
   gOvl.removeAttribute('transform'); gDots.style.opacity = ''; $('#app').classList.remove('dragging');
+  setGuides(); hideSize();
   if (act.dx || act.dy) {
     act.moving.concat(act.trans).forEach(e => translateEl(e, act.dx, act.dy));
     act.att.forEach(a => { attCur(a, act.dx, act.dy); a.w.pts = simplify(a.cur); });
@@ -2224,9 +2325,11 @@ function endDrag(){
   /* Solo se redibuja lo que se ha movido (en planos grandes, rehacer todo daba un tirón al soltar). */
   const changed = act.moving.concat(act.trans, act.att.map(a => a.w));
   if (sim || changed.length > 250) renderEls();
-  else { changed.forEach(e => { if (byId(e.id)) rerenderEl(e); }); renderDots(); }
+  else { changed.forEach(e => { if (byId(e.id)) rerenderEl(e); else dropEl(e); }); renderDots(); }
   renderOverlay();
 }
+/* Un cable que se ha quedado sin largo (sus dos puntas en el mismo sitio) se quita también de la pantalla. */
+function dropEl(e){ const g = gEls.querySelector(`[data-id="${e.id}"]`); if (g) g.remove(); }
 /* Cambia el tamaño de un símbolo. Los cables que llegaban a sus bornes se vuelven a enganchar en el sitio nuevo. */
 function applyScale(el, sc, t0, att){
   t0 = t0 || symTerms(el);
@@ -2315,7 +2418,8 @@ function cancelAct(){
   if (act.type === 'scale') { applyScale(act.el, act.sc0, act.t0, act.att); renderEls(); }
   if (act.type === 'tsize') { act.el.size = act.z0; renderEls(); }
   if (act.type === 'wend') { act.el.pts = act.orig; gDots.style.opacity = ''; renderEls(); }
-  if (act.type === 'wire' || act.type === 'seg' || act.type === 'wend') hideSize();
+  if (act.type === 'wire' || act.type === 'seg' || act.type === 'wend' || act.type === 'drag') hideSize();
+  setGuides();
   act = null; renderOverlay();
 }
 function startPinch(){
@@ -2408,6 +2512,7 @@ function onMove(e){
       renderOverlay();
     }
     else if (tool === 'erase' && e.pointerType !== 'touch') { eraserPt = toWorld(e.clientX, e.clientY); renderOverlay(); }
+    else if (tool === 'place' && e.pointerType !== 'touch' && !sim) placeHover(toWorld(e.clientX, e.clientY));
     return;
   }
   ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
@@ -2419,7 +2524,9 @@ function onMove(e){
   act.moved = true;
   const w = toWorld(e.clientX, e.clientY);
   switch (act.type) {
-    case 'pan': case 'simtap': case 'place': case 'textplace':
+    case 'place': if (act.ptype !== 'touch') { placeHover(w); break; }
+      /* falls through: con el dedo, arrastrar mueve la hoja */
+    case 'pan': case 'simtap': case 'textplace':
       vgStart(); view.x = act.vx - dxp / view.s; view.y = act.vy - dyp / view.s; vgSet(); break;
     case 'drag': moveDrag(w); break;
     case 'erase': eraseAlong(act.lx, act.ly, e.clientX, e.clientY); act.lx = e.clientX; act.ly = e.clientY; eraserPt = w; renderOverlay(); break;
@@ -2430,7 +2537,7 @@ function onMove(e){
       { const a0 = act.orig[act.segI], b0 = act.orig[act.segI + 1]; showSize('Tramo movido ' + fmtN(near(a0[1], b0[1]) ? Math.abs(d[1]) : Math.abs(d[0])) + ' mm'); }
       break;
     }
-    case 'resize': act.el.w = Math.max(10, snapG(act.ow + w[0] - act.w0[0])); act.el.h = Math.max(10, snapG(act.oh + w[1] - act.w0[1])); rerenderEl(act.el); renderOverlay(); break;
+    case 'resize': act.el.w = Math.max(10, snapW(act.ow + w[0] - act.w0[0])); act.el.h = Math.max(10, snapW(act.oh + w[1] - act.w0[1])); rerenderEl(act.el); renderOverlay(); showSize(fmtN(Math.round(act.el.w * 10) / 10) + ' × ' + fmtN(Math.round(act.el.h * 10) / 10) + ' mm'); break;
     case 'wend': {
       const sn = endSnap(w, act.el), other = act.orig[act.which ? 0 : act.orig.length - 1];
       if (eqp(sn.p, other)) break;
@@ -2487,7 +2594,7 @@ function onUp(e){
         renderEls();
       }
       break;
-    case 'place': if (!a.moved && SYM[placeKind]) placeSymbol(placeKind, w); break;
+    case 'place': if (SYM[placeKind] && (!a.moved || a.ptype !== 'touch')) placeSymbol(placeKind, w); setGuides(); break;
     case 'textplace':
       if (a.moved) break;
       /* Con «Texto»: sobre un texto se edita ese texto; sobre el cajetín se escribe en su casilla; si no, texto nuevo. */
@@ -2679,15 +2786,43 @@ svg.addEventListener('pointerdown', safe(pDown));
 svg.addEventListener('pointermove', safe(pMove));
 svg.addEventListener('pointerup', safe(e => pEnd(e, false)));
 svg.addEventListener('pointercancel', safe(e => pEnd(e, true)));
-svg.addEventListener('pointerleave', e => { if (e.pointerType !== 'touch' && hoverPt) { pendMove.delete(e.pointerId); hoverPt = null; if (!wireDraft) hideSize(); renderOverlay(); } });
+svg.addEventListener('pointerleave', e => {
+  if (e.pointerType === 'touch' || ptrs.has(e.pointerId)) return;
+  if (hoverPt) { pendMove.delete(e.pointerId); hoverPt = null; if (!wireDraft) hideSize(); renderOverlay(); }
+  if (placePt) { pendMove.delete(e.pointerId); placePt = null; setGuides(); renderOverlay(); }
+});
 let wheelT = 0;
+let wAcc = null, wVg = false, wPinchAt = 0;
+function wheelEnd(){ clearTimeout(wheelT); wheelT = setTimeout(() => { try { if (wVg) { wVg = false; vgEnd(); } else applyView(); } catch (er) { recover(); } }, 140); }
+function wheelFlush(){
+  const a = wAcc; wAcc = null;
+  if (!a || !doc) return;
+  if (a.z) { if (!ptrs.size && !zt.size) { vgStart(); wVg = true; } zoomAt(Math.exp(-clamp(a.z, -300, 300) * 0.01), a.cx, a.cy, true); }
+  if (a.dx || a.dy) { view.x += a.dx / view.s; view.y += a.dy / view.s; applyView(true); }
+  wheelEnd();
+}
 svg.addEventListener('wheel', e => {
   e.preventDefault();
-  if (e.ctrlKey || e.metaKey) zoomAt(Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY, true);
-  else { view.x += e.deltaX / view.s; view.y += e.deltaY / view.s; applyView(true); }
-  clearTimeout(wheelT); wheelT = setTimeout(() => applyView(), 120);
+  const f = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
+  if (!wAcc) { wAcc = {z:0, dx:0, dy:0, cx:e.clientX, cy:e.clientY}; requestAnimationFrame(() => { try { wheelFlush(); } catch (er) { recover(); } }); }
+  if (e.ctrlKey || e.metaKey) { wAcc.z += e.deltaY * f; wAcc.cx = e.clientX; wAcc.cy = e.clientY; wPinchAt = performance.now(); }
+  else { wAcc.dx += (e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX) * f; wAcc.dy += (e.shiftKey && !e.deltaX ? 0 : e.deltaY) * f; }
 }, {passive:false});
-['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive:false}));
+/* Safari del Mac: pellizcar en el trackpad llega como «gesture». En el iPad los dedos van por su camino (no se usa esto). */
+let gz = null;
+['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => {
+  e.preventDefault();
+  if (navigator.maxTouchPoints > 0 || !doc || !$('#home').hidden) return;
+  try {
+    if (t === 'gesturestart') { gz = {s0:view.s}; return; }
+    if (!gz || performance.now() - wPinchAt < 400) return;
+    if (t === 'gesturechange' && e.scale > 0) {
+      const r = stage.getBoundingClientRect(), cx = e.clientX || r.left + r.width / 2, cy = e.clientY || r.top + r.height / 2;
+      if (!ptrs.size) { vgStart(); wVg = true; }
+      zoomAt(gz.s0 * e.scale / view.s, cx, cy, true); wheelEnd();
+    } else if (t === 'gestureend') gz = null;
+  } catch (er) { recover(); }
+}, {passive:false}));
 svg.addEventListener('lostpointercapture', safe(e => {
   if (e.pointerType === 'pen' && penIds.has(e.pointerId)) { penIds.delete(e.pointerId); penUpAt = performance.now(); }
   if (zt.has(e.pointerId) || palm.has(e.pointerId)) { tUp(e); palm.delete(e.pointerId); return; }
@@ -2706,7 +2841,7 @@ svg.addEventListener('contextmenu', e => e.preventDefault());
 
 /* ---------- Herramientas y avisos ---------- */
 function setTool(t, kind){
-  hoverPt = null; hideSize();
+  hoverPt = null; placePt = null; hideSize(); setGuides();
   if (wireDraft && t !== 'wire') finishDraft();
   if (sim && t !== 'sim') setSim(false);
   if ((t === 'hand' || t === 'erase') && sel.size) { sel.clear(); renderProps(); }
@@ -2731,6 +2866,7 @@ function setSim(on){
 function updateBanner(){
   const b = $('#banner');
   let h = '', cls = '';
+  const stepBtns = `<button class="bb${wstep() === 1 ? ' on' : ''}" data-b="ws-1" type="button" title="Cables y símbolos van de milímetro en milímetro">1 mm</button><button class="bb${wstep() === 5 ? ' on' : ''}" data-b="ws-5" type="button" title="Cables y símbolos van por la rejilla de 5 mm">5 mm</button>`;
   if (sim) {
     cls = 'sim';
     const sources = doc && doc.els.some(e => e.type === 'sym' && SYM[e.k].kind === 'source');
@@ -2738,10 +2874,10 @@ function updateBanner(){
   } else if (tool === 'wire') {
     const dot = `<span class="dot" style="${swStyle(prefs.wireCol || 'negro')}"></span>`;
     if (wireDraft) h = `<span class="mtag">Cable: toca para hacer esquinas</span><button class="bb pri" data-b="wfinish" type="button">Terminar</button><button class="bb" data-b="wcancel" type="button">Cancelar</button>`;
-    else h = `<button class="bb${wireKind === 'linea' ? ' on' : ''}" data-b="wk-linea" type="button">Línea</button><button class="bb${wireKind === 'barra' ? ' on' : ''}" data-b="wk-barra" type="button">Barra</button><button class="bb${wirePal ? ' on' : ''}" data-b="wcol" type="button" aria-label="Color del cable">${dot}Color</button><button class="bb${wstep() === 1 ? ' on' : ''}" data-b="ws-1" type="button" title="Los cables van de milímetro en milímetro">1 mm</button><button class="bb${wstep() === 5 ? ' on' : ''}" data-b="ws-5" type="button" title="Los cables van por la rejilla de 5 mm">5 mm</button>`
+    else h = `<button class="bb${wireKind === 'linea' ? ' on' : ''}" data-b="wk-linea" type="button">Línea</button><button class="bb${wireKind === 'barra' ? ' on' : ''}" data-b="wk-barra" type="button">Barra</button><button class="bb${wirePal ? ' on' : ''}" data-b="wcol" type="button" aria-label="Color del cable">${dot}Color</button>${stepBtns}`
       + (wirePal ? `<div class="bpal">${Object.keys(WCOL).map(k => `<button type="button" class="sw${(prefs.wireCol || 'negro') === k ? ' on' : ''}" data-b="wc-${k}" style="${swStyle(k)}" title="${hesc(wireColName(k))}" aria-label="${hesc(wireColName(k))}"></button>`).join('')}<label class="sw sw-any" title="Otro color"><input type="color" id="wc-any" value="${/^#/.test(prefs.wireCol || '') ? prefs.wireCol : '#ff00aa'}" aria-label="Otro color"></label><span class="bpal-n">${hesc(wireColName(prefs.wireCol || 'negro'))}</span></div>` : '');
   } else if (tool === 'place' && SYM[placeKind]) {
-    h = `<span class="mtag">${ICONS[placeKind] ? `<span class="micon">${ICONS[placeKind]}</span>` : ''}${hesc(SYM[placeKind].n)}</span><button class="bb" data-b="prot" type="button">Girar ↻${placeRot ? ' ' + placeRot * 90 + '°' : ''}</button>`;
+    h = `<span class="mtag">${ICONS[placeKind] ? `<span class="micon">${ICONS[placeKind]}</span>` : ''}${hesc(SYM[placeKind].n)}</span><button class="bb" data-b="prot" type="button">Girar ↻${placeRot ? ' ' + placeRot * 90 + '°' : ''}</button>${stepBtns}`;
   }
   b.className = 'banner mini ' + cls;
   if (b.innerHTML !== h) b.innerHTML = h;
@@ -2760,7 +2896,7 @@ $('#banner').addEventListener('click', e => {
   else if (k === 'wk-linea' || k === 'wk-barra') { wireKind = k.slice(3); updateBanner(); }
   else if (k === 'wcol') { wirePal = !wirePal; updateBanner(); }
   else if (k.startsWith('wc-')) { prefs.wireCol = k.slice(3); savePrefs(); wirePal = false; updateBanner(); }
-  else if (k === 'prot') { placeRot = (placeRot + 1) % 4; updateBanner(); }
+  else if (k === 'prot') { placeRot = (placeRot + 1) % 4; if (placePt) placePt = null; setGuides(); renderOverlay(); updateBanner(); }
   else if (k === 'ws-1' || k === 'ws-5') { prefs.wstep = k === 'ws-5' ? 5 : 1; savePrefs(); updateBanner(); }
   else if (k === 'done') setTool('sel');
 });
@@ -3027,7 +3163,9 @@ function fieldHTML(scope, k, label, val, o){
   return `<label class="f"><span class="fl">${hesc(label)}${unit}</span>${inp}</label>${o.chips && o.chips.length ? chipsHTML(scope, k, val, o.chips, o.cl) : ''}`;
 }
 const segHTML = (label, scope, k, val, vals, labels) => `<div class="f"><span class="fl">${hesc(label)}</span>${chipsHTML(scope, k, val, vals, labels)}</div>`;
-const ACTS = (rot) => `<div class="row">${rot ? '<button class="btn grow1" type="button" data-act="rotl">↺ Girar</button><button class="btn grow1" type="button" data-act="rotr">Girar ↻</button>' : ''}</div><div class="row"><button class="btn grow1" type="button" data-act="dup">Duplicar</button><button class="btn del grow1" type="button" data-act="del">Borrar</button></div>`;
+const NUDGE = `<div class="f"><span class="fl">Mover 1 mm</span><div class="nudge" role="group" aria-label="Mover 1 mm"><button class="btn" type="button" data-act="nu-l" aria-label="1 mm a la izquierda">←</button><button class="btn" type="button" data-act="nu-u" aria-label="1 mm arriba">↑</button><button class="btn" type="button" data-act="nu-d" aria-label="1 mm abajo">↓</button><button class="btn" type="button" data-act="nu-r" aria-label="1 mm a la derecha">→</button></div></div>`
+  + `<p class="hint" style="margin-top:-4px">Mantén pulsado para seguir moviendo.${navigator.maxTouchPoints > 0 ? ' Con teclado' : ' También con'} las flechas (con ⇧, de 5 en 5 mm).</p>`;
+const ACTS = (rot) => NUDGE + `<div class="row">${rot ? '<button class="btn grow1" type="button" data-act="rotl">↺ Girar</button><button class="btn grow1" type="button" data-act="rotr">Girar ↻</button>' : ''}</div><div class="row"><button class="btn grow1" type="button" data-act="dup">Duplicar</button><button class="btn del grow1" type="button" data-act="del">Borrar</button></div>`;
 const CABLES = ['2×1,5+T mm²', '2×2,5+T mm²', '2×4+T mm²', '2×6+T mm²', '2×10+T mm²', '4×6+T mm²', '4×10+T mm²', '4×16+T mm²'];
 function renderProps(){
   const body = $('#props-body'), title = $('#props-title');
@@ -3044,6 +3182,7 @@ function renderProps(){
       + segHTML('Orientación', 'page', 'orient', P.orient, ['l', 'p'], ['Horizontal', 'Vertical'])
       + segHTML('Cajetín', 'page', 'cajetin', String(P.cajetin !== false), ['true', 'false'], ['Sí', 'No'])
       + segHTML('Rejilla en pantalla', 'pref', 'grid', String(prefs.grid), ['true', 'false'], ['Sí', 'No'])
+      + segHTML('Paso al dibujar y mover', 'pref', 'wstep', String(wstep()), ['1', '5'], ['1 mm', '5 mm'])
       + (navigator.maxTouchPoints > 0 ? segHTML('Dibujar en el plano con', 'pref', 'input', pencilOnly() ? 'pencil' : 'touch', ['pencil', 'touch'], ['Solo Apple Pencil', 'Pencil y dedo']) + '<p class="hint" style="margin-top:-4px">Con «Solo Apple Pencil», los dedos solo amplían y mueven el plano (con dos dedos) y la palma no hace nada.</p>' : '')
       + `<p class="sect">Datos del cajetín</p><p class="hint">El cajetín está abajo a la derecha de la hoja. Puedes escribir aquí o directamente en él: toca una casilla del cajetín y escribe. Sale igual en el PDF.</p>`
       + fieldHTML('info', 'titulo', 'Título', I.titulo, {ph:doc.name})
@@ -3052,7 +3191,7 @@ function renderProps(){
       + fieldHTML('info', 'autor', 'Instalador / autor', I.autor)
       + `<div class="two"><div>${fieldHTML('info', 'fecha', 'Fecha', I.fecha)}</div><div>${fieldHTML('info', 'plano', 'Plano nº', I.plano)}</div></div>`
       + `<div class="two"><div>${fieldHTML('info', 'escala', 'Escala', I.escala, {ph:'S/E'})}</div><div>${fieldHTML('info', 'hoja', 'Hoja', I.hoja)}</div></div>`
-      + `<p class="sect">Cómo se usa</p><p class="hint">Abre «Símbolos» arriba y toca uno para ponerlo en la hoja (o arrástralo a su sitio). Con «Cable», arrastra de un borne a otro. Toca un elemento para cambiar sus datos y arrástralo para moverlo; el círculo de su esquina cambia el tamaño. Para escribir, usa «Texto» o toca dos veces un texto. La herramienta elegida sigue activa hasta que eliges otra. ${pencilOnly() && navigator.maxTouchPoints > 0 ? 'Se dibuja con el Apple Pencil; con dos dedos se amplía y se mueve el plano.' : 'Un dedo mueve la hoja; dos dedos hacen zoom.'}</p>`;
+      + `<p class="sect">Cómo se usa</p><p class="hint">Abre «Símbolos» arriba y toca uno para ponerlo en la hoja (o arrástralo a su sitio). Con «Cable», arrastra de un borne a otro. Toca un elemento para cambiar sus datos y arrástralo para moverlo: va de milímetro en milímetro y una línea te avisa cuando queda alineado con otro borne; también puedes moverlo 1 mm con las flechas. El círculo de su esquina cambia el tamaño. Para escribir, usa «Texto» o toca dos veces un texto. La herramienta elegida sigue activa hasta que eliges otra. ${pencilOnly() && navigator.maxTouchPoints > 0 ? 'Se dibuja con el Apple Pencil; con dos dedos se amplía y se mueve el plano.' : 'Un dedo mueve la hoja; dos dedos hacen zoom.'}</p>`;
   } else if (sel.size === 1) {
     const el = byId([...sel][0]);
     if (el.type === 'sym') {
@@ -3072,7 +3211,7 @@ function renderProps(){
         + fieldHTML('el', 'txt', 'Texto junto al cable', el.txt || '', {chips:CABLES, ph:'2×2,5+T mm²'})
         + fieldHTML('el', 'len', el.pts.length > 2 ? 'Largo total' : 'Largo', String(wlen(el.pts)), {u:'mm', num:true})
         + '<p class="hint">Arrastra uno de sus extremos (los círculos) para alargarlo o acortarlo de milímetro en milímetro; se engancha solo a los bornes. O escribe el largo exacto. Arrastra un tramo para moverlo.</p>'
-        + '<div class="row"><button class="btn del grow1" type="button" data-act="del">Borrar cable</button></div>';
+        + NUDGE + '<div class="row"><button class="btn del grow1" type="button" data-act="del">Borrar cable</button></div>';
     } else if (el.type === 'text') {
       title.textContent = 'Texto';
       h = fieldHTML('el', 's', 'Texto', el.s, {area:true})
@@ -3114,7 +3253,7 @@ function setVal(scope, k, v, el){
   else if (scope === 'info') doc.info[k] = v;
   else if (scope === 'doc') { doc.name = String(v).slice(0, 120) || 'Esquema'; updateHeader(); }
   else if (scope === 'page') doc.page[k] = k === 'cajetin' ? v === 'true' : v;
-  else if (scope === 'pref') { prefs[k] = k === 'input' ? (v === 'touch' ? 'touch' : 'pencil') : v === 'true'; savePrefs(); }
+  else if (scope === 'pref') { prefs[k] = k === 'input' ? (v === 'touch' ? 'touch' : 'pencil') : k === 'wstep' ? (+v === 5 ? 5 : 1) : v === 'true'; savePrefs(); if (k === 'wstep') updateBanner(); }
   else if (scope === 'wires') doc.els.forEach(w => { if (w.type === 'wire' && sel.has(w.id)) w[k] = v; });
   else if (scope === 'syms' && k === 'sc') doc.els.filter(x => x.type === 'sym' && sel.has(x.id)).forEach(x => applyScale(x, parseFloat(v) || 1));
 }
@@ -3143,6 +3282,8 @@ $('#props-body').addEventListener('click', e => {
   }
   const b = e.target.closest('[data-act]'); if (!b) return;
   const a = b.dataset.act;
+  /* Los botones de mover van por pulsación (para poder mantenerlos); aquí solo llega el teclado (Intro/espacio). */
+  if (a.startsWith('nu-')) { if (!e.detail) nudgeDir(a); return; }
   if (a === 'onlycaj') { onlyCajetin(); return; }
   if (a === 'wcdef') { const w = byId([...sel][0]); if (w) { prefs.wireCol = w.col || 'negro'; savePrefs(); toast('Los cables nuevos serán ' + wireColName(prefs.wireCol).toLowerCase()); } return; }
   if (a === 'del') deleteSel();
@@ -3150,6 +3291,19 @@ $('#props-body').addEventListener('click', e => {
   else if (a === 'rotl') rotateSel(-1);
   else if (a === 'rotr') rotateSel(1);
 });
+
+const nudgeDir = a => nudgeSel(a === 'nu-l' ? -1 : a === 'nu-r' ? 1 : 0, a === 'nu-u' ? -1 : a === 'nu-d' ? 1 : 0);
+let nuRep = null;
+const nuStop = () => { if (nuRep) { clearTimeout(nuRep.t); nuRep = null; } };
+$('#props-body').addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-act^="nu-"]'); if (!b || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  e.preventDefault(); nuStop();
+  const a = b.dataset.act, step = n => { nudgeDir(a); nuRep = n < 400 && sel.size ? {t:setTimeout(() => step(n + 1), n ? (n > 8 ? 45 : 90) : 420), id:e.pointerId} : null; };
+  step(0);
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(t => $('#props-body').addEventListener(t, e => { if (nuRep && (t !== 'pointerleave' || e.target.closest && e.target.closest('[data-act^="nu-"]'))) nuStop(); }, true));
+window.addEventListener('blur', nuStop);
+document.addEventListener('visibilitychange', nuStop);
 
 /* ---------- Teclado (Mac o teclado del iPad) ---------- */
 document.addEventListener('keydown', e => {
@@ -3177,6 +3331,11 @@ document.addEventListener('keydown', e => {
   else if (mod && k === 'd') { e.preventDefault(); duplicateSel(); }
   else if (mod && k === 'a') { e.preventDefault(); sel = new Set(doc.els.map(x => x.id)); renderOverlay(); renderProps(); }
   else if (k === 'delete' || k === 'backspace') { e.preventDefault(); deleteSel(); }
+  else if (!mod && k.startsWith('arrow') && sel.size && !sim && !wireDraft) {
+    e.preventDefault();
+    const st = e.shiftKey ? 5 : 1;
+    nudgeSel(k === 'arrowleft' ? -st : k === 'arrowright' ? st : 0, k === 'arrowup' ? -st : k === 'arrowdown' ? st : 0);
+  }
   else if (k === 'escape') { if (wireDraft) { wireDraft = null; hoverPt = null; hideSize(); renderOverlay(); updateBanner(); } else if (tool !== 'sel') setTool('sel'); else if (sim) setSim(false); else { sel.clear(); renderOverlay(); renderProps(); } }
   else if (k === 'enter' && wireDraft) finishDraft();
   else if (k === 'r') { if (tool === 'place') { placeRot = (placeRot + 1) % 4; updateBanner(); } else rotateSel(e.shiftKey ? -1 : 1); }
