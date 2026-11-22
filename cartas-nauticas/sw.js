@@ -1,5 +1,5 @@
 /* Service worker: guarda la app en la tableta para que funcione sin conexión. */
-const CACHE = "cartas-nauticas@b52bc8e823";
+const CACHE = "cartas-nauticas@880bc4394d";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 const APPS = [];
 const OPTS = {ignoreSearch: true, ignoreVary: true};

@@ -240,6 +240,18 @@ table.legs td:first-child{font-family:var(--f-body);white-space:normal}
 .fc .arr{display:inline-block;width:16px;text-align:center;font-weight:700}
 .bft{display:inline-block;min-width:22px;padding:1px 5px;border-radius:6px;font-weight:700;font-size:.78rem;text-align:center;color:#fff}
 
+/* Botón bajo la cruz y ventana «¿Qué hay aquí?» */
+.qa-fab{position:fixed;z-index:9;left:50%;top:calc(50% + 24px);transform:translateX(-50%);min-height:40px;padding:0 16px;border-radius:999px;border:2px solid #fff;background:var(--ink);color:var(--surface);font-family:var(--f-display);font-weight:700;font-size:1.02rem;box-shadow:0 2px 10px rgba(0,0,0,.35);cursor:pointer;white-space:nowrap}
+.qa-fab:active{transform:translateX(-50%) scale(.97)}
+:root.night .qa-fab{border-color:var(--line-strong)}
+.qa-l{margin:0;padding:7px 10px;border-radius:9px;background:var(--bg);border:1px solid var(--line);font-size:.95rem;line-height:1.35;display:flex;gap:8px;align-items:flex-start;text-align:left;width:100%;color:var(--ink);font-family:var(--f-body)}
+.qa-l.warn{background:var(--wa-bg);border-color:var(--wa);color:var(--ink)}
+.qa-l+.qa-l{margin-top:6px}
+.qa-btn{cursor:pointer}
+.qa-e{flex:none;font-size:1.1rem;line-height:1.2}
+.qa-l a{color:inherit}
+.m-b .sec .lbl{margin-top:2px}
+
 /* Aviso */
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 84px);z-index:40;color:#fff;font:600 16px/1.35 var(--f-body);padding:12px 18px;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;width:max-content;max-width:calc(100% - 32px);text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -321,6 +333,8 @@ table.legs td:first-child{font-family:var(--f-body);white-space:normal}
   <button type="button" class="card ib" id="bGps" aria-label="Mi posición (GPS)"><svg class="ic"><use href="#i-loc"/></svg></button>
 </div>
 
+<button type="button" class="qa-fab" id="bQa" aria-label="¿Qué hay en la cruz? Profundidad, rocas, tipo de fondo y más">¿Qué hay aquí?</button>
+
 <div class="modebar" id="modebar" hidden></div>
 
 <div class="scale" aria-hidden="true"><span class="lbl" id="scaleL">—</span><span class="bar" id="scaleB"></span><span class="src" id="src">EMODnet · OpenSeaMap</span></div>
@@ -364,7 +378,7 @@ table.legs td:first-child{font-family:var(--f-body);white-space:normal}
 <script>
 (function () {
 'use strict';
-window.APPV = '2026-11-22 16:31';
+window.APPV = '2026-11-22 16:58';
 
 /* ======================= Utilidades ======================= */
 const $ = (s, r = document) => r.querySelector(s);
@@ -397,6 +411,18 @@ function toast(text, kind, ms) {
   clearTimeout(toastT);
   toastT = setTimeout(() => { d.remove(); if (toastEl === d) toastEl = null; }, ms || 3500);
 }
+
+/* ======================= Registro de errores ======================= */
+const ERRS = (() => { try { return JSON.parse(localStorage.getItem('cn:errs') || '[]'); } catch (e) { return []; } })();
+function logErr(m) {
+  try {
+    ERRS.push(new Date().toLocaleString('es-ES') + ' · ' + String(m).slice(0, 300));
+    while (ERRS.length > 20) ERRS.shift();
+    localStorage.setItem('cn:errs', JSON.stringify(ERRS));
+  } catch (e) { /* nada */ }
+}
+window.addEventListener('error', e => logErr((e.message || 'Error') + (e.filename ? ' @' + String(e.filename).split('/').pop() + ':' + e.lineno : '')));
+window.addEventListener('unhandledrejection', e => logErr('Promesa: ' + (e.reason && (e.reason.message || e.reason) || 'sin motivo')));
 
 /* ======================= Guardado (IndexedDB, con localStorage de reserva) ======================= */
 const DB = (() => {
@@ -443,7 +469,7 @@ const DEF = {
   base: 'ihmw', sea: false, seaOp: 1, depth: false, depthOp: 0.55, sond: true, sondOp: 1, cab: false, v: 3, ihmMode: '',
   showMarks: true, showRoutes: true, showTracks: true,
   coord: 'ddm', mag: false, decl: 0, cruise: 6, arrive: 100 / 1852,
-  legLabels: true, cross: true, wake: true, night: false, warned: false
+  legLabels: true, cross: true, wake: true, night: false, warned: false, draft: 1.5, margin: 1
 };
 const S = {
   set: Object.assign({}, DEF), marks: [], routes: [], tracks: [], areas: [],
@@ -1064,7 +1090,7 @@ function pointerEnd(e) {
   }
   if (PT.size) return;
   const g = G; G = null;
-  if (g.type === 'drag' && g.moved) { save('routes'); updateModebar(); return; }
+  if (g.type === 'drag' && g.moved) { if (g.wp && g.wp.r) delete g.wp.r.prof; save('routes'); updateModebar(); return; }
   if (g.snap) { snapZoom(g.snap.x, g.snap.y); return; }
   if (!g.moved && !g.long && e.type === 'pointerup') { tap(g.x0, g.y0); return; }
   if (g.type === 'pan' && g.vs.length > 1) {
@@ -1111,7 +1137,7 @@ function tap(x, y) {
     const hit = hitWp(x, y, true);
     if (hit) { wpPop(hit); return; }
     const r = S.routes.find(q => q.id === S.editRoute);
-    if (r) { r.pts.push({lat: ll.lat, lon: ll.lon}); save('routes'); req(); updateModebar(); }
+    if (r) { r.pts.push({lat: ll.lat, lon: ll.lon}); delete r.prof; save('routes'); req(); updateModebar(); }
     return;
   }
   if (S.mode === 'measure') { S.measure.push(ll); req(); updateModebar(); return; }
@@ -1331,6 +1357,7 @@ function setMode(m) {
   }
   if (m === 'download' && S.set.base === 'osm') toast('El callejero no se puede descargar: se descargará la carta batimétrica', 'wa', 5000);
   $$('.tool[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
+  $('#bQa').hidden = !!S.mode;
   renderModebar(); req();
 }
 function finishRoute() {
@@ -1423,7 +1450,7 @@ $('#modebar').addEventListener('click', e => {
   if (!b) return;
   const a = b.dataset.mb;
   if (a === 'done') { setMode(null); return; }
-  if (S.mode === 'route' && a === 'undo') { const r = S.routes.find(q => q.id === S.editRoute); if (r && r.pts.length) { r.pts.pop(); save('routes'); req(); updateModebar(); } }
+  if (S.mode === 'route' && a === 'undo') { const r = S.routes.find(q => q.id === S.editRoute); if (r && r.pts.length) { r.pts.pop(); delete r.prof; save('routes'); req(); updateModebar(); } }
   if (S.mode === 'measure' && a === 'undo') { S.measure.pop(); req(); updateModebar(); }
   if (S.mode === 'measure' && a === 'clear') { S.measure = []; req(); updateModebar(); }
   if (S.mode === 'mark' && a === 'cross') newMarkAt(centerLL());
@@ -1464,17 +1491,18 @@ function pointPop(ll) {
   S.pin = ll; S.sel = null; S.popCtx = ll; req();
   openPop(popHead('Punto', '') + '<div class="mono">' + esc(fmtLL(ll)) + '</div>' + fromBoat(ll) +
     '<div class="mono" id="popDepth"></div><div id="popNear">' + nearHtml(ll) + '</div>' +
-    '<div class="acts"><button type="button" class="sbtn pri" data-act="pinMark">' + ic('pin') + 'Marca aquí</button>' +
+    '<div class="acts"><button type="button" class="sbtn dark" data-act="pinQa">¿Qué hay aquí?</button>' +
+    '<button type="button" class="sbtn pri" data-act="pinMark">' + ic('pin') + 'Marca aquí</button>' +
     '<button type="button" class="sbtn" data-act="pinGo">' + ic('nav') + 'Ir aquí</button>' +
     '<button type="button" class="sbtn" data-act="pinFc">' + ic('wind') + 'Viento y olas</button>' +
     '<button type="button" class="sbtn" data-act="pinTide">Mareas</button>' +
     '<button type="button" class="sbtn" data-act="pinChart">Carta oficial aquí</button>' +
     '<button type="button" class="sbtn" data-act="pinCopy">Copiar</button></div>');
-  depthAt(ll).then(v => {
+  depthInfo(ll).then(d => {
     const el = $('#popDepth');
-    if (!el || S.popCtx !== ll || v == null) return;
-    el.textContent = v < 0 ? 'Profundidad media: ' + nf(-v, v > -10 ? 1 : 0) + ' m (EMODnet, celda de unos 115 m)' : 'Tierra o sin datos de profundidad (EMODnet)';
-  });
+    if (!el || S.popCtx !== ll || !d) return;
+    el.textContent = depthText(d) + ' (EMODnet)';
+  }).catch(() => {});
 }
 function markPop(m) {
   const t = MT[m.type] || MT.otro;
@@ -1755,9 +1783,13 @@ function renderSheet() {
         const nm = routeNm(r), nav = S.nav && S.nav.id === r.id;
         let legs = '';
         if (S.legsOpen === r.id) {
-          legs = '<table class="legs"><thead><tr><th>Tramo</th><th>Rumbo</th><th>Dist.</th><th>Tiempo</th></tr></thead><tbody>' +
-            r.pts.slice(1).map((p, i) => { const d = rhumb(r.pts[i], p); return '<tr><td>' + (i + 1) + ' → ' + (i + 2) + (p.name ? ' ' + esc(p.name) : '') + '</td><td>' + fmtBrg(d.brg) + '</td><td>' + fmtDist(d.nm) + '</td><td>' + fmtDur(d.nm / S.set.cruise) + '</td></tr>'; }).join('') +
-            '<tr><td><b>Total</b></td><td></td><td><b>' + fmtDist(nm) + '</b></td><td><b>' + fmtDur(nm / S.set.cruise) + '</b></td></tr></tbody></table><p class="hint">Tiempos a ' + nf(S.set.cruise, 1) + ' kn (cámbialo en Ajustes). Rumbos ' + (S.set.mag ? 'magnéticos' : 'verdaderos') + ' de loxodrómica.</p>';
+          const hasP = Array.isArray(r.prof) && r.prof.length === r.pts.length - 1, safe = S.set.draft + S.set.margin;
+          const pcell = i => { const q = hasP ? r.prof[i] : null; if (!hasP) return ''; if (!q) return '<td>—</td>'; const bad = q.dry || q.min < safe; return '<td' + (bad ? ' style="color:var(--ko);font-weight:700"' : '') + '>' + (bad ? '⚠ ' : '') + (q.dry ? 'tierra' : nf(q.min, q.min < 10 ? 1 : 0) + ' m') + '</td>'; };
+          legs = '<table class="legs"><thead><tr><th>Tramo</th><th>Rumbo</th><th>Dist.</th><th>Tiempo</th>' + (hasP ? '<th>Prof. mín.</th>' : '') + '</tr></thead><tbody>' +
+            r.pts.slice(1).map((p, i) => { const d = rhumb(r.pts[i], p); return '<tr><td>' + (i + 1) + ' → ' + (i + 2) + (p.name ? ' ' + esc(p.name) : '') + '</td><td>' + fmtBrg(d.brg) + '</td><td>' + fmtDist(d.nm) + '</td><td>' + fmtDur(d.nm / S.set.cruise) + '</td>' + pcell(i) + '</tr>'; }).join('') +
+            '<tr><td><b>Total</b></td><td></td><td><b>' + fmtDist(nm) + '</b></td><td><b>' + fmtDur(nm / S.set.cruise) + '</b></td>' + (hasP ? '<td></td>' : '') + '</tr></tbody></table><p class="hint">Tiempos a ' + nf(S.set.cruise, 1) + ' kn (cámbialo en Ajustes). Rumbos ' + (S.set.mag ? 'magnéticos' : 'verdaderos') + ' de loxodrómica.' +
+            (hasP ? ' Profundidad mínima de EMODnet a lo largo de cada tramo (media de celdas de unos 115 m, calculada el ' + fmtDate(r.profT) + '): una roca puede quedar más alta; mira la carta. Aviso si hay menos de ' + nf(safe, 1) + ' m.' : '') + '</p>' +
+            '<div class="acts"><button type="button" class="sbtn" data-act="routeDepth" data-id="' + r.id + '">' + (hasP ? 'Volver a calcular la profundidad' : 'Ver la profundidad de la ruta') + '</button></div>';
         }
         return '<div class="item"><div class="item-h"><span class="em" style="--c:' + ROUTE + ';color:' + ROUTE + ';font-size:1rem;font-weight:800">' + r.pts.length + '</span><span class="t"><b>' + esc(r.name) + '</b><small>' + fmtDist(nm) + ' · ' + fmtDur(nm / S.set.cruise) + ' a ' + nf(S.set.cruise, 0) + ' kn</small></span>' + (nav ? '<span class="chip ok">Navegando</span>' : '') + (r.vis ? '' : '<span class="chip">Oculta</span>') + '</div>' +
           '<div class="acts"><button type="button" class="sbtn" data-act="routeView" data-id="' + r.id + '">Ver</button><button type="button" class="sbtn pri" data-act="routeNav" data-id="' + r.id + '">' + ic('nav') + 'Navegar</button><button type="button" class="sbtn" data-act="routeEdit" data-id="' + r.id + '">Editar</button><button type="button" class="sbtn" data-act="routeLegs" data-id="' + r.id + '">Tramos</button><button type="button" class="sbtn" data-act="routeMore" data-id="' + r.id + '">Más…</button></div>' + legs + '</div>';
@@ -1803,6 +1835,9 @@ function renderSheet() {
       '<div class="sec"><p class="lbl">Navegación</p>' +
       '<div class="grid2"><label class="field"><span>Velocidad de crucero (kn)</span><input class="inp mono" type="text" inputmode="decimal" autocomplete="off" data-set="cruise" value="' + nf(S.set.cruise, 1) + '"></label>' +
       '<label class="field"><span>Llegada a un punto (m)</span><input class="inp mono" type="text" inputmode="numeric" autocomplete="off" data-set="arriveM" value="' + Math.round(S.set.arrive * NM) + '"></label></div>' +
+      '<div class="grid2"><label class="field"><span>Calado de tu barco (m)</span><input class="inp mono" type="text" inputmode="decimal" autocomplete="off" data-set="draft" value="' + nf(S.set.draft, 1) + '"></label>' +
+      '<label class="field"><span>Margen bajo la quilla (m)</span><input class="inp mono" type="text" inputmode="decimal" autocomplete="off" data-set="margin" value="' + nf(S.set.margin, 1) + '"></label></div>' +
+      '<p class="hint">Con esto la app avisa de los tramos de ruta con menos agua de ' + nf(S.set.draft + S.set.margin, 1) + ' m.</p>' +
       sw('wake', 'Pantalla siempre encendida con el GPS', 'Si se bloquea, el iPad deja de dar la posición a la app') + '</div>' +
       '<div class="sec"><p class="lbl">Copia de seguridad</p><p class="hint">Marcas, rutas y rastros se guardan solo en este iPad. Si borras el icono, se borran. Guarda una copia de vez en cuando.</p>' +
       '<div class="acts"><button type="button" class="sbtn pri" data-act="backup">Guardar copia</button><button type="button" class="sbtn" data-act="restore">Cargar copia o GPX</button><button type="button" class="sbtn" data-act="gpxAll">Todo en GPX</button></div>' +
@@ -1849,6 +1884,8 @@ $('#sheet').addEventListener('change', e => {
   else { const v = parseFloat(String(el.value).replace(',', '.')); if (isFinite(v)) S.set[k] = v; }
   if (k === 'cruise') S.set.cruise = clamp(S.set.cruise, 0.5, 60);
   if (k === 'decl') S.set.decl = clamp(S.set.decl, -30, 30);
+  if (k === 'draft') S.set.draft = clamp(S.set.draft, 0, 30);
+  if (k === 'margin') S.set.margin = clamp(S.set.margin, 0, 30);
   settingsChanged();
 });
 $('#sheet').addEventListener('input', e => {
@@ -2026,9 +2063,8 @@ async function overpass(q) {
   let last = null;
   for (const u of OVP) {
     try {
-      const r = await fetch(u, {method: 'POST', body: 'data=' + encodeURIComponent(q), headers: {'Content-Type': 'application/x-www-form-urlencoded'}});
-      if (r.ok) return await r.json();
-      last = new Error('HTTP ' + r.status);
+      const r = await fetchT(u, 25000, {method: 'POST', body: 'data=' + encodeURIComponent(q), headers: {'Content-Type': 'application/x-www-form-urlencoded'}});
+      return await r.json();
     } catch (e) { last = e; }
   }
   throw last || new Error('sin respuesta');
@@ -2093,7 +2129,7 @@ function seamarkPop(it) {
     (i.lines.length ? '<div class="note" style="color:var(--ink)">' + i.lines.map(esc).join('<br>') + '</div>' : '') +
     '<div class="mono">' + esc(fmtLL(it)) + '</div>' + fromBoat(it) +
     '<div class="hint">Datos de OpenSeaMap (OpenStreetMap). Compruébalos con la carta oficial.</div>' +
-    '<div class="acts"><button type="button" class="sbtn pri" data-act="pinGoNamed">' + ic('nav') + 'Ir aquí</button>' +
+    '<div class="acts"><button type="button" class="sbtn dark" data-act="pinQa">¿Qué hay aquí?</button><button type="button" class="sbtn pri" data-act="pinGoNamed">' + ic('nav') + 'Ir aquí</button>' +
     '<button type="button" class="sbtn" data-act="pinMark">' + ic('pin') + 'Marca aquí</button>' +
     '<button type="button" class="sbtn" data-act="pinCopy">Copiar</button></div>');
 }
@@ -2146,7 +2182,7 @@ function findArr(o, test, depth) {
 async function tideStations() {
   const c = await DB.get('tideSt');
   if (c && c.list && c.list.length && (Date.now() - c.t < 90 * 864e5 || !navigator.onLine)) return c.list;
-  const r = await fetch(TIDE + 'request=getlist&format=json');
+  const r = await fetchT(TIDE + 'request=getlist&format=json', 10000);
   const j = await r.json();
   const arr = findArr(j, x => pickK(x, ['lat', 'latitud']) != null && pickK(x, ['lon', 'longitud', 'lng']) != null) || [];
   const list = arr.map(x => ({id: pickK(x, ['id', 'codigo', 'code']), name: String(pickK(x, ['puerto', 'nombre', 'name', 'port', 'estacion']) || 'Puerto'), lat: parseFloat(String(pickK(x, ['lat', 'latitud'])).replace(',', '.')), lon: parseFloat(String(pickK(x, ['lon', 'longitud', 'lng'])).replace(',', '.'))}))
@@ -2158,7 +2194,7 @@ async function tideDay(id, d) {
   const key = 'tide:' + id + ':' + ymd(d);
   const c = await DB.get(key);
   if (c) return c;
-  const r = await fetch(TIDE + 'request=gettide&id=' + encodeURIComponent(id) + '&format=json&date=' + ymd(d));
+  const r = await fetchT(TIDE + 'request=gettide&id=' + encodeURIComponent(id) + '&format=json&date=' + ymd(d), 10000);
   const j = await r.json();
   const arr = findArr(j, x => pickK(x, ['hora']) != null && pickK(x, ['altura']) != null) || [];
   const rows = arr.map(x => ({h: String(pickK(x, ['hora'])).slice(0, 5), a: parseFloat(String(pickK(x, ['altura'])).replace(',', '.')), t: String(pickK(x, ['tipo']) || '')}));
@@ -2210,6 +2246,424 @@ async function tides(p) {
   }
 }
 
+/* ======================= Peticiones con tiempo límite (nunca se quedan colgadas) ======================= */
+async function fetchT(url, ms, opt) {
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const t = setTimeout(() => { try { if (ctl) ctl.abort(); } catch (e) { /* nada */ } }, ms || 9000);
+  try {
+    const r = await fetch(url, Object.assign({}, opt || {}, ctl ? {signal: ctl.signal} : {}));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r;
+  } finally { clearTimeout(t); }
+}
+async function fetchJ(url, ms, opt) { const r = await fetchT(url, ms, opt); return r.json(); }
+const num = v => { const n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isFinite(n) ? n : null; };
+
+/* ======================= Profundidad en un punto (EMODnet) ======================= */
+async function depthInfo(p) {
+  if (!navigator.onLine) return null;
+  try {
+    const j = await fetchJ('https://rest.emodnet-bathymetry.eu/depth_sample?geom=' + encodeURIComponent('POINT(' + p.lon.toFixed(6) + ' ' + p.lat.toFixed(6) + ')'), 8000);
+    const avg = num(j && j.avg), mn = num(j && j.min), mx = num(j && j.max), sm = num(j && j.smoothed);
+    if (avg != null || sm != null) return {avg: avg != null ? avg : sm, min: mn, max: mx, src: 'rest'};
+  } catch (e) { /* se prueba la otra forma */ }
+  const v = await depthAt(p);
+  return v == null ? null : {avg: -v, min: null, max: null, src: 'wms'};
+}
+function depthText(d) {
+  if (!d || d.avg == null) return '';
+  if (d.avg <= 0) return 'En tierra o sin agua según EMODnet';
+  let t = 'Profundidad media ' + nf(d.avg, d.avg < 10 ? 1 : 0) + ' m';
+  if (d.min != null && d.max != null && d.max >= d.min) t += ' (entre ' + nf(d.min, d.min < 10 ? 1 : 0) + ' y ' + nf(d.max, d.max < 10 ? 1 : 0) + ' m en la celda)';
+  return t;
+}
+
+/* ======================= Lo que dice la carta oficial (S-57) en un punto ======================= */
+const S57 = {
+  DEPARE: 'Zona de profundidad', DEPCNT: 'Veril', SOUNDG: 'Sonda', UWTROC: 'Roca', OBSTRN: 'Obstrucción', WRECKS: 'Pecio', SBDARE: 'Naturaleza del fondo',
+  LNDARE: 'Tierra', COALNE: 'Costa', SLCONS: 'Obra de costa', RESARE: 'Zona restringida', ACHARE: 'Fondeadero', ACHBRT: 'Punto de fondeo', CBLARE: 'Zona de cables',
+  CBLSUB: 'Cable submarino', PIPARE: 'Zona de tuberías', PIPSOL: 'Tubería submarina', MARCUL: 'Acuicultura', FAIRWY: 'Canal navegable', DRGARE: 'Zona dragada',
+  BOYLAT: 'Boya lateral', BOYCAR: 'Boya cardinal', BOYISD: 'Boya de peligro aislado', BOYSAW: 'Boya de aguas navegables', BOYSPP: 'Boya especial',
+  BCNLAT: 'Baliza lateral', BCNCAR: 'Baliza cardinal', BCNISD: 'Baliza de peligro aislado', BCNSAW: 'Baliza de aguas navegables', BCNSPP: 'Baliza especial',
+  LIGHTS: 'Luz', LNDMRK: 'Marca en tierra', SEAARE: 'Zona marítima', LNDRGN: 'Región', HRBARE: 'Zona portuaria', CTNARE: 'Zona de precaución', MIPARE: 'Zona militar',
+  DMPGRD: 'Zona de vertidos', TSSLPT: 'Dispositivo de separación de tráfico', PRCARE: 'Zona de precaución', FSHFAC: 'Instalación de pesca', OFSPLF: 'Plataforma',
+  PILPNT: 'Pilote', MORFAC: 'Amarre', BERTHS: 'Atraque', HULKES: 'Pontón', PONTON: 'Pantalán', DAMCON: 'Presa', CAUSWY: 'Calzada', BRIDGE: 'Puente', WEDKLP: 'Algas',
+  WATTUR: 'Remolinos', TIDEWY: 'Corriente', CURENT: 'Corriente', SPLARE: 'Zona de hidroaviones', ISTZNE: 'Zona de tráfico costero', RECTRC: 'Derrota recomendada',
+  NAVLNE: 'Enfilación', FOGSIG: 'Señal de niebla', RTPBCN: 'Racon', BUAARE: 'Población', UNSARE: 'Zona sin levantar', M_QUAL: 'Calidad de los datos'
+};
+const NATSUR = {1: 'fango', 2: 'arcilla', 3: 'limo', 4: 'arena', 5: 'piedra', 6: 'grava', 7: 'guijarros', 8: 'cantos', 9: 'roca', 11: 'lava', 14: 'coral', 17: 'conchas', 18: 'bolos'};
+const NATQUA = {1: 'fina', 2: 'media', 3: 'gruesa', 4: 'rota', 5: 'pegajosa', 6: 'blanda', 7: 'dura', 8: 'volcánica', 9: 'calcárea', 10: 'compacta'};
+const WATLEV = {1: 'en parte sumergida en pleamar', 2: 'siempre en seco', 3: 'siempre sumergida', 4: 'se cubre y descubre con la marea', 5: 'a flor de agua', 6: 'se inunda', 7: 'flotante'};
+const CATWRK = {1: 'no peligroso', 2: 'peligroso', 3: 'restos dispersos', 4: 'con mástil visible', 5: 'con casco visible'};
+const CATOBS = {1: 'tocón', 2: 'cabeza de pozo', 3: 'difusor', 4: 'cajón', 5: 'arrecife artificial', 6: 'zona sucia', 7: 'fondo sucio', 8: 'barrera', 9: 'muerto o tren de fondeo', 10: 'botalón'};
+const CATREA = {1: 'zona de seguridad de instalación', 4: 'reserva natural', 5: 'santuario de aves', 6: 'reserva de caza', 7: 'santuario de focas', 8: 'zona de desimantación', 9: 'zona militar', 10: 'zona de pecio histórico', 12: 'zona de seguridad de una ayuda a la navegación', 14: 'campo de minas', 18: 'zona de baño', 19: 'zona de espera', 20: 'zona de investigación', 22: 'reserva de pesca', 23: 'reserva ecológica', 24: 'zona de no hacer ola', 25: 'zona de borneo', 26: 'zona de esquí acuático', 27: 'zona marina especialmente sensible', 28: 'zona marina particularmente sensible'};
+const RESTRN = {1: 'prohibido fondear', 2: 'fondeo restringido', 3: 'prohibido pescar', 4: 'pesca restringida', 5: 'prohibido el arrastre', 6: 'arrastre restringido', 7: 'prohibida la entrada', 8: 'entrada restringida', 9: 'prohibido dragar', 10: 'dragado restringido', 11: 'prohibido bucear', 12: 'buceo restringido', 13: 'no hacer ola', 14: 'zona a evitar', 15: 'prohibido construir', 16: 'prohibido descargar', 17: 'descarga restringida', 18: 'prohibida la exploración industrial', 19: 'exploración restringida', 20: 'prohibido perforar', 21: 'perforación restringida', 22: 'prohibido retirar antigüedades', 23: 'prohibido el amarre', 24: 'amarre restringido', 25: 'prohibido el paso', 26: 'paso restringido', 27: 'velocidad restringida', 28: 'prohibido el paso de buques de vela', 29: 'prohibido el atraque'};
+const CATLAM = {1: 'de babor (roja)', 2: 'de estribor (verde)', 3: 'de canal preferente a estribor', 4: 'de canal preferente a babor'};
+const CATCAM = {1: 'Norte', 2: 'Este', 3: 'Sur', 4: 'Oeste'};
+const COLOUR = {1: 'blanco', 2: 'negro', 3: 'rojo', 4: 'verde', 5: 'azul', 6: 'amarillo', 7: 'gris', 8: 'marrón', 9: 'ámbar', 10: 'violeta', 11: 'naranja', 12: 'magenta', 13: 'rosa'};
+const LITCHR = {1: 'F', 2: 'Fl', 3: 'LFl', 4: 'Q', 5: 'VQ', 6: 'UQ', 7: 'Iso', 8: 'Oc', 9: 'IQ', 10: 'IVQ', 11: 'IUQ', 12: 'Mo', 13: 'FFl', 14: 'Fl+LFl', 15: 'Oc+Fl', 16: 'FLFl', 17: 'Al.Oc', 18: 'Al.LFl', 19: 'Al.Fl', 25: 'Q+LFl', 26: 'VQ+LFl', 27: 'UQ+LFl', 28: 'Al', 29: 'Al.FFl'};
+const codes = v => String(v == null ? '' : v).match(/\d+/g) || [];
+const dec = (m, v) => codes(v).map(c => m[c] || c).join(', ');
+
+function parseGfiGml(text) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return null;
+  const root = doc.documentElement;
+  if (!root || /ServiceException/i.test(root.localName)) return null;
+  const out = [];
+  const walk = (el, layer) => {
+    const kids = Array.from(el.children || []);
+    const leaves = kids.filter(k => !k.children.length && k.namespaceURI !== 'http://www.opengis.net/gml' && k.localName !== 'name');
+    const isFeat = /_feature$/i.test(el.localName) || (leaves.length >= 1 && kids.some(k => k.localName === 'boundedBy'));
+    if (isFeat) {
+      const a = {};
+      leaves.forEach(k => { const v = k.textContent.trim(); if (v !== '') a[k.localName.toUpperCase()] = v; });
+      if (Object.keys(a).length) out.push({layer: layer || '', a});
+      return;
+    }
+    kids.forEach(k => walk(k, /_layer$/i.test(k.localName) ? k.localName.replace(/_layer$/i, '') : layer));
+  };
+  walk(root, '');
+  return out;
+}
+function parseGfiPlain(text) {
+  if (!/Layer\s+'/i.test(text) && !/=/.test(text)) return null;
+  const out = [];
+  let layer = '', cur = null;
+  text.split(/\r?\n/).forEach(line => {
+    let m = line.match(/^\s*Layer\s+'([^']*)'/i);
+    if (m) { layer = m[1]; cur = null; return; }
+    m = line.match(/^\s*Feature\s+\S+/i);
+    if (m) { cur = {layer, a: {}}; out.push(cur); return; }
+    m = line.match(/^\s*([A-Za-z_][\w:.-]*)\s*=\s*'?(.*?)'?\s*$/);
+    if (m) { if (!cur) { cur = {layer, a: {}}; out.push(cur); } if (m[2] !== '') cur.a[m[1].toUpperCase()] = m[2]; }
+  });
+  return out.filter(f => Object.keys(f.a).length);
+}
+function encClass(f) {
+  const a = f.a;
+  for (const k of ['OBJL', 'ACRONYM', 'OBJ_CLASS', 'OBJECTCLASS', 'CLASE', 'CLASS', 'FEATURETYPE', 'OBJ', 'TIPO']) {
+    const v = a[k];
+    if (v && S57[String(v).toUpperCase()]) return String(v).toUpperCase();
+  }
+  const ly = String(f.layer || '').toUpperCase().replace(/_[PAL]$/, '');
+  if (S57[ly]) return ly;
+  if (a.DRVAL1 != null || a.DRVAL2 != null) return 'DEPARE';
+  if (a.VALDCO != null) return 'DEPCNT';
+  if (a.CATWRK != null) return 'WRECKS';
+  if (a.NATSUR != null) return 'SBDARE';
+  if (a.CATOBS != null) return 'OBSTRN';
+  if (a.CATREA != null || a.RESTRN != null) return 'RESARE';
+  if (a.LITCHR != null) return 'LIGHTS';
+  if (a.CATLAM != null) return 'BOYLAT';
+  if (a.CATCAM != null) return 'BOYCAR';
+  if (a.VALSOU != null && a.WATLEV != null) return 'UWTROC';
+  return '';
+}
+function encSummary(feats) {
+  const R = {depth: [], hazard: [], bottom: [], zone: [], name: [], other: []};
+  const seen = new Set();
+  const add = (k, t) => { if (t && !seen.has(k + t)) { seen.add(k + t); R[k].push(t); } };
+  feats.forEach(f => {
+    const a = f.a, c = encClass(f), nm = a.OBJNAM || a.NOBJNM || '';
+    const label = S57[c] || '';
+    if (c === 'DEPARE' || (a.DRVAL1 != null && !c)) {
+      const d1 = num(a.DRVAL1), d2 = num(a.DRVAL2);
+      if (d1 != null && d1 < 0 && (d2 == null || d2 <= 0)) add('depth', 'Zona que seca con la marea baja (' + nf(-d1, 1) + ' m por encima del cero)');
+      else if (d1 != null && d2 != null) add('depth', 'Carta oficial: entre ' + nf(d1, d1 % 1 ? 1 : 0) + ' y ' + nf(d2, d2 % 1 ? 1 : 0) + ' m');
+      else if (d1 != null) add('depth', 'Carta oficial: más de ' + nf(d1, 0) + ' m');
+    }
+    if (c === 'DRGARE' && a.DRVAL1 != null) add('depth', 'Zona dragada a ' + nf(num(a.DRVAL1), 1) + ' m');
+    if (a.VALDCO != null) add('depth', 'Veril de ' + nf(num(a.VALDCO), 0) + ' m');
+    if (c === 'UWTROC' || c === 'OBSTRN' || c === 'WRECKS') {
+      let t = label;
+      if (c === 'WRECKS' && a.CATWRK) t += ' ' + dec(CATWRK, a.CATWRK);
+      if (c === 'OBSTRN' && a.CATOBS) t += ' (' + dec(CATOBS, a.CATOBS) + ')';
+      if (a.VALSOU != null) t += ' · sonda ' + nf(num(a.VALSOU), 1) + ' m';
+      if (a.WATLEV) t += ' · ' + dec(WATLEV, a.WATLEV);
+      add('hazard', t + (nm ? ' «' + nm + '»' : '') + ' — carta oficial, en este punto');
+    } else if (a.VALSOU != null) add('depth', 'Sonda de la carta: ' + nf(num(a.VALSOU), 1) + ' m');
+    if (c === 'SBDARE' || a.NATSUR != null) add('bottom', 'Fondo de ' + dec(NATSUR, a.NATSUR) + (a.NATQUA ? ' (' + dec(NATQUA, a.NATQUA) + ')' : '') + ' — dato de la carta oficial');
+    if (c === 'RESARE' || c === 'MIPARE' || c === 'CTNARE' || c === 'PRCARE' || c === 'DMPGRD') {
+      add('zone', (label || 'Zona') + (a.CATREA ? ': ' + dec(CATREA, a.CATREA) : '') + (a.RESTRN ? ' · ' + dec(RESTRN, a.RESTRN) : '') + (nm ? ' «' + nm + '»' : ''));
+    } else if (a.RESTRN) add('zone', (label || 'Restricción') + ': ' + dec(RESTRN, a.RESTRN));
+    if (['ACHARE', 'ACHBRT', 'CBLARE', 'CBLSUB', 'PIPARE', 'PIPSOL', 'MARCUL', 'FAIRWY', 'HRBARE', 'TSSLPT', 'ISTZNE', 'FSHFAC', 'SPLARE', 'RECTRC', 'UNSARE'].indexOf(c) >= 0) add('zone', label + (nm ? ' «' + nm + '»' : ''));
+    if (['SEAARE', 'LNDRGN', 'LNDARE', 'BUAARE'].indexOf(c) >= 0 && nm) add('name', nm + ' (' + label.toLowerCase() + ')');
+    if (/^(BOY|BCN)/.test(c)) {
+      let t = label;
+      if (a.CATLAM) t += ' ' + dec(CATLAM, a.CATLAM);
+      if (a.CATCAM) t += ' ' + dec(CATCAM, a.CATCAM);
+      if (a.COLOUR) t += ' · ' + dec(COLOUR, a.COLOUR);
+      add('other', t + (nm ? ' «' + nm + '»' : ''));
+    }
+    if (c === 'LIGHTS' || a.LITCHR != null) {
+      const ch = codes(a.LITCHR).map(x => LITCHR[x] || x).join('');
+      add('other', 'Luz ' + ch + (a.SIGGRP ? a.SIGGRP.replace(/[()]/g, '') ? '(' + a.SIGGRP.replace(/[()]/g, '') + ')' : '' : '') + (a.COLOUR ? ' ' + dec(COLOUR, a.COLOUR) : '') + (a.SIGPER ? ' ' + String(a.SIGPER).replace('.', ',') + ' s' : '') + (a.VALNMR ? ' · alcance ' + a.VALNMR + ' M' : '') + (nm ? ' «' + nm + '»' : ''));
+    }
+    const inf = a.INFORM || a.NINFOM || a.TXTDSC;
+    if (inf && !/\.(txt|tif)$/i.test(inf)) add('other', inf);
+    if (!c && !a.DRVAL1 && !a.VALSOU && !a.NATSUR) {
+      const keys = Object.keys(a).filter(k => !/^(GML|FID|RCID|PRIM|GRUP|OBJL|RVER|AGEN|FIDN|FIDS|LNAM|SCAMIN|SCAMAX|SORDAT|SORIND|DSNM|X|Y|ID)$/.test(k)).slice(0, 4);
+      if (keys.length) add('other', (f.layer ? f.layer + ': ' : '') + keys.map(k => k + ' ' + a[k]).join(' · '));
+    }
+  });
+  return R;
+}
+function encGfiUrl(svc, p, z, fmt) {
+  const E = 20037508.342789244, s = 2 * E / (1 << z);
+  const mx = (lon2x(p.lon) - 0.5) * 2 * E, my = (0.5 - lat2y(p.lat)) * 2 * E, h = s * 0.25;
+  return 'https://ideihm.covam.es/wms/cartaENCp' + svc + '?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo&LAYERS=ENC_ES' + svc + '&QUERY_LAYERS=ENC_ES' + svc +
+    '&STYLES=&CRS=EPSG:3857&BBOX=' + [mx - h, my - h, mx + h, my + h].map(v => v.toFixed(2)).join(',') + '&WIDTH=101&HEIGHT=101&I=50&J=50&INFO_FORMAT=' + encodeURIComponent(fmt) + '&FEATURE_COUNT=50';
+}
+async function encAt(p) {
+  /* Pregunta a la vez a la carta de puertos, la de aproches y la costera; con GML y si no con texto */
+  let any = false, lastErr = null;
+  const one = async (svc, z) => {
+    for (const fmt of ['application/vnd.ogc.gml', 'text/plain']) {
+      try {
+        const t = await (await fetchT(encGfiUrl(svc, p, z, fmt), 9000)).text();
+        any = true;
+        const f = fmt.indexOf('gml') >= 0 ? parseGfiGml(t) : parseGfiPlain(t);
+        if (f && f.length) return f;
+      } catch (e) { lastErr = e; }
+    }
+    return [];
+  };
+  const [p5, p4, p3] = await Promise.all([one(5, 16), one(4, 14), one(3, 12)]);
+  if (!any) throw lastErr || new Error('sin respuesta');
+  return p5.length || p4.length ? p5.concat(p4) : p3;
+}
+
+/* ======================= Tipo de fondo (EMODnet Seabed Habitats) ======================= */
+const SUBS = [[/rock|hard/i, 'roca u otro fondo duro'], [/biogenic/i, 'fondo biogénico (praderas marinas, coralígeno…)'], [/coarse/i, 'fondo grueso (grava, cascajo)'],
+  [/mixed/i, 'sedimento mixto'], [/muddy sand/i, 'arena fangosa'], [/sandy mud/i, 'fango arenoso'], [/fine mud|^mud$/i, 'fango'], [/sand/i, 'arena'], [/mud/i, 'fango'],
+  [/seagrass|posidonia/i, 'pradera marina (posidonia)']];
+function subsEs(s) { for (const [r, t] of SUBS) if (r.test(s)) return t; return s; }
+async function seabedAt(p) {
+  const d = 0.0008;
+  const url = 'https://ows.emodnet-seabedhabitats.eu/geoserver/emodnet_view/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetFeatureInfo&LAYERS=eusm2023_subs_group&QUERY_LAYERS=eusm2023_subs_group&STYLES=&SRS=EPSG:4326&BBOX=' +
+    [p.lon - d, p.lat - d, p.lon + d, p.lat + d].map(v => v.toFixed(6)).join(',') + '&WIDTH=5&HEIGHT=5&X=2&Y=2&INFO_FORMAT=application/json&FEATURE_COUNT=3';
+  try {
+    const j = await fetchJ(url, 9000);
+    for (const f of (j && j.features) || []) {
+      const pr = f.properties || {};
+      for (const k in pr) if (/subs|folk/i.test(k) && pr[k] && typeof pr[k] === 'string') return subsEs(pr[k]);
+    }
+  } catch (e) { /* se prueba la otra fuente */ }
+  const q = 'https://services1.arcgis.com/RTK5Unh1Z71JKIiR/ArcGIS/rest/services/EUSeaMap_2023/FeatureServer/0/query?geometry=' + p.lon.toFixed(6) + ',' + p.lat.toFixed(6) +
+    '&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json';
+  const j2 = await fetchJ(q, 9000);
+  const f2 = j2 && j2.features && j2.features[0];
+  if (f2 && f2.attributes) for (const k in f2.attributes) if (/subs/i.test(k) && f2.attributes[k]) return subsEs(String(f2.attributes[k]));
+  return null;
+}
+
+/* ======================= Lugar, zonas protegidas y señales cercanas (OpenStreetMap) ======================= */
+async function osmAt(p) {
+  const c = p.lat.toFixed(5) + ',' + p.lon.toFixed(5);
+  const q = '[out:json][timeout:25];is_in(' + c + ')->.a;(area.a[boundary~"protected_area|national_park|marine"];area.a[leisure=nature_reserve];area.a[natural~"bay|strait|sound"];area.a["seamark:type"];)->.z;.z out tags;' +
+    '(node(around:900,' + c + ')["seamark:type"];way(around:900,' + c + ')["seamark:type"];node(around:900,' + c + ')[natural~"reef|shoal|rock|bare_rock|cape|peninsula|islet"];way(around:900,' + c + ')[natural~"reef|shoal|bay|islet|island"];node(around:900,' + c + ')[historic=wreck];);out center tags;';
+  const j = await overpass(q);
+  const areas = [], near = [];
+  (j.elements || []).forEach(e => {
+    const t = e.tags || {};
+    if (e.type === 'area') { areas.push(t); return; }
+    const lat = e.lat != null ? e.lat : e.center && e.center.lat, lon = e.lon != null ? e.lon : e.center && e.center.lon;
+    if (lat == null) return;
+    near.push({id: e.type[0] + e.id, lat, lon, tags: t});
+  });
+  /* Las señales también quedan guardadas para tocarlas en la carta */
+  near.forEach(it => { if (it.tags['seamark:type']) { const tags = {}; for (const k in it.tags) if (k.indexOf('seamark:') === 0 || k === 'name') tags[k] = it.tags[k]; SM.set(it.id, {id: it.id, lat: it.lat, lon: it.lon, tags}); } });
+  return {areas, near};
+}
+const NAT = {reef: 'Arrecife', shoal: 'Bajo o bajío', rock: 'Roca', bare_rock: 'Roca', cape: 'Cabo', peninsula: 'Península', islet: 'Islote', island: 'Isla', bay: 'Bahía', strait: 'Estrecho'};
+function osmLines(o, p) {
+  const R = {hazard: [], zone: [], name: [], near: []};
+  o.areas.forEach(t => {
+    const nm = t['name:es'] || t.name || '';
+    if (/protected_area|national_park|marine/.test(t.boundary || '') || t.leisure === 'nature_reserve') R.zone.push('Espacio protegido' + (nm ? ' «' + nm + '»' : '') + (t.protection_title ? ' · ' + t.protection_title : '') + (t['protect_class'] ? ' (clase ' + t.protect_class + ')' : ''));
+    else if (t.natural && nm) R.name.push(nm + ' (' + (NAT[t.natural] || t.natural).toLowerCase() + ')');
+    else if (t['seamark:type'] && (nm || SMT[t['seamark:type']])) R.zone.push((SMT[t['seamark:type']] || t['seamark:type']) + (nm ? ' «' + nm + '»' : '') + (t['seamark:restricted_area:restriction'] ? ' · ' + tr(CATX, t['seamark:restricted_area:restriction']) : ''));
+  });
+  o.near.map(it => [rhumb(p, it), it]).sort((a, b) => a[0].m - b[0].m).forEach(([d, it]) => {
+    const t = it.tags, where = ' · a ' + fmtDist(d.nm) + ' al ' + card(d.brg);
+    if (t['seamark:type']) {
+      const i = smInfo(it);
+      const danger = /rock|wreck|obstruction|isolated_danger/.test(t['seamark:type']);
+      (danger ? R.hazard : R.near).push({e: i.e, t: (i.name ? i.name + ' — ' : '') + i.title + (i.lines.length ? ' · ' + i.lines.slice(0, 2).join(' · ') : '') + where, id: it.id});
+    } else if (t.natural) {
+      const danger = /reef|shoal|rock/.test(t.natural);
+      (danger ? R.hazard : R.near).push({e: danger ? '🪨' : '📍', t: (NAT[t.natural] || t.natural) + (t.name ? ' «' + t.name + '»' : '') + where});
+    } else if (t.historic === 'wreck') R.hazard.push({e: '🚢', t: 'Pecio' + (t.name ? ' «' + t.name + '»' : '') + where});
+  });
+  return R;
+}
+async function wikiNear(p) {
+  const j = await fetchJ('https://es.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=' + p.lat.toFixed(5) + '%7C' + p.lon.toFixed(5) + '&gsradius=10000&gslimit=5&format=json&origin=*', 8000);
+  return ((j && j.query && j.query.geosearch) || []).map(g => ({t: g.title, d: g.dist}));
+}
+async function placeName(p) {
+  const j = await fetchJ('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=12&accept-language=es&lat=' + p.lat.toFixed(5) + '&lon=' + p.lon.toFixed(5), 8000);
+  return j && !j.error ? (j.display_name || '').split(',').slice(0, 3).join(',') : '';
+}
+
+/* ======================= El mar ahora (Open-Meteo) ======================= */
+const WMO = c => c == null ? '' : c === 0 ? 'despejado' : c <= 3 ? 'nubes y claros' : c <= 48 ? 'niebla' : c <= 57 ? 'llovizna' : c <= 67 ? 'lluvia' : c <= 77 ? 'nieve' : c <= 82 ? 'chubascos' : c <= 86 ? 'chubascos de nieve' : 'tormenta';
+async function seaNow(p) {
+  const qs = 'latitude=' + p.lat.toFixed(4) + '&longitude=' + p.lon.toFixed(4) + '&timezone=auto';
+  const [w, m] = await Promise.allSettled([
+    fetchJ('https://api.open-meteo.com/v1/forecast?' + qs + '&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code&wind_speed_unit=kn', 8000),
+    fetchJ('https://marine-api.open-meteo.com/v1/marine?' + qs + '&current=wave_height,wave_direction,wave_period,sea_surface_temperature,ocean_current_velocity,ocean_current_direction', 8000)
+  ]);
+  const W = w.status === 'fulfilled' && w.value && w.value.current || null, Mc = m.status === 'fulfilled' && m.value && m.value.current || null;
+  if (!W && !Mc) return null;
+  const L = [];
+  if (W && W.wind_speed_10m != null) L.push('Viento ' + ni(W.wind_speed_10m) + ' kn del ' + card(W.wind_direction_10m) + ' (F' + bft(W.wind_speed_10m) + ')' + (W.wind_gusts_10m != null ? ', rachas de ' + ni(W.wind_gusts_10m) + ' kn' : ''));
+  if (W && W.weather_code != null) L.push('Cielo: ' + WMO(W.weather_code) + (W.temperature_2m != null ? ' · aire ' + nf(W.temperature_2m, 0) + ' °C' : ''));
+  if (Mc && Mc.wave_height != null) L.push('Olas de ' + nf(Mc.wave_height, 1) + ' m del ' + card(Mc.wave_direction) + (Mc.wave_period != null ? ' cada ' + ni(Mc.wave_period) + ' s' : ''));
+  if (Mc && Mc.sea_surface_temperature != null) L.push('Agua a ' + nf(Mc.sea_surface_temperature, 1) + ' °C');
+  if (Mc && Mc.ocean_current_velocity != null) L.push('Corriente de ' + nf(Mc.ocean_current_velocity / 1.852, 1) + ' kn hacia el ' + card(Mc.ocean_current_direction));
+  return L;
+}
+
+/* ======================= Sol y luna (se calcula en el iPad, sin internet) ======================= */
+function sunTimes(p, date) {
+  const d = new Date(date || Date.now()), Y = d.getFullYear(), start = new Date(Y, 0, 0);
+  const N = Math.floor((d - start) / 864e5), lngHour = p.lon / 15;
+  const calc = rise => {
+    const t = N + ((rise ? 6 : 18) - lngHour) / 24, Mn = 0.9856 * t - 3.289;
+    let L = Mn + 1.916 * Math.sin(rad(Mn)) + 0.020 * Math.sin(rad(2 * Mn)) + 282.634; L = (L + 360) % 360;
+    let RA = deg(Math.atan(0.91764 * Math.tan(rad(L)))); RA = (RA + 360) % 360;
+    RA = (RA + Math.floor(L / 90) * 90 - Math.floor(RA / 90) * 90) / 15;
+    const sinDec = 0.39782 * Math.sin(rad(L)), cosDec = Math.cos(Math.asin(sinDec));
+    const cosH = (Math.cos(rad(90.833)) - sinDec * Math.sin(rad(p.lat))) / (cosDec * Math.cos(rad(p.lat)));
+    if (cosH > 1 || cosH < -1) return null;
+    let H = rise ? 360 - deg(Math.acos(cosH)) : deg(Math.acos(cosH)); H /= 15;
+    const T = H + RA - 0.06571 * t - 6.622;
+    let UT = (T - lngHour) % 24; if (UT < 0) UT += 24;
+    const r = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0) + UT * 3600000);
+    return r;
+  };
+  return {rise: calc(true), set: calc(false)};
+}
+function moonPhase(date) {
+  const P = 29.530588853, ref = Date.UTC(2000, 0, 6, 18, 14);
+  const age = (((((date || Date.now()) - ref) / 864e5) % P) + P) % P, ill = (1 - Math.cos(2 * Math.PI * age / P)) / 2;
+  const names = ['Luna nueva', 'Luna creciente', 'Cuarto creciente', 'Gibosa creciente', 'Luna llena', 'Gibosa menguante', 'Cuarto menguante', 'Luna menguante'];
+  return {name: names[Math.floor((age / P) * 8 + 0.5) % 8], ill: Math.round(ill * 100), age};
+}
+const hm = d => d ? pad(d.getHours(), 2) + ':' + pad(d.getMinutes(), 2) : '—';
+
+/* ======================= La ventana «¿Qué hay aquí?» ======================= */
+const QA_SECS = [['depth', 'Profundidad'], ['hazard', 'Peligros: rocas, bajos y pecios'], ['bottom', 'Tipo de fondo'], ['zone', 'Zonas, restricciones y protección'],
+  ['near', 'Señales cercanas'], ['name', 'Dónde está'], ['sea', 'El mar ahora'], ['tide', 'Mareas'], ['sky', 'Sol y luna'], ['wiki', 'Lugares cercanos en Wikipedia']];
+let qaRun = 0;
+async function whatsHere(p) {
+  closePop();
+  const run = ++qaRun;
+  S.pin = {lat: p.lat, lon: p.lon}; req();
+  const port = nearestPort(p, 200);
+  const head = '<p class="mono" style="margin:0">' + esc(fmtLL(p)) + '</p>' + fromBoat(p) + (port ? '<p class="hint" style="margin:0">Puerto más cercano: ' + esc(port.name) + ' a ' + fmtDist(rhumb(p, port).nm) + ' al ' + card(rhumb(p, port).brg) + '</p>' : '');
+  openModal('¿Qué hay aquí?', head + '<p class="hint" id="qaState">' + (navigator.onLine ? 'Consultando la carta oficial, EMODnet, OpenStreetMap, Open-Meteo y el IHM…' : 'Sin internet: lo que hay guardado en este iPad.') + '</p>' +
+    QA_SECS.map(s => '<div class="sec" id="qa_' + s[0] + '" hidden><p class="lbl">' + s[1] + '</p><div class="qa-b"></div></div>').join('') +
+    '<p class="hint">Datos de fuentes públicas, cada una con su fecha y precisión. La carta del IHM no es válida para navegar y la profundidad de EMODnet es una media de celdas de unos 115 m: una roca puede quedar más alta. Mira siempre el fondo con la sonda.</p>',
+    [{label: 'Marca aquí', fn: () => { setTimeout(() => newMarkAt(p), 0); }}, {label: 'Ir aquí', fn: () => { setTimeout(() => startNavPoint(p, 'Punto'), 0); }}, {label: 'Cerrar', cls: 'pri'}]);
+  const data = {lat: p.lat, lon: p.lon, t: Date.now()};
+  const alive = () => run === qaRun && !$('#modal').hidden && $('#qa_depth');
+  const show = (key, items, cls, first) => {
+    if (!alive() || !items || !items.length) return;
+    const box = $('#qa_' + key);
+    box.hidden = false;
+    const b = box.querySelector('.qa-b');
+    const html = items.map(x => typeof x === 'string'
+      ? '<p class="qa-l' + (cls ? ' ' + cls : '') + '">' + esc(x) + '</p>'
+      : (x.id ? '<button type="button" class="qa-l qa-btn' + (cls ? ' ' + cls : '') + '" data-act="qaSm" data-id="' + esc(x.id) + '">' : '<p class="qa-l' + (cls ? ' ' + cls : '') + '">') + (x.e ? '<span class="qa-e">' + x.e + '</span>' : '') + (x.href ? '<a href="' + esc(x.href) + '" target="_blank" rel="noopener">' + esc(x.t) + '</a>' : esc(x.t)) + (x.id ? '</button>' : '</p>')).join('');
+    b.insertAdjacentHTML(first ? 'afterbegin' : 'beforeend', html);
+  };
+  const keep = (k, v) => { data[k] = (data[k] || []).concat(v); };
+
+  /* 1. Lo que ya está en el iPad: señales guardadas, sol y luna, mareas guardadas */
+  const near = smNear(p, 0.5, 8).map(([d, it]) => { const i = smInfo(it); return {e: i.e, t: (i.name ? i.name + ' — ' : '') + i.title + ' · a ' + fmtDist(d) + ' al ' + card(rhumb(p, it).brg), id: it.id, danger: /rock|wreck|obstruction|isolated_danger/.test(it.tags['seamark:type'] || '')}; });
+  show('hazard', near.filter(x => x.danger), 'warn');
+  show('near', near.filter(x => !x.danger));
+  const st = sunTimes(p), mp = moonPhase();
+  show('sky', ['Sale el sol a las ' + hm(st.rise) + ' y se pone a las ' + hm(st.set) + ' (hora de este iPad)', mp.name + ', iluminada al ' + mp.ill + ' %']);
+  const old = ((await DB.get('qa')) || []).filter(q => rhumb(q, p).m < 300).sort((a, b) => b.t - a.t)[0];
+
+  if (!navigator.onLine) {
+    if (old) {
+      if (alive()) $('#qaState').textContent = 'Sin internet. Datos consultados aquí el ' + fmtDate(old.t) + ':';
+      ['depth', 'hazard', 'bottom', 'zone', 'name', 'sea', 'wiki'].forEach(k => show(k, old[k], k === 'hazard' ? 'warn' : ''));
+    } else if (alive()) $('#qaState').textContent = 'Sin internet y sin consultas guardadas en este punto. Con internet se guarda todo lo que salga aquí para verlo luego sin conexión.';
+    tidesNear(p, 1).then(r => { const d = r.days[0] && r.days[0].rows; if (d && d.length) show('tide', [r.st.name + ': ' + d.map(x => (/pleamar|alta|high/i.test(x.t) ? 'pleamar ' : 'bajamar ') + x.h + (isFinite(x.a) ? ' (' + nf(x.a, 2) + ' m)' : '')).join(' · ')]); }).catch(() => {});
+    return;
+  }
+
+  /* 2. Con internet: todo a la vez, cada fuente por su lado */
+  const jobs = [
+    depthInfo(p).then(d => { const t = depthText(d); if (t) { show('depth', [t + ' — EMODnet']); keep('depth', [t + ' — EMODnet']); } }),
+    encAt(p).then(f => {
+      const R = encSummary(f);
+      show('depth', R.depth, '', true); keep('depth', R.depth);
+      show('hazard', R.hazard, 'warn', true); keep('hazard', R.hazard);
+      show('bottom', R.bottom, '', true); keep('bottom', R.bottom);
+      show('zone', R.zone); keep('zone', R.zone);
+      show('name', R.name); keep('name', R.name);
+      if (R.other.length) { show('near', R.other.map(t => 'Carta oficial: ' + t)); }
+      if (!f.length && alive()) show('depth', ['La carta oficial no tiene objetos justo en este punto.']);
+    }, () => { if (alive()) show('depth', ['No se han podido leer ahora los datos de la carta oficial. Mantén el dedo en el punto y pulsa «Carta oficial aquí» para verlos.']); }),
+    seabedAt(p).then(s => { if (s) { const t = 'Fondo de ' + s + ' — mapa europeo EMODnet (aproximado)'; show('bottom', [t]); keep('bottom', [t]); } }),
+    osmAt(p).then(o => {
+      const R = osmLines(o, p);
+      const knownIds = new Set(near.map(x => x.id));
+      const hz = R.hazard.filter(x => !x.id || !knownIds.has(x.id)), nr = R.near.filter(x => !x.id || !knownIds.has(x.id));
+      show('hazard', hz, 'warn'); keep('hazard', hz.map(x => x.t));
+      show('near', nr.slice(0, 8));
+      show('zone', R.zone); keep('zone', R.zone);
+      show('name', R.name); keep('name', R.name);
+      req();
+    }),
+    placeName(p).then(n => { if (n) { show('name', [n]); keep('name', [n]); } }),
+    seaNow(p).then(L => { if (L && L.length) { show('sea', L); keep('sea', L); } }),
+    tidesNear(p, 1).then(r => {
+      const d = r.days[0] && r.days[0].rows;
+      if (d && d.length) show('tide', [r.st.name + ' (a ' + fmtDist(r.nm) + '): ' + d.map(x => (/pleamar|alta|high/i.test(x.t) ? 'pleamar ' : 'bajamar ') + x.h + (isFinite(x.a) ? ' (' + nf(x.a, 2) + ' m)' : '')).join(' · ')]);
+    }),
+    wikiNear(p).then(L => { const it = L.map(w => ({e: '📖', t: w.t + ' · a ' + fmtDist(w.d / NM), href: 'https://es.wikipedia.org/wiki/' + encodeURIComponent(w.t.replace(/ /g, '_'))})); show('wiki', it); keep('wiki', it.map(x => x.t)); })
+  ].map(pr => Promise.race([pr.catch(() => null), sleep(16000)]));
+  await Promise.all(jobs);
+  if (!alive()) return;
+  const got = Object.keys(data).filter(k => Array.isArray(data[k]) && data[k].length).length;
+  $('#qaState').textContent = got ? 'Consultado ahora (' + hm(new Date()) + '). Queda guardado para verlo sin internet.' : 'Ninguna fuente ha respondido. Prueba otra vez en un momento.';
+  if (got) {
+    const list = ((await DB.get('qa')) || []).filter(q => rhumb(q, p).m >= 300);
+    list.unshift(data);
+    DB.set('qa', list.slice(0, 80));
+  }
+}
+
+/* ======================= Profundidad a lo largo de una ruta (EMODnet) ======================= */
+async function routeDepth(r) {
+  if (!navigator.onLine) { toast('Necesitas internet para calcular la profundidad de la ruta', 'ko'); return; }
+  toast('Calculando la profundidad de cada tramo…', 'info', 2500);
+  const out = [];
+  for (let i = 1; i < r.pts.length; i++) {
+    const a = r.pts[i - 1], b = r.pts[i];
+    try {
+      const arr = await fetchJ('https://rest.emodnet-bathymetry.eu/depth_profile?geom=' + encodeURIComponent('LINESTRING(' + a.lon.toFixed(6) + ' ' + a.lat.toFixed(6) + ',' + b.lon.toFixed(6) + ' ' + b.lat.toFixed(6) + ')'), 15000);
+      const vals = (Array.isArray(arr) ? arr : (arr && (arr.depths || arr.values || arr.profile)) || []).map(v => num(typeof v === 'object' && v ? (v.depth != null ? v.depth : v.avg != null ? v.avg : v.value) : v));
+      const ok = vals.filter(v => v != null);
+      out.push(ok.length ? {min: Math.min.apply(null, ok), max: Math.max.apply(null, ok), dry: ok.some(v => v <= 0) || vals.length > ok.length * 1.5} : null);
+    } catch (e) { out.push(null); }
+    await sleep(250);
+  }
+  r.prof = out; r.profT = Date.now();
+  save('routes', 0);
+  renderSheet();
+  const safe = S.set.draft + S.set.margin, bad = out.filter(x => x && (x.dry || x.min < safe)).length;
+  toast(bad ? '⚠ ' + bad + (bad === 1 ? ' tramo pasa' : ' tramos pasan') + ' por menos de ' + nf(safe, 1) + ' m o por tierra' : 'Profundidad de la ruta calculada', bad ? 'wa' : 'ok', 5000);
+}
+
 /* ======================= Comprobar desde el iPad que cada fuente responde ======================= */
 function diagnose() {
   let c = centerLL();
@@ -2226,7 +2680,7 @@ function diagnose() {
   const ua = navigator.userAgent.replace(/[^\x20-\x7E]/g, '');
   openModal('Comprobar las cartas', '<p class="hint">' + esc(fmtLL(c)) + ' · ' + (navigator.onLine ? 'con internet' : 'SIN internet') + ' · pantalla x' + (window.devicePixelRatio || 1) + '</p>' +
     '<div class="list">' + imgs.map((m, i) => '<div class="item"><div class="item-h"><img id="dgI' + i + '" alt="" style="width:96px;height:96px;border-radius:8px;border:1px solid var(--line);background:#fff;object-fit:cover;flex:none"><span class="t"><b>' + esc(m[0]) + '</b><small id="dgS' + i + '">Probando…</small></span></div></div>').join('') +
-    ['Fichas de boyas (Overpass)', 'Mareas del IHM', 'Profundidad EMODnet'].map((n, i) => '<div class="item"><div class="item-h"><span class="t"><b>' + n + '</b><small id="dgF' + i + '">Probando…</small></span></div></div>').join('') +
+    ['Fichas de boyas (Overpass)', 'Mareas del IHM', 'Profundidad EMODnet', 'Datos de la carta oficial en un punto', 'Tipo de fondo (EMODnet)', 'Wikipedia cerca', 'El mar ahora (Open-Meteo)'].map((n, i) => '<div class="item"><div class="item-h"><span class="t"><b>' + n + '</b><small id="dgF' + i + '">Probando…</small></span></div></div>').join('') +
     '</div><p class="hint" style="word-break:break-all">' + esc(ua) + ' · versión ' + esc(String(window.APPV || '')) + '</p>');
   imgs.forEach((m, i) => {
     const el = $('#dgI' + i), st = $('#dgS' + i), t0 = performance.now();
@@ -2238,7 +2692,13 @@ function diagnose() {
   overpass('[out:json][timeout:20];node(around:2000,' + c.lat.toFixed(4) + ',' + c.lon.toFixed(4) + ')["seamark:type"];out tags 5;')
     .then(j => set(0, true, (j.elements || []).length + ' señales cerca'), e => set(0, false, String(e && e.message || e)));
   fetch(TIDE + 'request=getlist&format=json').then(r => r.text()).then(t => set(1, t.length > 20, t.length + ' caracteres')).catch(e => set(1, false, String(e && e.message || e)));
-  depthAt(c).then(v => set(2, v != null, v != null ? nf(-v, 0) + ' m' : 'sin respuesta'));
+  depthInfo(c).then(d => set(2, !!d, d ? depthText(d) + ' (' + d.src + ')' : 'sin respuesta'), e => set(2, false, String(e && e.message || e)));
+  encAt(c).then(f => { const R = encSummary(f); set(3, true, f.length + ' objetos · ' + R.depth.concat(R.hazard, R.bottom).slice(0, 2).join(' · ')); }, e => set(3, false, String(e && e.message || e) + ' (seguramente el IHM no deja leerlos desde otras webs)'));
+  seabedAt(c).then(t => set(4, !!t, t || 'sin dato'), e => set(4, false, String(e && e.message || e)));
+  wikiNear(c).then(L => set(5, true, L.length + ' artículos'), e => set(5, false, String(e && e.message || e)));
+  seaNow(c).then(L => set(6, !!L, L ? L.join(' · ') : 'sin respuesta'), e => set(6, false, String(e && e.message || e)));
+  const errs = ERRS.slice(-8);
+  if (errs.length) $('#mBody').insertAdjacentHTML('beforeend', '<div class="sec"><p class="lbl">Últimos errores de la app</p>' + errs.map(x => '<p class="hint" style="word-break:break-word;margin:0">' + esc(x) + '</p>').join('') + '</div>');
 }
 
 /* ======================= Acciones de botones ======================= */
@@ -2288,6 +2748,10 @@ const A = {
   routeNav: id => startNavRoute(byId(S.routes, id)),
   routeEdit: id => { closePop(); editRoute(id); },
   routeLegs: id => { S.legsOpen = S.legsOpen === id ? null : id; renderSheet(); },
+  routeDepth: id => { const r = byId(S.routes, id); if (r) routeDepth(r); },
+  qa: () => whatsHere(centerLL()),
+  pinQa: () => { const p = S.popCtx; if (p) whatsHere({lat: p.lat, lon: p.lon}); },
+  qaSm: id => { const it = SM.get(id); if (!it) return; closeModal(); seamarkPop(it); },
   routeMore: id => {
     const r = byId(S.routes, id);
     if (!r) return;
@@ -2299,11 +2763,11 @@ const A = {
       '<button type="button" class="sbtn ko" data-act="routeDel" data-id="' + id + '">Borrar la ruta</button></div>');
   },
   routeRen: id => { const r = byId(S.routes, id); if (r) askText('Nombre de la ruta', 'Nombre', r.name, v => { if (v) { r.name = v; save('routes'); refreshSheet(); } }); },
-  routeRev: id => { const r = byId(S.routes, id); if (!r) return; r.pts.reverse(); if (!/ \(vuelta\)$/.test(r.name)) r.name += ' (vuelta)'; else r.name = r.name.replace(/ \(vuelta\)$/, ''); if (S.nav && S.nav.id === id) S.nav = null; save('routes'); closeModal(); refreshSheet(); renderNav(); req(); toast('Ruta invertida'); },
+  routeRev: id => { const r = byId(S.routes, id); if (!r) return; r.pts.reverse(); if (Array.isArray(r.prof)) r.prof.reverse(); if (!/ \(vuelta\)$/.test(r.name)) r.name += ' (vuelta)'; else r.name = r.name.replace(/ \(vuelta\)$/, ''); if (S.nav && S.nav.id === id) S.nav = null; save('routes'); closeModal(); refreshSheet(); renderNav(); req(); toast('Ruta invertida'); },
   routeVis: id => { const r = byId(S.routes, id); if (!r) return; r.vis = !r.vis; save('routes'); closeModal(); refreshSheet(); req(); },
   routeGpx: id => { const r = byId(S.routes, id); closeModal(); if (r) shareFile(safeName(r.name) + '.gpx', gpx(gpxRte(r)), 'application/gpx+xml'); },
   routeDel: id => { const r = byId(S.routes, id); if (!r) return; closeModal(); confirmDel('la ruta «' + r.name + '»', () => { S.routes = S.routes.filter(x => x.id !== id); if (S.nav && S.nav.id === id) { S.nav = null; save('nav'); } save('routes'); refreshSheet(); renderNav(); req(); }); },
-  wpDel: (id, b) => { const r = byId(S.routes, id); if (!r) return; r.pts.splice(+b.dataset.i, 1); save('routes'); closePop(); updateModebar(); req(); },
+  wpDel: (id, b) => { const r = byId(S.routes, id); if (!r) return; r.pts.splice(+b.dataset.i, 1); delete r.prof; save('routes'); closePop(); updateModebar(); req(); },
   wpName: (id, b) => { const r = byId(S.routes, id); if (!r) return; const p = r.pts[+b.dataset.i]; closePop(); askText('Nombre del punto', 'Nombre', p.name || '', v => { p.name = v || undefined; save('routes'); req(); }); },
   wpNav: (id, b) => startNavRoute(byId(S.routes, id), +b.dataset.i),
   navPrev: () => { if (S.nav && S.nav.type === 'route' && S.nav.idx > 0) { S.nav.idx--; save('nav'); renderNav(); req(); } },
@@ -2566,6 +3030,7 @@ $('#bMenu').onclick = () => { if (!$('#sheet').hidden && S.tab !== 'capas') clos
 $('#bSheetX').onclick = closeSheet;
 $('#bNight').onclick = () => { S.set.night = !S.set.night; settingsChanged(); refreshSheet(); };
 $('#bSearch').onclick = openSearch;
+$('#bQa').onclick = () => whatsHere(centerLL());
 $('#coords').onclick = openSearch;
 function netUi() { $('#offline').hidden = navigator.onLine !== false; if (S.mode === 'download') { const t = $('#mbT'); if (t) t.dataset.k = ''; updateModebar(); } }
 window.addEventListener('online', () => { netUi(); if (!S.set.ihmMode || S.set.ihmMode === 'wms') probeIhm(); tiles.forEach(t => { if (t.st === 3) { t.st = 0; t.tries = 0; } }); req(); });
