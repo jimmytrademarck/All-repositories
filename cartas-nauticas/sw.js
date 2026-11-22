@@ -1,5 +1,5 @@
 /* Service worker: guarda la app en la tableta para que funcione sin conexión. */
-const CACHE = "cartas-nauticas@185e81ad12";
+const CACHE = "cartas-nauticas@f16b55829b";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 const APPS = [];
 const OPTS = {ignoreSearch: true, ignoreVary: true};
@@ -94,7 +94,7 @@ self.addEventListener('fetch', e => {
 
 /* Cartas: las cuadrículas de EMODnet y OpenSeaMap salen de lo guardado (zonas descargadas o vistas antes)
    y, si no están, de internet; lo que llega de internet se guarda para verlo después sin conexión. */
-const TILE_HOSTS = ['tiles.emodnet-bathymetry.eu', 'tiles.openseamap.org'];
+const TILE_HOSTS = ['tiles.emodnet-bathymetry.eu', 'tiles.openseamap.org', 'ideihm.covam.es'];
 const VIEW = 'mar-vistas', VIEW_MAX = 5000;
 const noCors = new Set();
 let puts = 0;

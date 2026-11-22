@@ -439,7 +439,7 @@ const DB = (() => {
 
 /* ======================= Estado ======================= */
 const DEF = {
-  base: 'emod', sea: true, seaOp: 1, depth: false, depthOp: 0.55,
+  base: 'ihm', sea: false, seaOp: 1, depth: false, depthOp: 0.55, sond: true, sondOp: 1, cab: false, v: 2, ihmMode: '',
   showMarks: true, showRoutes: true, showTracks: true,
   coord: 'ddm', mag: false, decl: 0, cruise: 6, arrive: 100 / 1852,
   legLabels: true, cross: true, wake: true, night: false, warned: false
@@ -588,6 +588,19 @@ const LAYERS = {
     url: (z, x, y) => 'https://tiles.openseamap.org/seamark/' + z + '/' + x + '/' + y + '.png'}
 };
 
+const E3857 = 20037508.342789244;
+function bb3857(z, x, y) { const s = 2 * E3857 / (1 << z), x0 = -E3857 + x * s, y1 = E3857 - y * s; return [x0, y1 - s, x0 + s, y1].map(v => v.toFixed(2)).join(','); }
+function wmsUrl(svc, layers, z, x, y, transp) {
+  return 'https://ideihm.covam.es/wms/' + svc + '?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=' + layers + '&STYLES=&CRS=EPSG:3857&BBOX=' + bb3857(z, x, y) +
+    '&WIDTH=256&HEIGHT=256&FORMAT=image/png' + (transp === false ? '' : '&TRANSPARENT=TRUE');
+}
+LAYERS.ihm = {id: 'ihm', name: 'Carta oficial', src: '© IHM', min: 0, max: 18, base: true, dl: true, kb: 22, url: (z, x, y) => ihmUrl(z, x, y)};
+LAYERS.emodlo = Object.assign({}, LAYERS.emod, {id: 'emodlo', max: 11, kb: 30});
+LAYERS.sond = {id: 'sond', name: 'Sondas', src: '© IHM', min: 11, max: 17, dl: true, kb: 6,
+  url: (z, x, y) => wmsUrl(z <= 12 ? 'cartaENCp3' : 'cartaENCp4', 'SOUNDG', z, x, y)};
+LAYERS.cab = {id: 'cab', name: 'Cables submarinos', src: '© IHM', min: 7, max: 17, dl: true, kb: 2,
+  url: (z, x, y) => wmsUrl('cablesENC', z <= 10 ? 'CBLSUB_P2,CBLARE_P2' : z <= 12 ? 'CBLSUB_P3,CBLARE_P3' : 'CBLSUB_P4,CBLARE_P4', z, x, y)};
+
 const MT = {
   pesca: {e: '🐟', c: '#0E7C7B', n: 'Pesca', sym: 'Fishing Area'},
   fondeo: {e: '⚓', c: '#2F68B3', n: 'Fondeo', sym: 'Anchor'},
@@ -614,7 +627,7 @@ const centerLL = () => ({lat: y2lat(M.cy), lon: x2lon(M.cx)});
 const mpp = lat => 2 * Math.PI * 6378137 * Math.cos(rad(lat)) / sc();
 
 function clampView() { M.z = clamp(M.z, ZMIN, ZMAX); M.cx = clamp(M.cx, 0, 1); M.cy = clamp(M.cy, 0.02, 0.98); }
-function viewChanged() { save('view', 800); }
+function viewChanged() { save('view', 800); if (typeof smAuto === 'function') smAuto(); }
 function zoomAround(px, py, dz) {
   const s0 = sc(), wx = M.cx + (px - M.w / 2) / s0, wy = M.cy + (py - M.h / 2) / s0;
   M.z = clamp(M.z + dz, ZMIN, ZMAX);
@@ -688,7 +701,11 @@ function loadTile(t) {
   const img = new Image();
   img.decoding = 'async';
   img.onload = () => { img.onload = img.onerror = null; loading--; t.img = img; t.st = 2; req(); };
-  img.onerror = () => { img.onload = img.onerror = null; loading--; t.st = 3; t.err = Date.now(); req(); };
+  img.onerror = () => {
+    img.onload = img.onerror = null; loading--; t.st = 3; t.err = Date.now(); req();
+    /* Si falló con internet, se quita lo guardado al mirar para que el próximo intento la pida de nuevo */
+    if (navigator.onLine && window.caches) caches.open('mar-vistas').then(c => c.delete(img.src)).catch(() => {});
+  };
   img.src = t.L.url(t.z, t.x, t.y);
 }
 function pump() {
@@ -722,9 +739,9 @@ function drawFallback(L, z, x, y, X, Y, W, H) {
   }
   return false;
 }
-function drawTiles(L, alpha) {
+function drawTiles(L, alpha, zcap) {
   if (alpha <= 0 || Math.round(M.z) < L.min) return;
-  const tz = clamp(Math.round(M.z), L.min, L.max), n = 1 << tz, ts = TS * Math.pow(2, M.z - tz);
+  const tz = clamp(Math.round(M.z), L.min, Math.min(L.max, zcap || 99)), n = 1 << tz, ts = TS * Math.pow(2, M.z - tz);
   const ox = M.w / 2 - M.cx * n * ts, oy = M.h / 2 - M.cy * n * ts;
   const x0 = Math.max(0, Math.floor(-ox / ts)), x1 = Math.min(n - 1, Math.floor((M.w - ox) / ts));
   const y0 = Math.max(0, Math.floor(-oy / ts)), y1 = Math.min(n - 1, Math.floor((M.h - oy) / ts));
@@ -945,8 +962,11 @@ function render() {
   ctx.imageSmoothingEnabled = true;
   ctx.fillStyle = '#C9D8E0';
   ctx.fillRect(0, 0, w, h);
-  drawTiles(S.set.base === 'osm' ? LAYERS.osm : LAYERS.emod, 1);
+  if (S.set.base === 'ihm') { drawTiles(LAYERS.emodlo, 1); drawTiles(LAYERS.ihm, 1); }
+  else drawTiles(S.set.base === 'osm' ? LAYERS.osm : LAYERS.emod, 1);
   if (S.set.depth) drawTiles(LAYERS.depth, S.set.depthOp);
+  if (S.set.cab) drawTiles(LAYERS.cab, 1);
+  if (S.set.sond) drawTiles(LAYERS.sond, S.set.sondOp);
   if (S.set.sea) drawTiles(LAYERS.sea, S.set.seaOp);
   drawOverlays();
   pump();
@@ -1089,6 +1109,8 @@ function tap(x, y) {
   if (m) { markPop(m); return; }
   const w = hitWp(x, y, false);
   if (w) { wpPop(w); return; }
+  const sm = hitSeamark(x, y);
+  if (sm) { seamarkPop(sm); return; }
   if (!$('#pop').hidden) closePop();
 }
 function longPress(x, y) {
@@ -1323,7 +1345,14 @@ function renderModebar() {
   if (sel) sel.onchange = () => { S.dlZ = +sel.value; updateModebar(); };
   updateModebar();
 }
-function dlLayers() { const l = ['emod']; if (S.set.sea) l.push('sea'); if (S.set.depth) l.push('depth'); return l; }
+function dlLayers() {
+  const l = S.set.base === 'ihm' ? ['ihm', 'emodlo'] : ['emod'];
+  if (S.set.sond) l.push('sond');
+  if (S.set.cab) l.push('cab');
+  if (S.set.sea) l.push('sea');
+  if (S.set.depth) l.push('depth');
+  return l;
+}
 function tileRange(b, z) {
   const n = 1 << z;
   return {
@@ -1409,13 +1438,26 @@ function fromBoat(p) {
 function popHead(title, sub) {
   return '<div class="pop-h"><div class="t"><b>' + title + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</div><button type="button" class="x" data-act="popX" aria-label="Cerrar">' + ic('x') + '</button></div>';
 }
+function nearHtml(ll) {
+  const near = smNear(ll, 0.4, 4);
+  if (!near.length) return navigator.onLine ? '<div class="acts"><button type="button" class="sbtn" data-act="smAround">Buscar boyas y faros cerca</button></div>' : '';
+  return '<div class="res">' + near.map(([d, it]) => { const i = smInfo(it); return '<button type="button" data-act="smOpen" data-id="' + esc(it.id) + '"><span style="font-size:1.2rem">' + i.e + '</span><span><b>' + esc(i.name || i.title) + '</b><small>' + (i.name ? esc(i.title) + ' · ' : '') + 'a ' + fmtDist(d) + ' · ' + fmtBrg(rhumb(ll, it).brg) + '</small></span></button>'; }).join('') + '</div>';
+}
 function pointPop(ll) {
   S.pin = ll; S.sel = null; S.popCtx = ll; req();
   openPop(popHead('Punto', '') + '<div class="mono">' + esc(fmtLL(ll)) + '</div>' + fromBoat(ll) +
+    '<div class="mono" id="popDepth"></div><div id="popNear">' + nearHtml(ll) + '</div>' +
     '<div class="acts"><button type="button" class="sbtn pri" data-act="pinMark">' + ic('pin') + 'Marca aquí</button>' +
     '<button type="button" class="sbtn" data-act="pinGo">' + ic('nav') + 'Ir aquí</button>' +
-    '<button type="button" class="sbtn" data-act="pinFc">' + ic('wind') + 'Mar y viento</button>' +
+    '<button type="button" class="sbtn" data-act="pinFc">' + ic('wind') + 'Viento y olas</button>' +
+    '<button type="button" class="sbtn" data-act="pinTide">Mareas</button>' +
+    '<button type="button" class="sbtn" data-act="pinChart">Carta oficial aquí</button>' +
     '<button type="button" class="sbtn" data-act="pinCopy">Copiar</button></div>');
+  depthAt(ll).then(v => {
+    const el = $('#popDepth');
+    if (!el || S.popCtx !== ll || v == null) return;
+    el.textContent = v < 0 ? 'Profundidad media: ' + nf(-v, v > -10 ? 1 : 0) + ' m (EMODnet, celda de unos 115 m)' : 'Tierra o sin datos de profundidad (EMODnet)';
+  });
 }
 function markPop(m) {
   const t = MT[m.type] || MT.otro;
@@ -1537,8 +1579,8 @@ function nearestPort(p, maxNm) {
 let searchRes = [];
 function openSearch() {
   closePop();
-  openModal('Ir a…', '<form id="goF" style="display:flex;gap:8px"><input class="inp" id="goQ" placeholder="Puerto, marca o coordenadas" autocomplete="off" enterkeyhint="search"><button class="sbtn pri" type="submit">Ir</button></form>' +
-    '<p class="hint">Coordenadas como <b>36 31,234 N 6 17,456 W</b> o <b>36,52 -6,29</b>. Los puertos y tus marcas se buscan sin internet; con internet también busca cualquier lugar.</p><div class="res" id="goR"></div>');
+  openModal('Ir a…', '<form id="goF" style="display:flex;gap:8px"><input class="inp" id="goQ" placeholder="Puerto, marca, faro, boya o coordenadas" autocomplete="off" enterkeyhint="search"><button class="sbtn pri" type="submit">Ir</button></form>' +
+    '<p class="hint">Coordenadas como <b>36 31,234 N 6 17,456 W</b> o <b>36,52 -6,29</b>. Puertos, tus marcas y las boyas y faros de tus zonas descargadas se buscan sin internet (por ejemplo «cardinal» o «faro»); con internet también busca cualquier lugar.</p><div class="res" id="goR"></div>');
   const q = $('#goQ'), out = $('#goR');
   const show = list => {
     searchRes = list;
@@ -1552,6 +1594,13 @@ function openSearch() {
     if (c) list.push({e: '📌', name: 'Ir a las coordenadas', sub: fmtLL(c), lat: c.lat, lon: c.lon, z: 14, pin: true});
     S.marks.filter(m => norm(m.name).includes(s)).slice(0, 8).forEach(m => list.push({e: (MT[m.type] || MT.otro).e, name: m.name, lat: m.lat, lon: m.lon, z: 14, m}));
     PORTS.filter(p => p.k.includes(s)).slice(0, 10).forEach(p => list.push({e: '⚓', name: p.name, sub: 'Puerto · ' + fmtLL(p), lat: p.lat, lon: p.lon, z: 13}));
+    if (s.length >= 3) {
+      let k = 0;
+      for (const it of SM.values()) {
+        const i = smInfo(it);
+        if (norm(i.name + ' ' + i.title).includes(s)) { list.push({e: i.e, name: i.name || i.title, sub: (i.name ? i.title + ' · ' : '') + fmtLL(it), lat: it.lat, lon: it.lon, z: 15, sm: it}); if (++k >= 15) break; }
+      }
+    }
     show(list);
   };
   q.oninput = local;
@@ -1575,6 +1624,7 @@ function openSearch() {
     closeModal(); userMoved();
     animateTo(r.lat, r.lon, Math.max(M.z, r.z || 13), 700);
     if (r.m) setTimeout(() => markPop(r.m), 720);
+    else if (r.sm) setTimeout(() => seamarkPop(r.sm), 720);
     else if (r.pin) setTimeout(() => pointPop({lat: r.lat, lon: r.lon}), 720);
   }
   setTimeout(() => q.focus(), 60);
@@ -1640,6 +1690,7 @@ function fcTable(rec) {
 function openSheet(tab) {
   if (tab) S.tab = tab;
   if (S.mode && S.mode !== 'download') setMode(null);
+  if (window.innerWidth >= 820 && !$('#pop').hidden) closePop();
   $('#sheet').hidden = false;
   document.body.classList.toggle('sheet-wide', window.innerWidth >= 820);
   renderSheet();
@@ -1659,15 +1710,20 @@ function renderSheet() {
   const top = B.scrollTop;
   let h = '';
   if (S.tab === 'capas') {
-    h = '<div class="sec"><p class="lbl">Fondo</p>' + seg('base', [['emod', 'Carta batimétrica', 'EMODnet · se puede descargar'], ['osm', 'Callejero', 'OpenStreetMap · solo con internet']]) + '</div>' +
+    h = '<div class="sec"><p class="lbl">Fondo</p>' + seg('base', [['ihm', 'Carta oficial', 'Instituto Hidrográfico · boyas, faros, veriles, peligros'], ['emod', 'Carta batimétrica', 'EMODnet · relieve del fondo'], ['osm', 'Callejero', 'OpenStreetMap · solo con internet']]) +
+      '<p class="hint">La carta oficial cubre la costa española (y algo de Portugal). Fuera de ella se ve la batimétrica.</p></div>' +
       '<div class="sec"><p class="lbl">Encima de la carta</p>' +
-      sw('sea', 'Balizas, faros y puertos', 'OpenSeaMap · aparecen al acercar la carta') +
+      sw('sond', 'Sondas (profundidades sueltas)', 'IHM · aparecen al acercar la carta') +
+      '<input type="range" min="0.3" max="1" step="0.05" data-set="sondOp" value="' + S.set.sondOp + '" aria-label="Transparencia de las sondas">' +
+      sw('cab', 'Cables submarinos', 'IHM · ojo al fondear o pescar al arrastre') +
+      sw('sea', 'Balizas, faros y puertos de OpenSeaMap', 'Útil con la carta batimétrica; la oficial ya las trae') +
       '<input type="range" min="0.2" max="1" step="0.05" data-set="seaOp" value="' + S.set.seaOp + '" aria-label="Transparencia de las balizas">' +
       sw('depth', 'Profundidad en colores', 'EMODnet · colores por tramos de profundidad media') +
       '<input type="range" min="0.15" max="1" step="0.05" data-set="depthOp" value="' + S.set.depthOp + '" aria-label="Transparencia de la profundidad"></div>' +
       '<div class="sec"><p class="lbl">Lo tuyo</p>' + sw('showMarks', 'Marcas') + sw('showRoutes', 'Rutas') + sw('showTracks', 'Rastros') + '</div>' +
       '<div class="sec"><p class="lbl">Pantalla</p>' + sw('night', 'Modo noche', 'Oscurece la carta y la pantalla para no deslumbrarte') + sw('cross', 'Cruz en el centro', 'Sus coordenadas salen arriba') + sw('legLabels', 'Rumbo y distancia de cada tramo', 'En las rutas') + '</div>' +
-      '<p class="hint warn">Estas cartas no son oficiales: la profundidad es una media en celdas de unos 115 m y las balizas las ponen voluntarios. Pueden faltar bajos, rocas o balizas. Úsala como apoyo, nunca como única carta.</p>';
+      '<p class="hint">Toca una boya o un faro para ver su ficha (color, luz, alcance). Mantén el dedo en un punto para ver su profundidad, las mareas o lo que dice la carta oficial.</p>' +
+      '<p class="hint warn">El Instituto Hidrográfico publica estas cartas como no válidas para la navegación, y la batimétrica es una media en celdas de unos 115 m. Úsala como apoyo, nunca como única carta.</p>';
   } else if (S.tab === 'marcas') {
     const list = S.marks.slice().sort((a, b) => S.gps.fix ? rhumb(S.gps.fix, a).nm - rhumb(S.gps.fix, b).nm : b.date - a.date);
     h = '<div class="acts"><button type="button" class="sbtn pri wide" data-act="newMark">' + ic('pin') + 'Marca nueva</button>' + (S.marks.length ? '<button type="button" class="sbtn" data-act="gpxMarks">Exportar GPX</button>' : '') + '</div>' +
@@ -1712,10 +1768,12 @@ function renderSheet() {
     }
     h += S.areas.length ? '<div class="list">' + S.areas.map(a => {
       const st = DL.running && DL.area && DL.area.id === a.id ? '<span class="chip wa">Descargando</span>' : a.status === 'ok' ? '<span class="chip ok">Completa</span>' : '<span class="chip wa">A medias</span>';
-      return '<div class="item"><div class="item-h"><span class="t"><b>' + esc(a.name) + '</b><small>' + fmtDate(a.date) + ' · hasta zoom ' + a.zmax + ' · ' + ni(a.total) + ' cuadros' + (a.mb ? ' · ' + (a.mb < 0.1 ? 'menos de 0,1' : a.mb < 10 ? nf(a.mb, 1) : ni(a.mb)) + ' MB' : '') + '</small></span>' + st + '</div>' +
+      return '<div class="item"><div class="item-h"><span class="t"><b>' + esc(a.name) + '</b><small>' + fmtDate(a.date) + ' · hasta zoom ' + a.zmax + ' · ' + ni(a.total) + ' cuadros' + (a.mb ? ' · ' + (a.mb < 0.1 ? 'menos de 0,1' : a.mb < 10 ? nf(a.mb, 1) : ni(a.mb)) + ' MB' : '') + '</small>' +
+        '<small>' + (a.sm != null ? ni(a.sm) + ' boyas, balizas y faros' : 'Sin fichas de boyas y faros') + (a.tide ? ' · mareas de ' + esc(a.tide) : '') + '</small></span>' + st + '</div>' +
         '<div class="acts"><button type="button" class="sbtn" data-act="areaView" data-id="' + a.id + '">Ver</button>' +
         (a.status !== 'ok' && !DL.running ? '<button type="button" class="sbtn pri" data-act="areaResume" data-id="' + a.id + '">Continuar</button>' : '') +
         (!DL.running ? '<button type="button" class="sbtn" data-act="areaRedo" data-id="' + a.id + '">Actualizar</button>' : '') +
+        (a.sm == null && !DL.running ? '<button type="button" class="sbtn" data-act="areaSm" data-id="' + a.id + '">Bajar boyas y faros</button>' : '') +
         '<button type="button" class="sbtn ko" data-act="areaDel" data-id="' + a.id + '">Borrar</button></div></div>';
     }).join('') + '</div>' : '<p class="empty">Aún no has descargado ninguna zona.</p>';
     h += '<div class="sec"><p class="lbl">Espacio</p><p class="hint" id="spaceTxt">Calculando…</p>' +
@@ -1732,7 +1790,7 @@ function renderSheet() {
       '<div class="sec"><p class="lbl">Copia de seguridad</p><p class="hint">Marcas, rutas y rastros se guardan solo en este iPad. Si borras el icono, se borran. Guarda una copia de vez en cuando.</p>' +
       '<div class="acts"><button type="button" class="sbtn pri" data-act="backup">Guardar copia</button><button type="button" class="sbtn" data-act="restore">Cargar copia o GPX</button><button type="button" class="sbtn" data-act="gpxAll">Todo en GPX</button></div>' +
       '<p class="hint">El GPX sirve para pasar marcas, rutas y rastros a un plotter o a otras apps (Navionics, OpenCPN…).</p></div>' +
-      '<div class="sec"><p class="lbl">De dónde salen las cartas</p><p class="hint">Profundidad y costa: EMODnet Bathymetry (Unión Europea) y GEBCO. Balizas, faros y puertos: OpenSeaMap, con datos de OpenStreetMap. Callejero: OpenStreetMap. Previsión: Open-Meteo.</p>' +
+      '<div class="sec"><p class="lbl">De dónde salen las cartas</p><p class="hint">Carta oficial, sondas, cables submarinos, mareas y datos de la carta en un punto: © Instituto Hidrográfico de la Marina (Armada), que los publica como no válidos para la navegación. Profundidad media y relieve: EMODnet Bathymetry (Unión Europea) y GEBCO. Fichas de boyas, balizas y faros: OpenSeaMap, con datos de OpenStreetMap (ODbL). Callejero: OpenStreetMap. Viento y olas: Open-Meteo.</p>' +
       '<p class="hint warn">No es una carta oficial ni sustituye a los equipos y publicaciones náuticas obligatorias. Comprueba siempre con las cartas del Instituto Hidrográfico de la Marina.</p></div>';
   }
   B.innerHTML = h;
@@ -1788,13 +1846,348 @@ function applySettings() {
   const n = $('#bNight');
   n.classList.toggle('on', !!S.set.night);
   n.setAttribute('aria-pressed', String(!!S.set.night));
-  const src = [S.set.base === 'osm' ? '© OpenStreetMap' : 'EMODnet'];
-  if (S.set.depth && S.set.base === 'osm') src.push('EMODnet');
+  const src = [S.set.base === 'osm' ? '© OpenStreetMap' : S.set.base === 'ihm' ? '© Instituto Hidrográfico de la Marina' : 'EMODnet'];
+  if ((S.set.sond || S.set.cab) && S.set.base !== 'ihm') src.push('© IHM');
+  if (S.set.depth && S.set.base !== 'emod') src.push('EMODnet');
   if (S.set.sea) src.push('OpenSeaMap');
   $('#src').textContent = src.join(' · ');
   $('#coordsK').textContent = S.set.cross ? 'Cruz' : 'Centro';
   lastCoordTxt = '';
   if ((S.gps.on || DL.running) && S.set.wake) wake(true); else wake(false);
+}
+
+/* ======================= Carta oficial del IHM: cómo pide las cuadrículas ======================= */
+/* La caché WMTS del IHM puede contar las filas desde arriba (lo normal) o desde abajo. Se prueba una vez
+   con una cuadrícula de Madrid y se usa la forma que responde; si ninguna responde, se usa su WMS. */
+let IHM_MODE = 'std';
+const IHM_REST = 'https://ideihm.covam.es/ihmcache/wmts/1.0.0/RasterENC/default/googlemapscompatible/';
+function ihmUrl(z, x, y) {
+  if (IHM_MODE === 'flip') return IHM_REST + z + '/' + ((1 << z) - 1 - y) + '/' + x + '.png';
+  if (IHM_MODE === 'kvp') return 'https://ideihm.covam.es/ihmcache/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=RasterENC&STYLE=default&TILEMATRIXSET=googlemapscompatible&TILEMATRIX=' + z + '&TILEROW=' + y + '&TILECOL=' + x + '&FORMAT=image/png';
+  if (IHM_MODE === 'wms') return wmsUrl(z <= 12 ? 'cartaENCp3' : 'cartaENCp4', z <= 12 ? 'ENC_ES3' : 'ENC_ES4', z, x, y, false);
+  return IHM_REST + z + '/' + y + '/' + x + '.png';
+}
+function resetLayer(id) { tiles.forEach((t, k) => { if (t.L.id === id) { if (t.img) t.img.src = ''; tiles.delete(k); } }); req(); }
+function probeIhm() {
+  if (S.set.ihmMode && S.set.ihmMode !== 'wms') { IHM_MODE = S.set.ihmMode; return; }
+  if (!navigator.onLine) return;
+  const one = url => new Promise(res => {
+    const i = new Image();
+    const t = setTimeout(() => res(false), 15000);
+    i.onload = () => { clearTimeout(t); res(i.naturalWidth > 0); };
+    i.onerror = () => { clearTimeout(t); res(false); };
+    i.src = url;
+  });
+  const z = 7, x = 62, y = 48;
+  Promise.all([
+    one(IHM_REST + z + '/' + y + '/' + x + '.png'),
+    one(IHM_REST + z + '/' + ((1 << z) - 1 - y) + '/' + x + '.png'),
+    one('https://ideihm.covam.es/ihmcache/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=RasterENC&STYLE=default&TILEMATRIXSET=googlemapscompatible&TILEMATRIX=' + z + '&TILEROW=' + y + '&TILECOL=' + x + '&FORMAT=image/png')
+  ]).then(([a, b, c]) => {
+    const m = a ? 'std' : b ? 'flip' : c ? 'kvp' : 'wms';
+    if (m !== IHM_MODE) { IHM_MODE = m; resetLayer('ihm'); }
+    S.set.ihmMode = m; save('set');
+  });
+}
+
+/* ======================= Balizas, boyas y faros (datos de OpenStreetMap / OpenSeaMap) ======================= */
+const SM = new Map();
+const SMT = {
+  buoy_lateral: 'Boya lateral', beacon_lateral: 'Baliza lateral', buoy_cardinal: 'Boya cardinal', beacon_cardinal: 'Baliza cardinal',
+  buoy_isolated_danger: 'Boya de peligro aislado', beacon_isolated_danger: 'Baliza de peligro aislado',
+  buoy_safe_water: 'Boya de aguas navegables', beacon_safe_water: 'Baliza de aguas navegables',
+  buoy_special_purpose: 'Boya especial', beacon_special_purpose: 'Baliza especial', buoy_installation: 'Boya de instalación',
+  light_major: 'Faro', light_minor: 'Luz', light: 'Luz', light_vessel: 'Buque faro', light_float: 'Luz flotante',
+  landmark: 'Marca en tierra', daymark: 'Marca diurna', fog_signal: 'Señal de niebla', radar_transponder: 'Racon', radio_station: 'Radiofaro',
+  harbour: 'Puerto', small_craft_facility: 'Servicios náuticos', mooring: 'Amarre', anchorage: 'Fondeadero', anchor_berth: 'Punto de fondeo', berth: 'Atraque',
+  harbour_basin: 'Dársena', gate: 'Compuerta', dam: 'Dique', shoreline_construction: 'Obra de costa', bridge: 'Puente', pile: 'Pilote', platform: 'Plataforma',
+  wreck: 'Pecio', rock: 'Roca', obstruction: 'Obstrucción', cable_submarine: 'Cable submarino', cable_area: 'Zona de cables', cable_overhead: 'Cable aéreo',
+  pipeline_submarine: 'Tubería submarina', pipeline_area: 'Zona de tuberías', restricted_area: 'Zona restringida', military_area: 'Zona militar',
+  marine_farm: 'Piscifactoría', fishing_facility: 'Instalación de pesca', seagrass: 'Pradera marina', sea_area: 'Zona marítima',
+  fairway: 'Canal navegable', recommended_track: 'Derrota recomendada', navigation_line: 'Enfilación', separation_zone: 'Separación de tráfico',
+  separation_line: 'Separación de tráfico', traffic_separation_scheme: 'Dispositivo de separación', precautionary_area: 'Zona de precaución',
+  signal_station_warning: 'Estación de señales', signal_station_traffic: 'Estación de tráfico', coastguard_station: 'Guardacostas',
+  rescue_station: 'Salvamento', pilot_boarding: 'Embarque de prácticos', notice: 'Aviso', distance_mark: 'Marca de distancia',
+  vehicle_transfer: 'Rampa', checkpoint: 'Control', hulk: 'Pontón', pontoon: 'Pantalán', floating_dock: 'Dique flotante', dry_dock: 'Dique seco'
+};
+const LATCAT = {port: 'de babor (roja)', starboard: 'de estribor (verde)', preferred_channel_port: 'de canal preferente a babor', preferred_channel_starboard: 'de canal preferente a estribor', waterway_left: 'margen izquierdo', waterway_right: 'margen derecho'};
+const CARDCAT = {north: 'Norte · pasar por el norte', south: 'Sur · pasar por el sur', east: 'Este · pasar por el este', west: 'Oeste · pasar por el oeste'};
+const CATX = {
+  marina: 'puerto deportivo', fishing: 'pesquero', ferry: 'de ferris', container: 'de contenedores', yacht: 'náutico', harbour_master: 'capitanía', fuel_station: 'gasolinera',
+  slipway: 'rampa', boatyard: 'varadero', sailmaker: 'velería', chandler: 'efectos navales', toilets: 'aseos', showers: 'duchas', water_tap: 'agua', electricity: 'electricidad',
+  visitor_berth: 'atraque para visitantes', nautical_club: 'club náutico', boat_hoist: 'grúa', anchorage: 'fondeadero', mooring_buoy: 'boya de amarre',
+  dangerous: 'peligroso', non_dangerous: 'no peligroso', distributed_remains: 'restos dispersos', mast_showing: 'con mástil visible', hull_showing: 'con casco visible',
+  fish_trap: 'nasas o almadraba', fish_farm: 'piscifactoría', mussels: 'mejillones', oysters: 'ostras', power: 'eléctrico', telecom: 'telecomunicaciones',
+  water: 'agua', oil: 'petróleo', gas: 'gas', outfall: 'emisario', military: 'militar', no_anchoring: 'prohibido fondear', no_fishing: 'prohibido pescar',
+  nature_reserve: 'reserva natural', marine_reserve: 'reserva marina', fishing_reserve: 'reserva de pesca', swimming: 'baño', ammunition: 'munición'
+};
+const COLB = {white: 'blanco', red: 'rojo', green: 'verde', yellow: 'amarillo', black: 'negro', blue: 'azul', orange: 'naranja', grey: 'gris', brown: 'marrón', violet: 'violeta', pink: 'rosa', amber: 'ámbar', magenta: 'magenta'};
+const COLL = {white: 'blanca', red: 'roja', green: 'verde', yellow: 'amarilla', blue: 'azul', orange: 'naranja', violet: 'violeta', amber: 'ámbar'};
+const COLS = {white: 'W', red: 'R', green: 'G', yellow: 'Y', blue: 'Bu', orange: 'Or', violet: 'Vi', amber: 'Am'};
+const LCH = {F: 'fija', Fl: 'destellos', LFl: 'destellos largos', Q: 'centelleante', VQ: 'centelleante rápida', UQ: 'centelleante ultrarrápida',
+  IQ: 'centelleante interrumpida', IVQ: 'centelleante rápida interrumpida', IUQ: 'ultrarrápida interrumpida', Oc: 'ocultaciones', Iso: 'isofase',
+  Mo: 'morse', FFl: 'fija y destellos', 'Al.Fl': 'destellos alternativos', 'Al.Oc': 'ocultaciones alternativas', 'Q+LFl': 'centelleante + destello largo',
+  'VQ+LFl': 'centelleante rápida + destello largo', 'Fl+LFl': 'destellos + destello largo', 'Oc+Fl': 'ocultaciones + destellos'};
+const SHAPES = {conical: 'cónica', can: 'cilíndrica', spherical: 'esférica', pillar: 'castillete', spar: 'espeque', barrel: 'barril', super_buoy: 'gran boya',
+  stake: 'estaca', pole: 'poste', perch: 'pértiga', post: 'poste', tower: 'torre', lattice: 'celosía', cairn: 'mojón', buoyant: 'flotante', pile: 'pilote'};
+const TOPS = {'2 cones up': 'dos conos hacia arriba (Norte)', '2 cones down': 'dos conos hacia abajo (Sur)', '2 cones base together': 'conos opuestos por la base (Este)',
+  '2 cones point together': 'conos opuestos por el vértice (Oeste)', '2 spheres': 'dos esferas (peligro aislado)', sphere: 'esfera', cylinder: 'cilindro',
+  cone: 'cono', 'cone, point up': 'cono hacia arriba', 'x-shape': 'aspa (especial)', 'cross': 'cruz', 'board': 'tablero'};
+const WLEV = {awash: 'a flor de agua', covers: 'se cubre y descubre', submerged: 'sumergida', dry: 'siempre en seco', always_dry: 'siempre en seco', floating: 'flotante', partly_submerged: 'en parte sumergida'};
+const tr = (m, v) => String(v).split(';').map(x => m[x.trim()] || x.trim().replace(/_/g, ' ')).join(', ');
+
+function smLights(T) {
+  const g = {};
+  for (const k in T) {
+    const m = k.match(/^seamark:light:(?:(\d+):)?(.+)$/);
+    if (m) (g[m[1] || '0'] = g[m[1] || '0'] || {})[m[2]] = T[k];
+  }
+  return Object.keys(g).sort((a, b) => a - b).map(k => g[k]).filter(L => L.character || L.colour);
+}
+function fmtLight(L) {
+  const cols = String(L.colour || '').split(';').filter(Boolean);
+  const code = [(L.character || '') + (L.group ? '(' + L.group + ')' : ''), cols.map(c => COLS[c] || c).join(''), L.period ? L.period + 's' : '', L.height ? L.height + 'm' : '', L.range ? L.range + 'M' : ''].filter(Boolean).join(' ');
+  const words = [LCH[L.character] ? LCH[L.character] + (L.group ? ' en grupos de ' + L.group : '') : '', cols.map(c => COLL[c] || c).join(' y '),
+    L.period ? 'cada ' + String(L.period).replace('.', ',') + ' s' : '', L.range ? 'se ve a ' + String(L.range).replace('.', ',') + ' M' : '',
+    (L.sector_start != null && L.sector_end != null) ? 'sector ' + L.sector_start + '°–' + L.sector_end + '°' : ''].filter(Boolean).join(', ');
+  return {code, words};
+}
+function smInfo(it) {
+  const T = it.tags, ty = T['seamark:type'] || '', g = k => T['seamark:' + ty + ':' + k];
+  let title = SMT[ty] || (ty ? ty.replace(/_/g, ' ') : 'Señal');
+  const cat = g('category');
+  if (/lateral/.test(ty) && cat) title += ' ' + (LATCAT[cat] || cat);
+  else if (/cardinal/.test(ty) && cat) title += ' ' + (CARDCAT[cat] || cat);
+  else if (cat) title += ' · ' + tr(CATX, cat);
+  const lines = [];
+  if (g('colour')) lines.push('Color: ' + tr(COLB, g('colour')) + (g('colour_pattern') ? ' (' + String(g('colour_pattern')).replace('horizontal', 'franjas horizontales').replace('vertical', 'franjas verticales') + ')' : ''));
+  if (g('shape')) lines.push('Forma: ' + tr(SHAPES, g('shape')));
+  smLights(T).forEach(L => { const f = fmtLight(L); lines.push('Luz: ' + f.code + (f.words ? ' — ' + f.words : '')); });
+  if (T['seamark:topmark:shape']) lines.push('Marca de tope: ' + tr(TOPS, T['seamark:topmark:shape']));
+  const snd = g('value_of_sounding') || T['seamark:sounding'] || g('depth');
+  if (snd && isFinite(parseFloat(snd))) lines.push('Sonda: ' + nf(parseFloat(snd), 1) + ' m');
+  if (g('water_level')) lines.push('Nivel: ' + tr(WLEV, g('water_level')));
+  if (T['seamark:fog_signal:category']) lines.push('Señal de niebla: ' + T['seamark:fog_signal:category'].replace(/_/g, ' ') + (T['seamark:fog_signal:period'] ? ' cada ' + T['seamark:fog_signal:period'] + ' s' : ''));
+  if (T['seamark:radar_transponder:group']) lines.push('Racon: ' + T['seamark:radar_transponder:group']);
+  if (g('restriction')) lines.push('Restricción: ' + tr(CATX, g('restriction')));
+  if (T['seamark:information'] || T['seamark:description']) lines.push(T['seamark:information'] || T['seamark:description']);
+  return {title, name: T['seamark:name'] || T.name || '', lines, e: smEmoji(it)};
+}
+function smEmoji(it) {
+  const T = it.tags, ty = T['seamark:type'] || '', cat = T['seamark:' + ty + ':category'] || '';
+  if (/lateral/.test(ty)) return /starboard|right/.test(cat) ? '🟢' : '🔴';
+  if (/cardinal/.test(ty)) return '🟨';
+  if (/isolated_danger/.test(ty)) return '⚠️';
+  if (/safe_water/.test(ty)) return '⭕';
+  if (/special_purpose/.test(ty)) return '🟡';
+  if (/^light/.test(ty) || ty === 'landmark') return '💡';
+  if (/harbour|small_craft|berth|anchor/.test(ty)) return '⚓';
+  if (ty === 'wreck' || ty === 'hulk') return '🚢';
+  if (ty === 'rock' || ty === 'obstruction') return '🪨';
+  if (/cable|pipeline/.test(ty)) return '〰️';
+  if (ty === 'mooring') return '🔵';
+  if (/restricted|military/.test(ty)) return '⛔';
+  if (/marine_farm|fishing/.test(ty)) return '🐟';
+  return '📍';
+}
+function smFromOverpass(j) {
+  const out = [];
+  (j && j.elements || []).forEach(e => {
+    const lat = e.lat != null ? e.lat : (e.center && e.center.lat), lon = e.lon != null ? e.lon : (e.center && e.center.lon);
+    if (lat == null || lon == null || !e.tags) return;
+    const tags = {};
+    for (const k in e.tags) if (k.indexOf('seamark:') === 0 || k === 'name') tags[k] = e.tags[k];
+    out.push({id: e.type[0] + e.id, lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6, tags});
+  });
+  return out;
+}
+const OVP = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+async function overpass(q) {
+  let last = null;
+  for (const u of OVP) {
+    try {
+      const r = await fetch(u, {method: 'POST', body: 'data=' + encodeURIComponent(q), headers: {'Content-Type': 'application/x-www-form-urlencoded'}});
+      if (r.ok) return await r.json();
+      last = new Error('HTTP ' + r.status);
+    } catch (e) { last = e; }
+  }
+  throw last || new Error('sin respuesta');
+}
+async function smZone(a) {
+  const b = a.bbox, bb = [b.s, b.w, b.n, b.e].map(v => v.toFixed(5)).join(',');
+  const items = smFromOverpass(await overpass('[out:json][timeout:120];(node["seamark:type"](' + bb + ');way["seamark:type"](' + bb + '););out center tags;'));
+  await DB.set('sm:' + a.id, items);
+  a.sm = items.length;
+  items.forEach(it => SM.set(it.id, it));
+  save('areas');
+  return items.length;
+}
+async function smAround(p, radius) {
+  const r = Math.round(radius || 1800), c = p.lat.toFixed(5) + ',' + p.lon.toFixed(5);
+  const items = smFromOverpass(await overpass('[out:json][timeout:30];(node(around:' + r + ',' + c + ')["seamark:type"];way(around:' + r + ',' + c + ')["seamark:type"];);out center tags;'));
+  smDone.push({lat: p.lat, lon: p.lon, m: r});
+  items.forEach(it => SM.set(it.id, it));
+  const old = (await DB.get('sm:extra')) || [];
+  const m = new Map(old.map(x => [x.id, x]));
+  items.forEach(x => m.set(x.id, x));
+  DB.set('sm:extra', [...m.values()].slice(-4000));
+  return items.length;
+}
+/* Con internet, al pararse sobre una zona acercada se piden solas sus boyas y faros (como mucho una vez cada 20 s) */
+const smDone = [];
+let smAutoT = 0, smAutoLast = 0;
+function smAuto() {
+  clearTimeout(smAutoT);
+  smAutoT = setTimeout(() => {
+    if (!navigator.onLine || M.z < 12 || document.visibilityState !== 'visible' || Date.now() - smAutoLast < 20000) return;
+    const c = centerLL(), half = Math.min(8000, Math.max(1000, Math.hypot(M.w, M.h) / 2 * mpp(c.lat)));
+    if (smDone.some(d => rhumb(d, c).m + half <= d.m * 1.05)) return;
+    if (S.areas.some(a => c.lat < a.bbox.n && c.lat > a.bbox.s && c.lon > a.bbox.w && c.lon < a.bbox.e && a.sm != null)) return;
+    smAutoLast = Date.now();
+    smAround(c, half).then(() => req()).catch(() => { smAutoLast = Date.now() + 40000; });
+  }, 1500);
+}
+async function smLoad() {
+  const lists = await Promise.all(S.areas.map(a => DB.get('sm:' + a.id)).concat([DB.get('sm:extra')]));
+  lists.forEach(l => { if (Array.isArray(l)) l.forEach(it => SM.set(it.id, it)); });
+}
+function smNear(p, maxNm, n) {
+  const out = [];
+  SM.forEach(it => { const d = rhumb(p, it).nm; if (d <= maxNm) out.push([d, it]); });
+  return out.sort((a, b) => a[0] - b[0]).slice(0, n || 4);
+}
+function hitSeamark(x, y) {
+  let best = null, bd = 26;
+  SM.forEach(it => {
+    const q = ll2px(it.lat, it.lon);
+    if (q[0] < -30 || q[1] < -30 || q[0] > M.w + 30 || q[1] > M.h + 30) return;
+    const d = Math.hypot(q[0] - x, q[1] - y);
+    if (d < bd) { bd = d; best = it; }
+  });
+  return best;
+}
+function seamarkPop(it) {
+  const i = smInfo(it);
+  S.popCtx = {lat: it.lat, lon: it.lon, name: i.name || i.title}; S.pin = {lat: it.lat, lon: it.lon}; S.sel = null; req();
+  openPop(popHead(i.e + ' ' + esc(i.name || i.title), i.name ? esc(i.title) : '') +
+    (i.lines.length ? '<div class="note" style="color:var(--ink)">' + i.lines.map(esc).join('<br>') + '</div>' : '') +
+    '<div class="mono">' + esc(fmtLL(it)) + '</div>' + fromBoat(it) +
+    '<div class="hint">Datos de OpenSeaMap (OpenStreetMap). Compruébalos con la carta oficial.</div>' +
+    '<div class="acts"><button type="button" class="sbtn pri" data-act="pinGoNamed">' + ic('nav') + 'Ir aquí</button>' +
+    '<button type="button" class="sbtn" data-act="pinMark">' + ic('pin') + 'Marca aquí</button>' +
+    '<button type="button" class="sbtn" data-act="pinCopy">Copiar</button></div>');
+}
+
+/* ======================= Profundidad en un punto y lo que dice la carta oficial ======================= */
+async function depthAt(p) {
+  if (!navigator.onLine) return null;
+  const d = 0.0006, ctl = 'AbortController' in window ? new AbortController() : null;
+  const t = setTimeout(() => ctl && ctl.abort(), 7000);
+  try {
+    const url = 'https://ows.emodnet-bathymetry.eu/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetFeatureInfo&LAYERS=emodnet:mean_multicolour&QUERY_LAYERS=emodnet:mean_multicolour&STYLES=&SRS=EPSG:4326&BBOX=' +
+      [p.lon - d, p.lat - d, p.lon + d, p.lat + d].map(v => v.toFixed(6)).join(',') + '&WIDTH=3&HEIGHT=3&X=1&Y=1&INFO_FORMAT=application/json&FEATURE_COUNT=1';
+    const r = await fetch(url, ctl ? {signal: ctl.signal} : {});
+    const j = await r.json();
+    const f = j && j.features && j.features[0];
+    if (!f || !f.properties) return null;
+    for (const k in f.properties) { const v = parseFloat(f.properties[k]); if (isFinite(v) && Math.abs(v) < 12000) return v; }
+    return null;
+  } catch (e) { return null; } finally { clearTimeout(t); }
+}
+function chartInfo(p) {
+  closePop();
+  if (!navigator.onLine) { toast('Necesitas internet para consultar la carta oficial', 'wa'); return; }
+  const z = 15, n = 1 << z, s = 2 * 20037508.342789244 / n;
+  const mx = (lon2x(p.lon) - 0.5) * 2 * 20037508.342789244, my = (0.5 - lat2y(p.lat)) * 2 * 20037508.342789244, h = s * 0.2;
+  const url = 'https://ideihm.covam.es/wms/cartaENCp4?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo&LAYERS=ENC_ES4&QUERY_LAYERS=ENC_ES4&STYLES=&CRS=EPSG:3857&BBOX=' +
+    [mx - h, my - h, mx + h, my + h].map(v => v.toFixed(2)).join(',') + '&WIDTH=101&HEIGHT=101&I=50&J=50&INFO_FORMAT=text/html&FEATURE_COUNT=30';
+  openModal('Carta oficial en este punto',
+    '<p class="hint">' + esc(fmtLL(p)) + ' · Datos de la carta electrónica del Instituto Hidrográfico de la Marina (no válida para navegar).</p>' +
+    '<iframe src="' + esc(url) + '" title="Información de la carta oficial" style="width:100%;height:min(60vh,520px);border:1px solid var(--line);border-radius:10px;background:#fff"></iframe>' +
+    '<p class="hint">Si sale en blanco, no hay objetos de la carta justo ahí. <a href="' + esc(url) + '" target="_blank" rel="noopener">Abrir aparte</a></p>');
+}
+
+/* ======================= Mareas (Anuario de Mareas del IHM) ======================= */
+const TIDE = 'https://ideihm.covam.es/api-ihm/getmarea?';
+const ymd = d => d.getFullYear() + pad(d.getMonth() + 1, 2) + pad(d.getDate(), 2);
+function pickK(o, keys) { if (!o || typeof o !== 'object') return undefined; for (const kk in o) if (keys.indexOf(kk.toLowerCase()) >= 0) return o[kk]; return undefined; }
+function findArr(o, test, depth) {
+  depth = depth || 0;
+  if (!o || depth > 7 || typeof o !== 'object') return null;
+  if (Array.isArray(o)) {
+    if (o.length && o[0] && typeof o[0] === 'object' && test(o[0])) return o;
+    for (const v of o) { const r = findArr(v, test, depth + 1); if (r) return r; }
+    return null;
+  }
+  if (test(o) && depth > 0) return [o];
+  for (const k in o) { const r = findArr(o[k], test, depth + 1); if (r) return r; }
+  return null;
+}
+async function tideStations() {
+  const c = await DB.get('tideSt');
+  if (c && c.list && c.list.length && (Date.now() - c.t < 90 * 864e5 || !navigator.onLine)) return c.list;
+  const r = await fetch(TIDE + 'request=getlist&format=json');
+  const j = await r.json();
+  const arr = findArr(j, x => pickK(x, ['lat', 'latitud']) != null && pickK(x, ['lon', 'longitud', 'lng']) != null) || [];
+  const list = arr.map(x => ({id: pickK(x, ['id', 'codigo', 'code']), name: String(pickK(x, ['puerto', 'nombre', 'name', 'port', 'estacion']) || 'Puerto'), lat: parseFloat(String(pickK(x, ['lat', 'latitud'])).replace(',', '.')), lon: parseFloat(String(pickK(x, ['lon', 'longitud', 'lng'])).replace(',', '.'))}))
+    .filter(s => s.id != null && isFinite(s.lat) && isFinite(s.lon));
+  if (list.length) DB.set('tideSt', {t: Date.now(), list});
+  return list;
+}
+async function tideDay(id, d) {
+  const key = 'tide:' + id + ':' + ymd(d);
+  const c = await DB.get(key);
+  if (c) return c;
+  const r = await fetch(TIDE + 'request=gettide&id=' + encodeURIComponent(id) + '&format=json&date=' + ymd(d));
+  const j = await r.json();
+  const arr = findArr(j, x => pickK(x, ['hora']) != null && pickK(x, ['altura']) != null) || [];
+  const rows = arr.map(x => ({h: String(pickK(x, ['hora'])).slice(0, 5), a: parseFloat(String(pickK(x, ['altura'])).replace(',', '.')), t: String(pickK(x, ['tipo']) || '')}));
+  rows.forEach((x, i) => { if (!/pleamar|bajamar|alta|baja|high|low/i.test(x.t)) { const nb = rows[i + 1] || rows[i - 1]; x.t = nb && x.a > nb.a ? 'pleamar' : 'bajamar'; } });
+  if (rows.length) DB.set(key, rows);
+  return rows;
+}
+async function tidesNear(p, days) {
+  const st = await tideStations();
+  if (!st.length) throw new Error('sin estaciones');
+  let best = st[0], bd = Infinity;
+  st.forEach(s => { const d = rhumb(p, s).nm; if (d < bd) { bd = d; best = s; } });
+  const out = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + i);
+    try { out.push({d, rows: await tideDay(best.id, d)}); } catch (e) { out.push({d, rows: null}); }
+  }
+  return {st: best, nm: bd, days: out};
+}
+async function tides(p) {
+  closePop();
+  openModal('Mareas', '<p class="hint">' + esc(fmtLL(p)) + '</p><div id="tdB"><p class="empty">Buscando el puerto con mareas más cercano…</p></div>');
+  const box = () => $('#tdB');
+  try {
+    const r = await tidesNear(p, 4);
+    const now = new Date();
+    let h = '<p style="margin:0"><b>' + esc(r.st.name) + '</b> · a ' + fmtDist(r.nm) + '</p>';
+    const today = r.days[0] && r.days[0].rows;
+    if (today && today.length) {
+      const mins = now.getHours() * 60 + now.getMinutes();
+      const nx = today.find(x => { const [hh, mm] = x.h.split(':').map(Number); return hh * 60 + mm > mins; });
+      if (nx) h += '<p class="hint">Ahora la marea ' + (/pleamar|alta|high/i.test(nx.t) ? 'sube' : 'baja') + ': ' + (/pleamar|alta|high/i.test(nx.t) ? 'pleamar' : 'bajamar') + ' a las ' + esc(nx.h) + '.</p>';
+    }
+    h += '<table class="fc"><thead><tr><th>Hora</th><th>Marea</th><th>Altura</th></tr></thead><tbody>';
+    r.days.forEach(dd => {
+      const ds = dd.d.toLocaleDateString('es-ES', {weekday: 'long', day: 'numeric', month: 'long'});
+      h += '<tr><td class="d" colspan="3">' + ds.charAt(0).toUpperCase() + ds.slice(1) + '</td></tr>';
+      if (!dd.rows || !dd.rows.length) h += '<tr><td colspan="3">' + (navigator.onLine ? 'Sin datos' : 'Sin internet y sin guardar') + '</td></tr>';
+      else dd.rows.forEach(x => {
+        const up = /pleamar|alta|high/i.test(x.t);
+        h += '<tr><td>' + esc(x.h) + '</td><td>' + (up ? '▲ Pleamar' : '▼ Bajamar') + '</td><td>' + (isFinite(x.a) ? nf(x.a, 2) + ' m' : '—') + '</td></tr>';
+      });
+    });
+    h += '</tbody></table><p class="hint">Predicción del Anuario de Mareas del Instituto Hidrográfico de la Marina. Alturas sobre el cero hidrográfico (el de las sondas de la carta). Queda guardada para verla sin internet.</p>';
+    if (box()) box().innerHTML = h;
+  } catch (e) {
+    if (box()) box().innerHTML = '<p class="empty">' + (navigator.onLine ? 'No se pudieron leer las mareas del IHM.' : 'Sin internet y sin mareas guardadas para esta zona. Consúltalas con internet o descarga la zona antes de salir.') + '</p>' +
+      (navigator.onLine ? '<p class="hint"><a href="https://ideihm.covam.es/portal/api-mareas/" target="_blank" rel="noopener">Abrir las mareas en la web del IHM</a></p>' : '');
+  }
 }
 
 /* ======================= Acciones de botones ======================= */
@@ -1804,6 +2197,29 @@ const A = {
   pinMark: () => { const p = S.popCtx; closePop(); if (p) newMarkAt(p); },
   pinGo: () => { const p = S.popCtx; if (p) startNavPoint(p, 'Punto'); },
   pinFc: () => { const p = S.popCtx; if (p) forecast({lat: p.lat, lon: p.lon}); },
+  pinGoNamed: () => { const p = S.popCtx; if (p) startNavPoint(p, p.name || 'Punto'); },
+  pinTide: () => { const p = S.popCtx; if (p) tides({lat: p.lat, lon: p.lon}); },
+  pinChart: () => { const p = S.popCtx; if (p) chartInfo({lat: p.lat, lon: p.lon}); },
+  smOpen: id => { const it = SM.get(id); if (it) seamarkPop(it); },
+  smAround: async () => {
+    const p = S.popCtx;
+    if (!p) return;
+    const el = $('#popNear');
+    if (el) el.innerHTML = '<p class="hint">Buscando boyas, balizas y faros…</p>';
+    try {
+      const n = await smAround(p);
+      if (S.popCtx === p && $('#popNear')) $('#popNear').innerHTML = nearHtml(p) || '<p class="hint">No hay ninguna a menos de 0,4 M.</p>';
+      if (!n) toast('No se ha encontrado ninguna señal cerca', 'info');
+      req();
+    } catch (e) { if ($('#popNear')) $('#popNear').innerHTML = '<p class="hint">No se pudo buscar ahora. Prueba más tarde.</p>'; }
+  },
+  areaSm: async id => {
+    const a = byId(S.areas, id);
+    if (!a) return;
+    if (!navigator.onLine) { toast('Necesitas internet', 'ko'); return; }
+    toast('Bajando boyas, balizas y faros de la zona…', 'info', 2500);
+    try { const n = await smZone(a); refreshSheet(); toast(ni(n) + ' señales guardadas para ' + a.name); } catch (e) { toast('No se pudieron bajar ahora. Prueba más tarde.', 'wa'); }
+  },
   pinCopy: () => {
     const p = S.popCtx;
     if (!p) return;
@@ -1888,7 +2304,7 @@ const A = {
     if (!a) return;
     confirmBox('Actualizar la zona', 'Se vuelve a descargar «' + a.name + '» entera para tener las balizas al día. Necesitas internet.', 'Actualizar', async () => { await caches.delete('mar-zona-' + a.id); a.status = 'run'; a.done = 0; runDownload(a); });
   },
-  areaDel: id => { const a = byId(S.areas, id); if (!a) return; confirmDel('la zona «' + a.name + '» descargada', async () => { if (DL.running && DL.area && DL.area.id === id) { DL.cancel = true; await sleep(600); } await caches.delete('mar-zona-' + id); S.areas = S.areas.filter(x => x.id !== id); save('areas'); refreshSheet(); toast('Zona borrada'); }); },
+  areaDel: id => { const a = byId(S.areas, id); if (!a) return; confirmDel('la zona «' + a.name + '» descargada', async () => { if (DL.running && DL.area && DL.area.id === id) { DL.cancel = true; await sleep(600); } await caches.delete('mar-zona-' + id); DB.set('sm:' + id, null); S.areas = S.areas.filter(x => x.id !== id); save('areas'); refreshSheet(); toast('Zona borrada'); }); },
   viewsClear: () => confirmBox('Vaciar', 'Se borran los cuadros guardados al mirar la carta. Las zonas descargadas no se tocan.', 'Vaciar', async () => { await caches.delete('mar-vistas'); refreshSheet(); toast('Hecho'); }),
   backup: () => {
     const d = new Date();
@@ -1979,6 +2395,12 @@ async function runDownload(a) {
     }
   }
   await Promise.all([worker(), worker(), worker(), worker()]);
+  if (!DL.cancel && navigator.onLine) {
+    $('#bDlL').innerHTML = '<span class="pc">Boyas…</span>';
+    try { await smZone(a); } catch (e) { /* se pueden bajar luego */ }
+    $('#bDlL').innerHTML = '<span class="pc">Mareas…</span>';
+    try { const cen = {lat: (a.bbox.n + a.bbox.s) / 2, lon: (a.bbox.w + a.bbox.e) / 2}; const t = await tidesNear(cen, 15); a.tide = t.st.name; } catch (e) { /* sin mareas */ }
+  }
   a.done = DL.done; a.mb = Math.max(a.mb || 0, DL.bytes / 1048576);
   a.status = (!DL.cancel && DL.done >= DL.total && DL.err < Math.max(5, DL.total * 0.02)) ? 'ok' : 'partial';
   const msg = DL.cancel ? 'Descarga parada. Puedes continuarla en el menú, en «Descargas».' : a.status === 'ok' ? '✓ ' + a.name + ' lista para usar sin conexión' : 'Descarga terminada con ' + ni(DL.err) + ' fallos. Pulsa «Continuar» para reintentar.';
@@ -2094,7 +2516,7 @@ $('#bNight').onclick = () => { S.set.night = !S.set.night; settingsChanged(); re
 $('#bSearch').onclick = openSearch;
 $('#coords').onclick = openSearch;
 function netUi() { $('#offline').hidden = navigator.onLine !== false; if (S.mode === 'download') { const t = $('#mbT'); if (t) t.dataset.k = ''; updateModebar(); } }
-window.addEventListener('online', () => { netUi(); tiles.forEach(t => { if (t.st === 3) { t.st = 0; t.tries = 0; } }); req(); });
+window.addEventListener('online', () => { netUi(); if (!S.set.ihmMode || S.set.ihmMode === 'wms') probeIhm(); tiles.forEach(t => { if (t.st === 3) { t.st = 0; t.tries = 0; } }); req(); });
 window.addEventListener('offline', netUi);
 window.addEventListener('resize', () => { resize(); document.body.classList.toggle('sheet-wide', !$('#sheet').hidden && window.innerWidth >= 820); });
 
@@ -2104,6 +2526,7 @@ async function init() {
   setCenter(39.4, -3.6, window.innerWidth < 700 ? 5 : 6);
   const [set, view, marks, routes, tracks, areas, nav, rec] = await Promise.all(['set', 'view', 'marks', 'routes', 'tracks', 'areas', 'nav', 'rec'].map(k => DB.get(k)));
   if (set) S.set = Object.assign({}, DEF, set);
+  if (!S.set.v || S.set.v < 2) { S.set.base = 'ihm'; S.set.sea = false; S.set.sond = true; S.set.v = 2; save('set'); }
   if (Array.isArray(marks)) S.marks = marks;
   if (Array.isArray(routes)) S.routes = routes;
   if (Array.isArray(tracks)) S.tracks = tracks;
@@ -2117,11 +2540,14 @@ async function init() {
     DB.set('rec', null);
     toast('Se ha recuperado el rastro que se estaba grabando', 'info', 5000);
   }
+  if (S.set.ihmMode && S.set.ihmMode !== 'wms') IHM_MODE = S.set.ihmMode;
   applySettings(); netUi(); renderNav(); recUi(); req();
+  probeIhm();
+  smLoad().then(() => req());
   if (!S.set.warned) {
     openModal('Antes de empezar',
-      '<p style="margin:0">Esta app te enseña la profundidad, la costa, las balizas y los faros con datos abiertos (EMODnet y OpenSeaMap), y funciona sin internet en las zonas que descargues.</p>' +
-      '<p class="hint warn">No es una carta oficial: puede no mostrar bajos, rocas o balizas. Úsala como apoyo, junto a las cartas oficiales y tus equipos de a bordo.</p>' +
+      '<p style="margin:0">Esta app te enseña la carta náutica del Instituto Hidrográfico de la Marina, con boyas, faros, sondas y peligros, más la profundidad de EMODnet y las fichas de OpenSeaMap. Funciona sin internet en las zonas que descargues.</p>' +
+      '<p class="hint warn">El IHM publica estas cartas como no válidas para la navegación: pueden no estar al día. Úsala como apoyo, junto a las cartas oficiales actualizadas y tus equipos de a bordo.</p>' +
       '<p class="hint">Mantén el dedo sobre la carta para ver un punto, ponerle una marca o ir hasta él. Pulsa «Descargar» para guardar tu zona antes de salir.</p>',
       [{label: 'Entendido', cls: 'pri', fn: () => { S.set.warned = true; save('set'); }}]);
   }
