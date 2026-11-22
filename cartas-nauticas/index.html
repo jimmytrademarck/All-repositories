@@ -364,6 +364,7 @@ table.legs td:first-child{font-family:var(--f-body);white-space:normal}
 <script>
 (function () {
 'use strict';
+window.APPV = '2026-11-22 16:31';
 
 /* ======================= Utilidades ======================= */
 const $ = (s, r = document) => r.querySelector(s);
@@ -439,7 +440,7 @@ const DB = (() => {
 
 /* ======================= Estado ======================= */
 const DEF = {
-  base: 'ihm', sea: false, seaOp: 1, depth: false, depthOp: 0.55, sond: true, sondOp: 1, cab: false, v: 2, ihmMode: '',
+  base: 'ihmw', sea: false, seaOp: 1, depth: false, depthOp: 0.55, sond: true, sondOp: 1, cab: false, v: 3, ihmMode: '',
   showMarks: true, showRoutes: true, showTracks: true,
   coord: 'ddm', mag: false, decl: 0, cruise: 6, arrive: 100 / 1852,
   legLabels: true, cross: true, wake: true, night: false, warned: false
@@ -590,12 +591,19 @@ const LAYERS = {
 
 const E3857 = 20037508.342789244;
 function bb3857(z, x, y) { const s = 2 * E3857 / (1 << z), x0 = -E3857 + x * s, y1 = E3857 - y * s; return [x0, y1 - s, x0 + s, y1].map(v => v.toFixed(2)).join(','); }
+const HD = (window.devicePixelRatio || 1) >= 1.5;
 function wmsUrl(svc, layers, z, x, y, transp) {
+  const px = HD ? 512 : 256;
   return 'https://ideihm.covam.es/wms/' + svc + '?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=' + layers + '&STYLES=&CRS=EPSG:3857&BBOX=' + bb3857(z, x, y) +
-    '&WIDTH=256&HEIGHT=256&FORMAT=image/png' + (transp === false ? '' : '&TRANSPARENT=TRUE');
+    '&WIDTH=' + px + '&HEIGHT=' + px + '&FORMAT=image/png' + (transp === false ? '' : '&TRANSPARENT=TRUE') + (HD ? '&MAP_RESOLUTION=144&DPI=144&FORMAT_OPTIONS=dpi:144' : '');
 }
+const encSvc = z => z <= 9 ? 2 : z <= 12 ? 3 : 4;
 LAYERS.ihm = {id: 'ihm', name: 'Carta oficial', src: '© IHM', min: 0, max: 18, base: true, dl: true, kb: 22, url: (z, x, y) => ihmUrl(z, x, y)};
 LAYERS.emodlo = Object.assign({}, LAYERS.emod, {id: 'emodlo', max: 11, kb: 30});
+LAYERS.ihmw = {id: 'ihmw', name: 'Carta náutica', src: '© IHM', min: 7, max: 18, base: true, dl: true, kb: HD ? 70 : 25,
+  url: (z, x, y) => wmsUrl('cartaENCp' + encSvc(z), 'ENC_ES' + encSvc(z), z, x, y)};
+LAYERS.ihmw5 = {id: 'ihmw5', name: 'Carta náutica de puertos', src: '© IHM', min: 15, max: 18, dl: true, kb: HD ? 30 : 12,
+  url: (z, x, y) => wmsUrl('cartaENCp5', 'ENC_ES5', z, x, y)};
 LAYERS.sond = {id: 'sond', name: 'Sondas', src: '© IHM', min: 11, max: 17, dl: true, kb: 6,
   url: (z, x, y) => wmsUrl(z <= 12 ? 'cartaENCp3' : 'cartaENCp4', 'SOUNDG', z, x, y)};
 LAYERS.cab = {id: 'cab', name: 'Cables submarinos', src: '© IHM', min: 7, max: 17, dl: true, kb: 2,
@@ -656,7 +664,7 @@ function fitPts(pts, maxZ) {
   const padX = 70, padY = 140;
   const zx = Math.log2(Math.max(50, M.w - padX * 2) / (Math.max(x1 - x0, 1e-9) * TS));
   const zy = Math.log2(Math.max(50, M.h - padY * 2) / (Math.max(y1 - y0, 1e-9) * TS));
-  const z = clamp(Math.min(zx, zy, maxZ || 15), ZMIN, ZMAX);
+  const z = clamp(Math.floor(Math.min(zx, zy, maxZ || 15)), ZMIN, ZMAX);
   animateTo(y2lat((y0 + y1) / 2), x2lon((x0 + x1) / 2), z);
 }
 
@@ -723,7 +731,7 @@ function drawFallback(L, z, x, y, X, Y, W, H) {
   for (let d = 1; d <= 8 && z - d >= L.min; d++) {
     const p = tiles.get(L.id + '/' + (z - d) + '/' + (x >> d) + '/' + (y >> d));
     if (p && p.st === 2) {
-      const sub = TS / (1 << d), sx = (x - ((x >> d) << d)) * sub, sy = (y - ((y >> d) << d)) * sub;
+      const sub = (p.img.naturalWidth || TS) / (1 << d), sx = (x - ((x >> d) << d)) * sub, sy = (y - ((y >> d) << d)) * sub;
       ctx.drawImage(p.img, sx, sy, sub, sub, X, Y, W, H);
       p.used = frameNo;
       return true;
@@ -960,13 +968,15 @@ function render() {
   const {w, h, dpr} = M;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.imageSmoothingEnabled = true;
+  try { ctx.imageSmoothingQuality = 'high'; } catch (e) { /* nada */ }
   ctx.fillStyle = '#C9D8E0';
   ctx.fillRect(0, 0, w, h);
-  if (S.set.base === 'ihm') { drawTiles(LAYERS.emodlo, 1); drawTiles(LAYERS.ihm, 1); }
+  if (S.set.base === 'ihmw') { drawTiles(LAYERS.emodlo, 1); drawTiles(LAYERS.ihmw, 1); drawTiles(LAYERS.ihmw5, 1); }
+  else if (S.set.base === 'ihm') { drawTiles(LAYERS.emodlo, 1); drawTiles(LAYERS.ihm, 1); }
   else drawTiles(S.set.base === 'osm' ? LAYERS.osm : LAYERS.emod, 1);
   if (S.set.depth) drawTiles(LAYERS.depth, S.set.depthOp);
   if (S.set.cab) drawTiles(LAYERS.cab, 1);
-  if (S.set.sond) drawTiles(LAYERS.sond, S.set.sondOp);
+  if (S.set.sond && S.set.base !== 'ihmw') drawTiles(LAYERS.sond, S.set.sondOp);
   if (S.set.sea) drawTiles(LAYERS.sea, S.set.seaOp);
   drawOverlays();
   pump();
@@ -1047,13 +1057,15 @@ function pointerEnd(e) {
   if (!PT.size) cv.classList.remove('drag');
   if (!G) return;
   if (G.type === 'pinch') {
-    if (PT.size === 1) { const [a] = [...PT.values()]; G = {type: 'pan', x0: a.x, y0: a.y, x: a.x, y: a.y, moved: true, vs: []}; }
-    else if (!PT.size) G = null;
+    const m = G.m;
+    if (PT.size === 1) { const [a] = [...PT.values()]; G = {type: 'pan', x0: a.x, y0: a.y, x: a.x, y: a.y, moved: true, vs: [], snap: m}; }
+    else if (!PT.size) { G = null; snapZoom(m.x, m.y); }
     return;
   }
   if (PT.size) return;
   const g = G; G = null;
   if (g.type === 'drag' && g.moved) { save('routes'); updateModebar(); return; }
+  if (g.snap) { snapZoom(g.snap.x, g.snap.y); return; }
   if (!g.moved && !g.long && e.type === 'pointerup') { tap(g.x0, g.y0); return; }
   if (g.type === 'pan' && g.vs.length > 1) {
     const now = performance.now(), last = g.vs[g.vs.length - 1];
@@ -1074,11 +1086,16 @@ cv.addEventListener('wheel', e => {
   const dz = e.ctrlKey ? -dy * 0.012 : -dy * 0.0028;
   zoomAround(e.clientX, e.clientY, clamp(dz, -1, 1));
   userMoved();
+  clearTimeout(wheelT);
+  const wx = e.clientX, wy = e.clientY;
+  wheelT = setTimeout(() => snapZoom(wx, wy), 260);
 }, {passive: false});
+let wheelT = 0;
+function snapZoom(px, py) { if (Math.abs(M.z - Math.round(M.z)) > 0.01) zoomAnim(px, py, 0); }
 let gs = null;
 document.addEventListener('gesturestart', e => { e.preventDefault(); if (!PT.size && e.target === cv) gs = {s: 1, x: e.clientX, y: e.clientY}; }, {passive: false});
 document.addEventListener('gesturechange', e => { e.preventDefault(); if (gs && !PT.size && e.scale > 0) { zoomAround(gs.x, gs.y, Math.log2(e.scale / gs.s)); gs.s = e.scale; userMoved(); } }, {passive: false});
-document.addEventListener('gestureend', e => { e.preventDefault(); gs = null; }, {passive: false});
+document.addEventListener('gestureend', e => { e.preventDefault(); if (gs) snapZoom(gs.x, gs.y); gs = null; }, {passive: false});
 document.addEventListener('keydown', e => {
   if (e.target.closest && e.target.closest('input,textarea,select')) return;
   if (e.key === 'Escape') { if (!$('#modal').hidden) closeModal(); else if (!$('#pop').hidden) closePop(); else if (S.mode) setMode(null); else closeSheet(); return; }
@@ -1186,7 +1203,7 @@ function onFix(p) {
   if (cog != null) g.cog = cog;
   g.fix = fix;
   if (g.follow) {
-    if (g.first) animateTo(fix.lat, fix.lon, Math.max(M.z, 13), 600);
+    if (g.first) animateTo(fix.lat, fix.lon, Math.max(Math.round(M.z), 13), 600);
     else if (!anim) setCenter(fix.lat, fix.lon);
   }
   g.first = false;
@@ -1346,8 +1363,8 @@ function renderModebar() {
   updateModebar();
 }
 function dlLayers() {
-  const l = S.set.base === 'ihm' ? ['ihm', 'emodlo'] : ['emod'];
-  if (S.set.sond) l.push('sond');
+  const l = S.set.base === 'ihmw' ? ['ihmw', 'ihmw5', 'emodlo'] : S.set.base === 'ihm' ? ['ihm', 'emodlo'] : ['emod'];
+  if (S.set.sond && S.set.base !== 'ihmw') l.push('sond');
   if (S.set.cab) l.push('cab');
   if (S.set.sea) l.push('sea');
   if (S.set.depth) l.push('depth');
@@ -1622,7 +1639,7 @@ function openSearch() {
   out.onclick = e => { const b = e.target.closest('button[data-i]'); if (b) go(searchRes[+b.dataset.i]); };
   function go(r) {
     closeModal(); userMoved();
-    animateTo(r.lat, r.lon, Math.max(M.z, r.z || 13), 700);
+    animateTo(r.lat, r.lon, Math.max(Math.round(M.z), r.z || 13), 700);
     if (r.m) setTimeout(() => markPop(r.m), 720);
     else if (r.sm) setTimeout(() => seamarkPop(r.sm), 720);
     else if (r.pin) setTimeout(() => pointPop({lat: r.lat, lon: r.lon}), 720);
@@ -1710,11 +1727,11 @@ function renderSheet() {
   const top = B.scrollTop;
   let h = '';
   if (S.tab === 'capas') {
-    h = '<div class="sec"><p class="lbl">Fondo</p>' + seg('base', [['ihm', 'Carta oficial', 'Instituto Hidrográfico · boyas, faros, veriles, peligros'], ['emod', 'Carta batimétrica', 'EMODnet · relieve del fondo'], ['osm', 'Callejero', 'OpenStreetMap · solo con internet']]) +
-      '<p class="hint">La carta oficial cubre la costa española (y algo de Portugal). Fuera de ella se ve la batimétrica.</p></div>' +
+    h = '<div class="sec"><p class="lbl">Fondo</p>' + seg('base', [['ihmw', 'Carta náutica del IHM', 'Alta definición · sondas, veriles, rocas, boyas y faros'], ['ihm', 'Carta electrónica del IHM', 'Estilo plotter (ENC), más actualizada, sin tanto detalle de sondas'], ['emod', 'Carta batimétrica', 'EMODnet · relieve del fondo'], ['osm', 'Callejero', 'OpenStreetMap · solo con internet']]) +
+      '<p class="hint">Las cartas del IHM cubren la costa española (y algo de Portugal) a partir de zoom 7. Fuera de ellas se ve la batimétrica. Al acercar mucho en puertos sale además la carta de detalle.</p></div>' +
       '<div class="sec"><p class="lbl">Encima de la carta</p>' +
-      sw('sond', 'Sondas (profundidades sueltas)', 'IHM · aparecen al acercar la carta') +
-      '<input type="range" min="0.3" max="1" step="0.05" data-set="sondOp" value="' + S.set.sondOp + '" aria-label="Transparencia de las sondas">' +
+      (S.set.base === 'ihmw' ? '' : sw('sond', 'Sondas (profundidades sueltas)', 'IHM · aparecen al acercar la carta')) +
+      (S.set.base === 'ihmw' ? '' : '<input type="range" min="0.3" max="1" step="0.05" data-set="sondOp" value="' + S.set.sondOp + '" aria-label="Transparencia de las sondas">') +
       sw('cab', 'Cables submarinos', 'IHM · ojo al fondear o pescar al arrastre') +
       sw('sea', 'Balizas, faros y puertos de OpenSeaMap', 'Útil con la carta batimétrica; la oficial ya las trae') +
       '<input type="range" min="0.2" max="1" step="0.05" data-set="seaOp" value="' + S.set.seaOp + '" aria-label="Transparencia de las balizas">' +
@@ -1790,6 +1807,8 @@ function renderSheet() {
       '<div class="sec"><p class="lbl">Copia de seguridad</p><p class="hint">Marcas, rutas y rastros se guardan solo en este iPad. Si borras el icono, se borran. Guarda una copia de vez en cuando.</p>' +
       '<div class="acts"><button type="button" class="sbtn pri" data-act="backup">Guardar copia</button><button type="button" class="sbtn" data-act="restore">Cargar copia o GPX</button><button type="button" class="sbtn" data-act="gpxAll">Todo en GPX</button></div>' +
       '<p class="hint">El GPX sirve para pasar marcas, rutas y rastros a un plotter o a otras apps (Navionics, OpenCPN…).</p></div>' +
+      '<div class="sec"><p class="lbl">Si algo no se ve</p><p class="hint">Prueba desde este iPad cada fuente de la carta. Si alguna falla, haz una captura y envíasela a Claude.</p>' +
+      '<div class="acts"><button type="button" class="sbtn dark" data-act="diag">Comprobar las cartas</button></div></div>' +
       '<div class="sec"><p class="lbl">De dónde salen las cartas</p><p class="hint">Carta oficial, sondas, cables submarinos, mareas y datos de la carta en un punto: © Instituto Hidrográfico de la Marina (Armada), que los publica como no válidos para la navegación. Profundidad media y relieve: EMODnet Bathymetry (Unión Europea) y GEBCO. Fichas de boyas, balizas y faros: OpenSeaMap, con datos de OpenStreetMap (ODbL). Callejero: OpenStreetMap. Viento y olas: Open-Meteo.</p>' +
       '<p class="hint warn">No es una carta oficial ni sustituye a los equipos y publicaciones náuticas obligatorias. Comprueba siempre con las cartas del Instituto Hidrográfico de la Marina.</p></div>';
   }
@@ -1846,8 +1865,9 @@ function applySettings() {
   const n = $('#bNight');
   n.classList.toggle('on', !!S.set.night);
   n.setAttribute('aria-pressed', String(!!S.set.night));
-  const src = [S.set.base === 'osm' ? '© OpenStreetMap' : S.set.base === 'ihm' ? '© Instituto Hidrográfico de la Marina' : 'EMODnet'];
-  if ((S.set.sond || S.set.cab) && S.set.base !== 'ihm') src.push('© IHM');
+  const ihmBase = S.set.base === 'ihm' || S.set.base === 'ihmw';
+  const src = [S.set.base === 'osm' ? '© OpenStreetMap' : ihmBase ? '© Instituto Hidrográfico de la Marina' : 'EMODnet'];
+  if ((S.set.sond || S.set.cab) && !ihmBase) src.push('© IHM');
   if (S.set.depth && S.set.base !== 'emod') src.push('EMODnet');
   if (S.set.sea) src.push('OpenSeaMap');
   $('#src').textContent = src.join(' · ');
@@ -2190,6 +2210,37 @@ async function tides(p) {
   }
 }
 
+/* ======================= Comprobar desde el iPad que cada fuente responde ======================= */
+function diagnose() {
+  let c = centerLL();
+  if (!(c.lat > 27 && c.lat < 44.5 && c.lon > -19 && c.lon < 5)) c = {lat: 36.53, lon: -6.30};
+  const tileOf = z => { const n = 1 << z; return [z, Math.floor(lon2x(c.lon) * n), Math.floor(lat2y(c.lat) * n)]; };
+  const imgs = [
+    ['Carta náutica del IHM (zoom 13)', LAYERS.ihmw.url(...tileOf(13))],
+    ['Carta náutica de puertos del IHM (zoom 15)', LAYERS.ihmw5.url(...tileOf(15))],
+    ['Carta electrónica del IHM (zoom 13, modo ' + IHM_MODE + ')', LAYERS.ihm.url(...tileOf(13))],
+    ['Sondas del IHM (zoom 14)', LAYERS.sond.url(...tileOf(14))],
+    ['Batimétrica EMODnet (zoom 11)', LAYERS.emod.url(...tileOf(11))],
+    ['Balizas OpenSeaMap (zoom 14)', LAYERS.sea.url(...tileOf(14))]
+  ];
+  const ua = navigator.userAgent.replace(/[^\x20-\x7E]/g, '');
+  openModal('Comprobar las cartas', '<p class="hint">' + esc(fmtLL(c)) + ' · ' + (navigator.onLine ? 'con internet' : 'SIN internet') + ' · pantalla x' + (window.devicePixelRatio || 1) + '</p>' +
+    '<div class="list">' + imgs.map((m, i) => '<div class="item"><div class="item-h"><img id="dgI' + i + '" alt="" style="width:96px;height:96px;border-radius:8px;border:1px solid var(--line);background:#fff;object-fit:cover;flex:none"><span class="t"><b>' + esc(m[0]) + '</b><small id="dgS' + i + '">Probando…</small></span></div></div>').join('') +
+    ['Fichas de boyas (Overpass)', 'Mareas del IHM', 'Profundidad EMODnet'].map((n, i) => '<div class="item"><div class="item-h"><span class="t"><b>' + n + '</b><small id="dgF' + i + '">Probando…</small></span></div></div>').join('') +
+    '</div><p class="hint" style="word-break:break-all">' + esc(ua) + ' · versión ' + esc(String(window.APPV || '')) + '</p>');
+  imgs.forEach((m, i) => {
+    const el = $('#dgI' + i), st = $('#dgS' + i), t0 = performance.now();
+    el.onload = () => { st.textContent = '✓ Carga (' + el.naturalWidth + ' px, ' + Math.round(performance.now() - t0) + ' ms)'; st.style.color = 'var(--ok)'; };
+    el.onerror = () => { st.textContent = '✗ No carga'; st.style.color = 'var(--ko)'; };
+    el.src = m[1];
+  });
+  const set = (i, ok, txt) => { const el = $('#dgF' + i); if (el) { el.textContent = (ok ? '✓ ' : '✗ ') + txt; el.style.color = ok ? 'var(--ok)' : 'var(--ko)'; } };
+  overpass('[out:json][timeout:20];node(around:2000,' + c.lat.toFixed(4) + ',' + c.lon.toFixed(4) + ')["seamark:type"];out tags 5;')
+    .then(j => set(0, true, (j.elements || []).length + ' señales cerca'), e => set(0, false, String(e && e.message || e)));
+  fetch(TIDE + 'request=getlist&format=json').then(r => r.text()).then(t => set(1, t.length > 20, t.length + ' caracteres')).catch(e => set(1, false, String(e && e.message || e)));
+  depthAt(c).then(v => set(2, v != null, v != null ? nf(-v, 0) + ' m' : 'sin respuesta'));
+}
+
 /* ======================= Acciones de botones ======================= */
 const byId = (arr, id) => arr.find(x => x.id === id);
 const A = {
@@ -2228,7 +2279,7 @@ const A = {
     else toast(t, 'info', 6000);
   },
   newMark: () => { closeSheet(); setMode('mark'); },
-  markView: id => { const m = byId(S.marks, id); if (!m) return; if (window.innerWidth < 820) closeSheet(); animateTo(m.lat, m.lon, Math.max(M.z, 14)); userMoved(); setTimeout(() => markPop(m), 450); },
+  markView: id => { const m = byId(S.marks, id); if (!m) return; if (window.innerWidth < 820) closeSheet(); animateTo(m.lat, m.lon, Math.max(Math.round(M.z), 14)); userMoved(); setTimeout(() => markPop(m), 450); },
   markGo: id => { const m = byId(S.marks, id); if (m) startNavPoint(m, m.name); },
   markEdit: id => { const m = byId(S.marks, id); if (m) editMark(m, false); },
   gpxMarks: () => shareFile('marcas.gpx', gpx(S.marks.map(gpxWpt).join('\n')), 'application/gpx+xml'),
@@ -2312,6 +2363,7 @@ const A = {
     shareFile('cartas-copia-' + d.getFullYear() + '-' + pad(d.getMonth() + 1, 2) + '-' + pad(d.getDate(), 2) + '.json', JSON.stringify(data), 'application/json');
   },
   restore: () => { const f = $('#fileIn'); f.value = ''; f.click(); },
+  diag: () => diagnose(),
   gpxAll: () => shareFile('cartas-todo.gpx', gpx(S.marks.map(gpxWpt).concat(S.routes.map(gpxRte), S.tracks.map(gpxTrk)).join('\n')), 'application/gpx+xml')
 };
 document.addEventListener('click', e => {
@@ -2506,7 +2558,7 @@ $('#bZout').onclick = () => zoomAnim(M.w / 2, M.h / 2, -1);
 $('#bGps').onclick = () => {
   if (!S.gps.on) { gpsStart(true); return; }
   S.gps.follow = true; gpsBtn();
-  if (S.gps.fix) animateTo(S.gps.fix.lat, S.gps.fix.lon, M.z < 12 ? 13 : M.z, 450);
+  if (S.gps.fix) animateTo(S.gps.fix.lat, S.gps.fix.lon, M.z < 12 ? 13 : Math.round(M.z), 450);
   else toast('Buscando tu posición…', 'info', 2500);
 };
 $('#bLayers').onclick = () => { if (!$('#sheet').hidden && S.tab === 'capas') closeSheet(); else openSheet('capas'); };
@@ -2521,18 +2573,28 @@ window.addEventListener('offline', netUi);
 window.addEventListener('resize', () => { resize(); document.body.classList.toggle('sheet-wide', !$('#sheet').hidden && window.innerWidth >= 820); });
 
 /* ======================= Arranque ======================= */
+if ('serviceWorker' in navigator) {
+  const hadCtl = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadCtl || reloaded) return;
+    reloaded = true;
+    flush();
+    setTimeout(() => location.reload(), 150);
+  });
+}
 async function init() {
   resize();
   setCenter(39.4, -3.6, window.innerWidth < 700 ? 5 : 6);
   const [set, view, marks, routes, tracks, areas, nav, rec] = await Promise.all(['set', 'view', 'marks', 'routes', 'tracks', 'areas', 'nav', 'rec'].map(k => DB.get(k)));
   if (set) S.set = Object.assign({}, DEF, set);
-  if (!S.set.v || S.set.v < 2) { S.set.base = 'ihm'; S.set.sea = false; S.set.sond = true; S.set.v = 2; save('set'); }
+  if (!S.set.v || S.set.v < 3) { S.set.base = 'ihmw'; S.set.sea = false; S.set.sond = true; S.set.v = 3; save('set'); }
   if (Array.isArray(marks)) S.marks = marks;
   if (Array.isArray(routes)) S.routes = routes;
   if (Array.isArray(tracks)) S.tracks = tracks;
   if (Array.isArray(areas)) S.areas = areas.map(a => (a.status === 'run' ? Object.assign(a, {status: 'partial'}) : a));
   if (nav && (nav.type === 'point' || byId(S.routes, nav.id))) S.nav = nav;
-  if (view && isFinite(view.lat)) setCenter(view.lat, view.lon, view.z);
+  if (view && isFinite(view.lat)) setCenter(view.lat, view.lon, Math.round(view.z));
   if (rec && rec.pts && rec.pts.length > 1) {
     const t = {id: rec.id, name: 'Rastro ' + fmtDate(rec.start), date: rec.start, pts: rec.pts, vis: true};
     t.st = trackStats(t);
