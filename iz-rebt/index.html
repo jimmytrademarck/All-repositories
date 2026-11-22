@@ -1,0 +1,1933 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Intensidad admisible</title>
+<meta name="description" content="Intensidad admisible de cables y conductores, coordinación con la protección, magnetotérmicos y fusibles con su curva de disparo y poder de corte, según REBT. Funciona sin conexión.">
+<meta name="theme-color" content="#E2E5E1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131716" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Iz REBT">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+/* Layout: el mismo cuadro eléctrico que la Calculadora y Cables en tubo. Pestañas arriba con la Iz siempre a la vista,
+   selección a la izquierda, pantalla LCD de polímetro y coordinación a la derecha (debajo en vertical),
+   y la curva de disparo a lo ancho, para leerla con el dedo. */
+:root{
+  --bg:#E2E5E1; --surface:#F7F8F5; --sunk:#ECEFEA; --ink:#1A1F21; --muted:#56605B;
+  --line:#C3C9C3; --line-strong:#98A19B;
+  --accent:#F2B705; --accent-ink:#1A170A; --hl:rgba(242,183,5,.16);
+  --ok:#17703F; --ko:#B3261E; --wa:#8F5400; --wa-bg:#F7E6C1;
+  --lcd-frame:#2B302D; --lcd-bg:#B5C1A1; --lcd-ink:#172010; --lcd-dim:#4F5D3C;
+  --w-marron:#7A4A28; --w-negro:#1C1E1F; --w-gris:#8D9396; --w-azul:#2F68B3; --w-verde:#2F9A49; --w-amarillo:#EFC21A;
+  --cu:#B8692F; --du:#6B4FA8; --cc:#0E7C7B; --zone:#F2B705; --zone-line:#8A6400; --sheath:#3B4240;
+  --lana:#EADFB6; --lana-l:#CDB874; --tierra:#D9C4A0; --tierra-l:#9A7A50;
+  --f-display:"Avenir Next Condensed","Roboto Condensed","Arial Narrow",sans-serif-condensed,system-ui,sans-serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --f-mono:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131716; --surface:#1C2120; --sunk:#171B1A; --ink:#E4E8E4; --muted:#9BA59F;
+    --line:#2F3734; --line-strong:#4C5651; --hl:rgba(242,183,5,.13);
+    --ok:#3FBF73; --ko:#FF6B5E; --wa:#FFB340; --wa-bg:#3A2C0E;
+    --lcd-frame:#070908; --lcd-bg:#0F1B12; --lcd-ink:#B6EE8A; --lcd-dim:#6E9358;
+    --w-marron:#8A5631; --w-negro:#050606; --w-gris:#80878A; --w-azul:#3B78C6; --w-verde:#35A651; --w-amarillo:#EFC21A;
+    --cu:#E08A4F; --du:#A68BE0; --cc:#4FD1C5; --zone:#F2B705; --zone-line:#F2B705; --sheath:#0B0D0C;
+    --lana:#4A4127; --lana-l:#7A6A38; --tierra:#4A3A27; --tierra-l:#A6835A;
+    color-scheme:dark;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent;overflow-x:hidden;overflow-x:clip}
+button,input{touch-action:manipulation}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+sub{font-size:.72em;line-height:0}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 40px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+
+/* Cabecera y pestañas */
+.top{display:grid;gap:6px}
+.kicker{margin:0;font-family:var(--f-display);font-weight:600;font-size:.82rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2.1rem,7.5vw,3.1rem);line-height:.95;text-wrap:balance}
+.lede{margin:6px 0 0;max-width:64ch;color:var(--muted)}
+.tabbar{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;gap:10px;align-items:center;padding:8px 0}
+.tabs{display:flex;gap:4px;overflow-x:auto;flex:1 1 auto;min-width:0;background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:1 0 auto;min-height:46px;padding:8px 14px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-family:var(--f-display);font-weight:600;font-size:1.08rem;cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--surface)}
+.tab .ts{display:none}
+@media (max-width:1000px){.tab .tl{display:none}.tab .ts{display:inline}.tab{padding:8px 11px;font-size:1.02rem}}
+.pill{position:relative;flex:0 0 auto;min-height:46px;padding:5px 30px 5px 16px;border-radius:999px;border:0;background:var(--accent);color:var(--accent-ink);font-family:var(--f-mono);font-weight:700;font-size:1.12rem;cursor:pointer;white-space:nowrap;text-align:left;line-height:1.1;font-variant-numeric:tabular-nums}
+.pill small{display:block;font-family:var(--f-body);font-weight:600;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;opacity:.8;line-height:1.1}
+.pill .pd{position:absolute;right:12px;top:50%;width:11px;height:11px;margin-top:-5.5px;border-radius:50%;box-shadow:0 0 0 2px var(--accent),0 0 0 3px rgba(26,23,10,.45)}
+.pd.ok{background:#1E9B52}.pd.ko{background:#D5372A}.pd.wa{background:#E07B00}
+
+/* Rejilla */
+#view{display:grid;gap:16px;min-width:0}
+.split,.lower{display:grid;gap:16px;min-width:0}
+.col,.side{display:grid;gap:16px;min-width:0;align-content:start}
+@media (min-width:900px){
+  .split{grid-template-columns:minmax(0,1fr) minmax(0,380px);align-items:start;column-gap:20px}
+  .side{position:sticky;top:76px}
+  .lower{grid-template-columns:minmax(0,1fr) minmax(0,380px);align-items:start;column-gap:20px}
+}
+
+/* Paneles */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding-block:18px 20px;padding-inline:clamp(14px,3.5vw,26px);display:grid;gap:18px;min-width:0}
+.p-head{display:grid;gap:6px;min-width:0}
+.p-row{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+h2{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(1.45rem,4.6vw,1.95rem);line-height:1.05;text-wrap:balance}
+h3{margin:0;font-family:var(--f-display);font-weight:700;font-size:1.25rem;line-height:1.1}
+.block{display:grid;gap:8px;min-width:0}
+.block-label{margin:0;font-family:var(--f-display);font-weight:600;font-size:.8rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
+.bl-sub{letter-spacing:.02em;text-transform:none;font-family:var(--f-body);font-weight:400;font-size:.82rem}
+.bl-sub.ok{color:var(--ok);font-weight:600}
+.hint{margin:0;font-size:.87rem;color:var(--muted);max-width:70ch}
+
+/* Botones de elección */
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{display:inline-flex;flex-direction:column;align-items:flex-start;justify-content:center;min-height:46px;padding:7px 12px;border:1px solid var(--line-strong);background:transparent;color:var(--ink);border-radius:8px;font:inherit;font-weight:500;cursor:pointer;text-align:left;line-height:1.15}
+.seg button b{font-family:var(--f-display);font-weight:600;font-size:1.08rem}
+.seg button small{font-size:.74rem;color:var(--muted);font-weight:400;display:inline-flex;align-items:center;gap:6px;margin-top:2px}
+.seg button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.seg button[aria-pressed="true"] small{color:inherit;opacity:.75}
+.seg button:disabled{opacity:.35;cursor:default}
+.seg-num button{position:relative;align-items:center;min-width:62px;text-align:center}
+.seg-num button b{font-family:var(--f-mono);font-size:1.02rem;font-variant-numeric:tabular-nums}
+.seg-num button small{margin-top:0}
+.seg-num button.fit{border-color:var(--ok);box-shadow:inset 0 -3px 0 var(--ok)}
+.seg-num button.fit[aria-pressed="true"]{box-shadow:inset 0 -3px 0 #3FBF73;border-color:var(--ink)}
+.seg-big button{flex:1 1 150px}
+.wires{display:inline-flex;gap:3px}
+.wire{display:inline-block;width:16px;height:6px;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+.wire-marron{background:var(--w-marron)}.wire-negro{background:var(--w-negro);box-shadow:inset 0 0 0 1px var(--line-strong)}.wire-gris{background:var(--w-gris)}.wire-azul{background:var(--w-azul)}
+
+/* Métodos de instalación */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.tile{display:grid;gap:6px;align-content:start;padding:7px 7px 10px;border:1px solid var(--line-strong);border-radius:10px;background:transparent;color:var(--ink);text-align:left;cursor:pointer;font:inherit;min-width:0}
+.tile svg{width:100%;height:auto;display:block;border-radius:6px;border:1px solid var(--line)}
+.tile .tc{display:flex;gap:7px;align-items:baseline;padding-inline:3px}
+.tile .tc b{font-family:var(--f-display);font-weight:700;font-size:1.3rem;line-height:1}
+.tile .tc span{font-family:var(--f-display);font-weight:600;font-size:1.02rem;line-height:1.1}
+.tile small{font-size:.78rem;color:var(--muted);line-height:1.25;padding-inline:3px}
+.tile[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.tile[aria-pressed="true"] small{color:inherit;opacity:.75}
+.tile[aria-pressed="true"] .tc b{color:var(--accent)}
+
+/* Secciones con su Iz */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.cards.wide{grid-template-columns:repeat(auto-fill,minmax(122px,1fr))}
+.card{position:relative;display:grid;gap:0;padding:8px 10px 9px;border:1px solid var(--line);border-radius:10px;background:var(--sunk);color:var(--ink);text-align:left;cursor:pointer;font:inherit;min-width:0}
+.card .s{font-family:var(--f-mono);font-size:.86rem;color:var(--muted);white-space:nowrap}
+.card .n{font-family:var(--f-display);font-weight:700;font-size:1.8rem;line-height:1.05;font-variant-numeric:tabular-nums}
+.card .u{font-size:.76rem;color:var(--muted)}
+.card.fit{border-color:var(--ok);border-color:color-mix(in srgb,var(--ok) 60%,var(--line))}
+.card.fit::after{content:"✓";position:absolute;top:6px;right:9px;font-weight:800;color:var(--ok);font-size:.95rem}
+.card[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.card[aria-pressed="true"] .s,.card[aria-pressed="true"] .u{color:inherit;opacity:.78}
+.card[aria-pressed="true"].fit::after{color:var(--accent-ink)}
+.card:disabled{opacity:.4;cursor:default}
+
+/* Condiciones */
+.crow{display:flex;justify-content:space-between;align-items:center;gap:10px 16px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--line)}
+.crow:first-of-type{border-top:0;padding-top:0}
+.cl{display:grid;gap:1px;min-width:0}
+.cl b{font-weight:600}
+.cl small{color:var(--muted);font-size:.84rem}
+.stepper{display:flex;gap:4px;align-items:center}
+.stepper output{min-width:92px;height:48px;padding:0 10px;display:flex;align-items:center;justify-content:center;gap:4px;font-family:var(--f-mono);font-size:1.15rem;font-weight:600;font-variant-numeric:tabular-nums;border:1px solid var(--line-strong);border-radius:8px;background:var(--bg)}
+.stepper output .u{font-size:.85rem;color:var(--muted);font-weight:500}
+.pm{flex:0 0 46px;width:46px;height:48px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink);font-size:1.35rem;line-height:1;cursor:pointer}
+.linkbtn{justify-self:start;background:none;border:0;padding:6px 0;min-height:40px;color:var(--ink);font:inherit;font-weight:600;font-size:.95rem;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.fields{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr))}
+.field{display:grid;gap:6px;min-width:0;align-content:start}
+.field label{font-weight:500;font-size:.95rem}
+.field label small{color:var(--muted);font-size:.82rem;font-weight:400}
+.frow{display:flex;gap:6px;min-width:0}
+.frow input{flex:1 1 auto;min-width:0;width:100%;height:48px;padding:0 12px;border:1px solid var(--line-strong);border-radius:8px;background:var(--bg);color:var(--ink);font-family:var(--f-mono);font-size:1.08rem;font-variant-numeric:tabular-nums}
+.okb{flex:0 0 auto;min-width:58px;height:48px;padding:0 12px;border:0;border-radius:8px;background:var(--ink);color:var(--surface);font-family:var(--f-display);font-weight:700;font-size:1.08rem;letter-spacing:.04em;cursor:pointer}
+.frow:focus-within .okb{background:var(--accent);color:var(--accent-ink)}
+.seg-du button{min-width:118px}
+.card .lim{font-family:var(--f-mono);font-size:.74rem;color:var(--muted);line-height:1.25;white-space:nowrap}
+.card .lim.gov{color:var(--ink);font-weight:700}
+.card .lim.bad{color:var(--ko);font-weight:700}
+.card[aria-pressed="true"] .lim{color:inherit;opacity:.8}
+.card[aria-pressed="true"] .lim.gov{opacity:1}
+.card[aria-pressed="true"] .lim.bad{color:#8A1A13;opacity:1}
+.mk.du{color:var(--du)}.mk.cc{color:var(--cc)}
+.lcd-pass{font-family:var(--f-display);font-weight:800;font-size:2.1rem;line-height:1;letter-spacing:.04em}
+.tcbox .micc{stroke:var(--cc);stroke-width:2.2}
+.tlg .cc{border-color:var(--cc);border-top-width:3px}
+.mbar{display:grid;grid-template-columns:minmax(0,9.5rem) minmax(0,1fr) auto;gap:10px;align-items:center;font-size:.9rem;color:var(--muted)}
+.mbar .ml{line-height:1.2}
+.mbar .mt{height:14px;border-radius:4px;background:var(--sunk);border:1px solid var(--line);overflow:hidden}
+.mbar .mt i{display:block;height:100%;border-radius:3px;opacity:.55}
+.mbar .mt i.iz{background:var(--cu)}.mbar .mt i.du{background:var(--du)}
+.mbar b{font-family:var(--f-mono);font-weight:600;color:var(--muted);white-space:nowrap}
+.mbar.gov{color:var(--ink)}.mbar.gov .mt i{opacity:1}.mbar.gov b{color:var(--ink);font-weight:700}
+.ufix{display:flex;align-items:center;padding:0 10px;font-family:var(--f-mono);font-size:.95rem;color:var(--muted);border:1px solid var(--line);border-radius:8px;background:var(--sunk);white-space:nowrap}
+.bare-pic{width:min(180px,40%);flex:none}
+.bare-pic svg{width:100%;height:auto;display:block;border-radius:8px;border:1px solid var(--line)}
+
+/* Pantalla LCD */
+.lcd{background:var(--lcd-frame);border-radius:14px;padding:8px}
+.lcd-screen{background:var(--lcd-bg);color:var(--lcd-ink);border-radius:8px;padding:12px 16px 14px;box-shadow:inset 0 2px 8px rgba(0,0,0,.28);display:grid;gap:8px;min-height:118px;overflow-wrap:anywhere}
+.lcd-cap{margin:0;font-family:var(--f-display);font-weight:600;font-size:.74rem;letter-spacing:.13em;text-transform:uppercase;color:var(--lcd-dim)}
+.lcd-row{display:flex;justify-content:space-between;align-items:baseline;gap:2px 12px;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--lcd-dim)}
+.lcd-row.main{display:grid;gap:4px;border-top:0;padding-top:0}
+.lcd-label{font-family:var(--f-display);font-weight:500;font-size:1rem;color:var(--lcd-dim)}
+.lcd-val{font-family:var(--f-mono);font-weight:600;font-size:1.02rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.main .lcd-val{font-size:clamp(3rem,12vw,4.1rem);line-height:1;letter-spacing:-.02em}
+.lcd-u{font-weight:400;font-size:.8em}
+.main .lcd-u{font-size:.34em;margin-left:8px;letter-spacing:.02em}
+.main .lcd-label{font-size:1.08rem;color:var(--lcd-ink)}
+.lcd-verd{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:700;font-size:1.45rem;line-height:1.1;text-transform:uppercase;letter-spacing:.02em}
+.dot{width:16px;height:16px;border-radius:50%;flex:none;box-shadow:0 0 0 2px var(--lcd-bg),0 0 0 3px var(--lcd-dim)}
+.dot.ok{background:#1E9B52}.dot.ko{background:#D5372A}.dot.wa{background:#E07B00}
+.lcd-note{margin:0;font-size:.88rem;line-height:1.4}
+.lcd.mini .lcd-screen{min-height:0;padding:10px 14px 12px;gap:6px}
+.lcd.mini .lcd-big{font-family:var(--f-mono);font-weight:600;font-size:1.25rem;line-height:1.2;font-variant-numeric:tabular-nums}
+.lcd.mini p{margin:0}
+
+/* Coordinación */
+.rule{display:grid;gap:4px}
+.rule-h{display:flex;justify-content:space-between;gap:8px;align-items:baseline;font-family:var(--f-display);font-weight:600;font-size:1.08rem}
+.rule-h .st{font-size:.78rem;letter-spacing:.09em;text-transform:uppercase;font-weight:700}
+.st.ok{color:var(--ok)}.st.ko{color:var(--ko)}.st.wa{color:var(--wa)}
+.trk{position:relative;margin-top:4px}
+.trk .bar{position:absolute;left:0;right:0;bottom:0;height:16px;border-radius:5px;border:1px solid var(--line-strong);background:var(--sunk) repeating-linear-gradient(90deg,var(--line-strong) 0 1px,transparent 1px 5%) 0 100%/100% 6px no-repeat}
+.trk .zone{position:absolute;bottom:0;height:16px;border-radius:5px;background:rgba(46,160,90,.32);background:color-mix(in srgb,var(--ok) 34%,transparent);border:1.5px solid var(--ok)}
+.mk{position:absolute;bottom:8px;width:0;color:var(--ink)}
+.mk i{position:absolute;bottom:0;left:-1.5px;width:3px;height:var(--h);background:currentColor;border-radius:2px}
+.mk span{position:absolute;bottom:var(--h);left:-1px;padding-bottom:1px;font-family:var(--f-mono);font-size:.84rem;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.mk.ib{color:var(--w-azul)}.mk.iz{color:var(--cu)}.mk.bad{color:var(--ko)}
+@media (prefers-reduced-motion:no-preference){.mk{transition:left .25s ease}.zone{transition:left .25s ease,width .25s ease}}
+.checks{list-style:none;margin:0;padding:0;display:grid;gap:5px;font-family:var(--f-mono);font-size:.9rem;font-variant-numeric:tabular-nums}
+.checks li{display:flex;gap:8px;align-items:baseline}
+.checks li span{flex:1 1 0;min-width:0;overflow-wrap:anywhere}
+.checks b{width:16px;flex:none;text-align:center;font-family:var(--f-body)}
+.checks .y b{color:var(--ok)}.checks .n b{color:var(--ko)}
+.fixes{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.fix{display:inline-flex;align-items:baseline;gap:6px;min-height:46px;padding:7px 14px;border:1px dashed var(--ink);border-radius:8px;background:transparent;color:var(--ink);font:inherit;font-weight:500;cursor:pointer}
+.fix b{font-family:var(--f-display);font-weight:700;font-size:1.08rem}
+.fix small{font-family:var(--f-mono);color:var(--muted);font-size:.82rem}
+.warnbox{border:1px solid var(--wa);border-left-width:4px;background:var(--wa-bg);border-radius:10px;padding:10px 14px;font-size:.92rem}
+
+/* Curva de disparo */
+.tcbox{position:relative;border:1px solid var(--line);border-radius:10px;background:var(--sunk);overflow:hidden;touch-action:pan-y;cursor:crosshair;min-height:260px}
+.tcbox svg{display:block;width:100%;height:auto;user-select:none;-webkit-user-select:none}
+.tcbox text{font-family:var(--f-mono);font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}
+.tcbox .g1{stroke:var(--line-strong);stroke-width:.8;opacity:.75}
+.tcbox .g2{stroke:var(--line);stroke-width:.7}
+.tcbox .g3{stroke:var(--muted);stroke-width:.9;stroke-dasharray:3 3}
+.tcbox .zb{fill:var(--zone);fill-opacity:.34}
+.tcbox .zl{fill:none;stroke:var(--zone-line);stroke-width:2;stroke-linejoin:round}
+.tcbox .kc{fill:none;stroke:var(--cu);stroke-width:3.2;stroke-linecap:round}
+.tcbox .mib{stroke:var(--w-azul);stroke-width:1.8;stroke-dasharray:6 4}
+.tcbox .miz{stroke:var(--cu);stroke-width:1.8}
+.tcbox .mizd{stroke:var(--cu);stroke-width:1.8;stroke-dasharray:6 4}
+.tcbox .xh{stroke:var(--ink);stroke-width:1.4}
+.tcbox .xd{fill:var(--surface);stroke:var(--ink);stroke-width:2}
+.tcbox .xd.c{stroke:var(--cu)}
+.tcbox text.ax{font-family:var(--f-display);font-weight:600;font-size:12px;fill:var(--ink)}
+.tcbox text.xl{font-weight:700;fill:var(--ink)}
+.tlg{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.88rem;color:var(--muted)}
+.tlg span{display:inline-flex;align-items:center;gap:7px}
+.tlg em{font-style:normal}
+.tlg i{display:inline-block;width:20px;flex:none}
+.tlg .z{height:11px;border-radius:3px;background:rgba(242,183,5,.34);background:color-mix(in srgb,var(--zone) 34%,transparent);border:2px solid var(--zone-line)}
+.tlg .ln{height:0;border-top:2px solid}
+.tlg .ib{border-color:var(--w-azul);border-top-style:dashed}
+.tlg .iz{border-color:var(--cu)}
+.tlg .izd{border-color:var(--cu);border-top-style:dashed}
+.tlg .kc{border-color:var(--cu);border-top-width:4px;border-radius:2px}
+.qk{display:flex;flex-wrap:wrap;gap:6px}
+.qk button{min-height:40px;padding:5px 12px;border:1px solid var(--line-strong);border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-size:.9rem;font-weight:500;cursor:pointer}
+.qk button b{font-family:var(--f-mono);font-weight:600}
+.tcbox .mpdc{stroke:var(--ink);stroke-width:2.2}
+.tcbox .micp{stroke:var(--du);stroke-width:2;stroke-dasharray:6 4}
+.tlg .pdc{border-color:var(--ink);border-top-width:3px}
+.tlg .icp{border-color:var(--du);border-top-style:dashed}
+
+/* Protecciones: subpestañas, fichas con su curva y resumen en el circuito */
+.stabs{display:flex;gap:4px;background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:4px}
+.stab{flex:1 1 0;min-width:0;min-height:56px;padding:6px 10px;border:0;border-radius:8px;background:transparent;color:var(--ink);font:inherit;cursor:pointer;display:grid;justify-items:center;align-content:center;gap:2px;line-height:1.1;text-align:center}
+.stab b{font-family:var(--f-display);font-weight:700;font-size:1.2rem}
+.stab small{font-size:.76rem;color:var(--muted)}
+@media (max-width:560px){.stab b{font-size:1.02rem}.stab small{display:none}}
+.stab[aria-selected="true"]{background:var(--ink);color:var(--surface)}
+.stab[aria-selected="true"] small{color:inherit;opacity:.75}
+.tiles.pt{grid-template-columns:repeat(auto-fill,minmax(136px,1fr))}
+.tile .tn{font-family:var(--f-mono);font-size:.72rem;color:var(--muted);padding-inline:3px;line-height:1.2}
+.tile[aria-pressed="true"] .tn{color:inherit;opacity:.7}
+.mg{stroke:var(--line-strong);stroke-width:.7;opacity:.7}
+.mz{fill:var(--zone);fill-opacity:.34}
+.ml{fill:none;stroke:var(--zone-line);stroke-width:1.8;stroke-linejoin:round}
+.ml.dsh{stroke-dasharray:4 3}
+.devsum{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:8px;border:1px solid var(--line-strong);border-radius:10px;background:var(--sunk);min-width:0}
+.devsum .dp{width:104px;flex:none}
+.devsum .dp svg{width:100%;height:auto;display:block;border-radius:6px;border:1px solid var(--line)}
+.devsum .dsx{flex:1 1 170px;display:grid;gap:2px;min-width:0}
+.devsum .dsx b{font-family:var(--f-display);font-weight:700;font-size:1.22rem;line-height:1.1}
+.devsum .dsx small{color:var(--muted);font-size:.85rem;line-height:1.3}
+.devsum .dsx small.ko{color:var(--ko);font-weight:600}.devsum .dsx small.ok{color:var(--ok);font-weight:600}
+.gobtn{flex:0 0 auto;min-height:48px;padding:0 18px;border:0;border-radius:8px;background:var(--ink);color:var(--surface);font-family:var(--f-display);font-weight:700;font-size:1.08rem;cursor:pointer}
+.seg-num button small sub{font-size:.8em}
+/* Informe PDF */
+.tin{width:100%;min-width:0;height:48px;padding:0 12px;border:1px solid var(--line-strong);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:1rem}
+textarea.tin{height:auto;min-height:96px;padding:10px 12px;resize:vertical;line-height:1.4}
+.tin:focus{outline:2px solid var(--accent);outline-offset:1px}
+.incs{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr))}
+.incs button{display:flex;gap:10px;align-items:center;min-height:52px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:8px;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.incs button i{width:22px;height:22px;flex:none;border-radius:5px;border:2px solid var(--line-strong);display:grid;place-items:center;font-style:normal;font-weight:800;font-size:.85rem;line-height:1}
+.incs button[aria-pressed="true"] i{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.incs button span{display:grid;gap:1px;min-width:0}
+.incs button b{font-family:var(--f-display);font-weight:600;font-size:1.05rem;line-height:1.15}
+.incs button small{color:var(--muted);font-size:.78rem;line-height:1.25}
+.incs button:disabled{opacity:.45;cursor:default}
+.genbtn{width:100%;min-height:58px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-family:var(--f-display);font-weight:700;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
+.genbtn svg{width:22px;height:22px;flex:none}
+.pdfmsg{margin:0;font-size:.92rem;font-weight:600;color:var(--ok)}.pdfmsg.err{color:var(--ko)}.pdfmsg:empty{display:none}
+.rt{width:100%;border-collapse:collapse;font-size:.92rem;min-width:640px}
+.rt th,.rt td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.rt thead th{font-family:var(--f-display);font-weight:600;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--sunk)}
+.rt td.v,.rt td.l{font-family:var(--f-mono);font-size:.86rem;font-variant-numeric:tabular-nums}
+.rt td.r{font-size:.84rem;color:var(--muted)}
+.rt td b{font-family:var(--f-display);font-weight:600;font-size:1rem}
+.rt td small{display:block;color:var(--muted);font-size:.8rem;margin-top:2px}
+.rt tbody tr:last-child>*{border-bottom:0}
+.rb{display:inline-block;min-width:84px;padding:4px 8px;border-radius:6px;font-family:var(--f-display);font-weight:700;font-size:.9rem;letter-spacing:.04em;text-align:center;color:#fff;white-space:nowrap}
+.rb.ok{background:#17703F}.rb.ko{background:#B3261E}.rb.wa{background:#8F5400}.rb.na{background:transparent;color:var(--muted);border:1px solid var(--line-strong)}
+.lcd-res{font-family:var(--f-display);font-weight:800;font-size:2.6rem;line-height:1;letter-spacing:.02em;display:flex;align-items:center;gap:12px;text-transform:uppercase}
+.lcd-res .dot{width:22px;height:22px}
+@media (min-width:900px){.lower.one{grid-template-columns:minmax(0,1fr)}}
+
+/* Qué es cada dato */
+.data dl{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 14px}
+.data dt{font-family:var(--f-display);font-weight:700;font-size:1.12rem;line-height:1.3;white-space:nowrap}
+.data dt.ib{color:var(--w-azul)}.data dt.iz{color:var(--cu)}.data dt.du{color:var(--du)}.data dt.cc{color:var(--cc)}
+.data dd{margin:0;font-size:.93rem;color:var(--muted);line-height:1.45}
+.data dd b{color:var(--ink);font-weight:600}
+.data .tail{margin:0;padding-top:12px;border-top:1px solid var(--line);font-size:.93rem}
+
+/* Tabla Iz */
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);max-width:100%;-webkit-overflow-scrolling:touch}
+table{border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums}
+.mx{width:100%}
+.mx th,.mx td{padding:0;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:center}
+.mx tr > :last-child{border-right:0}
+.mx tbody tr:last-child > *{border-bottom:0}
+.mx thead th{background:var(--sunk);font-family:var(--f-display);font-weight:700;font-size:1.1rem;padding:7px 6px;line-height:1.1;white-space:nowrap}
+.mx thead th small{display:block;font-family:var(--f-body);font-weight:400;font-size:.7rem;color:var(--muted);white-space:normal;min-width:64px}
+.mx th[scope="row"]{position:sticky;left:0;z-index:1;background:var(--sunk);text-align:right;padding:0 10px;white-space:nowrap;font-family:var(--f-mono);font-weight:600;font-size:.95rem}
+.mx .corner{position:sticky;left:0;z-index:2;text-align:right;font-family:var(--f-body);font-size:.75rem;color:var(--muted);font-weight:500}
+.mx td button{display:block;width:100%;min-width:58px;height:42px;border:0;background:transparent;font-family:var(--f-mono);font-size:1rem;color:var(--ink);cursor:pointer;font-variant-numeric:tabular-nums}
+.mx td button.fit{color:var(--ok);font-weight:700}
+.mx td button:disabled{color:var(--muted);cursor:default}
+.mx .hc,.mx tr.hr > *{background-color:var(--hl)}
+.mx tr.hr th[scope="row"]{background:linear-gradient(var(--hl),var(--hl)),var(--sunk)}
+.mx td.on button{background:var(--accent);color:var(--accent-ink);font-weight:700}
+
+/* Normas */
+.dgrid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr))}
+.dcard{display:grid;gap:8px;align-content:start;border:1px solid var(--line);border-radius:12px;background:var(--sunk);padding:14px 16px}
+.dcard p{margin:0;font-size:.93rem}
+.dcard ul{margin:0;padding-left:1.15em;display:grid;gap:5px;font-size:.93rem}
+.dt{width:100%;font-size:.9rem}
+.dt th,.dt td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.dt td{font-family:var(--f-mono)}
+.dt th{font-family:var(--f-display);font-weight:600;font-size:.98rem}
+.dt tbody tr:last-child > *{border-bottom:0}
+
+.foot{color:var(--muted);font-size:.88rem;display:grid;gap:8px;max-width:80ch;padding-top:4px}
+.foot p{margin:0}
+@media (max-width:520px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.pill{font-size:1rem;padding-left:13px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<script>
+/* Deja la app guardada en la tableta para usarla sin conexión y avisa de si está lista o de qué lo impide. */
+(function () {
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
+  function note(text, bg, ms) {
+    function show() {
+      var d = document.createElement('div');
+      d.setAttribute('role', 'status');
+      d.textContent = text;
+      d.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:2147483647;background:' + bg + ';color:#FFFFFF;font:600 16px/1.35 system-ui,-apple-system,sans-serif;padding:12px 18px;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;width:max-content;max-width:calc(100% - 32px);text-align:center';
+      document.body.appendChild(d);
+      setTimeout(function () { d.remove(); }, ms);
+    }
+    if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
+  }
+  var NO = 'Safari no deja guardar esta app para usarla sin conexión. Si estás en navegación privada, sal de ella, borra el icono y vuelve a añadirlo a la pantalla de inicio.';
+  if (!('serviceWorker' in navigator)) { note(NO, '#B3261E', 12000); return; }
+  var KEY = 'sin-conexion-lista:' + location.pathname;
+  try { navigator.serviceWorker.register('../sw.js', {scope: '../'}).catch(function () {}); } catch (e) { /* opcional */ }
+  navigator.serviceWorker.register('./sw.js').then(function () { return navigator.serviceWorker.ready; }).then(function () {
+    var seen = null;
+    try { seen = localStorage.getItem(KEY); } catch (e) { seen = null; }
+    if (seen) return;
+    try { localStorage.setItem(KEY, '1'); } catch (e) { /* sin almacenamiento */ }
+    note('✓ Lista para usar sin conexión', '#17703F', 5000);
+  }).catch(function () {
+    if (navigator.onLine !== false) note(NO, '#B3261E', 12000);
+  });
+})();
+</script>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <p class="kicker">REBT · UNE-HD 60364-5-52 · ITC-BT-22</p>
+    <h1>Intensidad admisible</h1>
+    <p class="lede">Elige el cable, cómo va instalado y la protección. Te da la I<sub>z</sub>, comprueba la coordinación, dibuja la curva de disparo para leerla con el dedo y saca el informe en PDF.</p>
+  </header>
+
+  <div class="tabbar">
+    <div class="tabs" role="tablist" aria-label="Pestañas">
+      <button type="button" class="tab" role="tab" data-tab="ais" aria-controls="view"><span class="tl">Cable aislado</span><span class="ts">Aislado</span></button>
+      <button type="button" class="tab" role="tab" data-tab="bare" aria-controls="view"><span class="tl">Conductor desnudo</span><span class="ts">Desnudo</span></button>
+      <button type="button" class="tab" role="tab" data-tab="prot" aria-controls="view"><span class="tl">Protecciones</span><span class="ts">Protec.</span></button>
+      <button type="button" class="tab" role="tab" data-tab="tabla" aria-controls="view"><span class="tl">Tabla I<sub>z</sub></span><span class="ts">Tabla</span></button>
+      <button type="button" class="tab" role="tab" data-tab="normas" aria-controls="view">Normas</button>
+      <button type="button" class="tab" role="tab" data-tab="inf" aria-controls="view"><span class="tl">Informe PDF</span><span class="ts">Informe</span></button>
+    </div>
+    <button type="button" class="pill" id="pill" aria-label="Ir al resultado"></button>
+  </div>
+
+  <main id="view" role="tabpanel"></main>
+
+  <footer class="foot">
+    <p>El cortocircuito se calcula con el método simplificado de la Guía-BT o con tu medida; no modela la red de la distribuidora. Para cables especiales, secciones mayores o la curva exacta de un aparato, consulta el catálogo del fabricante.</p>
+  </footer>
+</div>
+
+<script>
+/* MiniPDF: genera PDF sin internet ni librerías. Usa las fuentes estándar de cualquier lector
+   (Helvetica, Helvetica-Bold y Symbol para Ω Δ ≤ ≥ …). Unidades en mm, origen arriba a la izquierda,
+   con los mismos métodos que jsPDF que usan estas apps. */
+const MiniPDF = (function(){
+  "use strict";
+  const HW=[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584,761,556,0,222,556,333,1000,556,556,333,1000,667,333,1000,0,611,0,0,222,222,333,333,350,556,1000,333,1000,500,333,944,0,500,667,278,333,556,556,556,556,260,556,333,737,370,556,584,333,737,333,400,584,333,333,333,556,537,278,333,333,365,556,834,834,834,611,667,667,667,667,667,667,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,500,556,556,556,556,278,278,278,278,556,556,556,556,556,556,556,584,611,556,556,556,556,500,556,500],HBW=[278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584,761,556,0,278,556,500,1000,556,556,333,1000,667,333,1000,0,611,0,0,278,278,500,500,350,556,1000,333,1000,556,333,944,0,500,667,278,333,556,556,556,556,280,556,333,737,370,556,584,333,737,333,400,584,333,333,333,611,556,278,333,333,365,556,834,834,834,611,722,722,722,722,722,722,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,556,556,556,556,556,278,278,278,278,611,611,611,611,611,611,611,584,611,611,611,611,611,556,611,556],SYM={"Ω":[87,768],"Δ":[68,612],"≤":[163,549],"≥":[179,549],"μ":[109,576],"→":[174,987],"←":[172,987],"↑":[173,603],"↓":[175,603],"≈":[187,549],"∞":[165,713],"√":[214,549],"π":[112,549],"Σ":[83,592],"φ":[102,521],"Φ":[70,763],"−":[45,549],"α":[97,631],"β":[98,549],"λ":[108,549],"ρ":[114,549],"θ":[113,521],"ω":[119,686],"η":[104,603],"≠":[185,549],"∆":[68,612],"µ":[109,576],"δ":[100,494],"γ":[103,411],"ε":[101,439],"σ":[115,603],"τ":[116,439],"∑":[229,713],"∙":[183,460]},CP={"€":128,"‚":130,"ƒ":131,"„":132,"…":133,"†":134,"‡":135,"ˆ":136,"‰":137,"Š":138,"‹":139,"Œ":140,"Ž":142,"‘":145,"’":146,"“":147,"”":148,"•":149,"–":150,"—":151,"˜":152,"™":153,"š":154,"›":155,"œ":156,"ž":158,"Ÿ":159};
+  SYM['Ω'] = SYM['Ω'];
+  const SYMW = {};
+  Object.keys(SYM).forEach(k => { SYMW[SYM[k][0]] = SYM[k][1]; });
+  const K = 72 / 25.4;
+  const SIZES = {a4:[595.28, 841.89], a5:[419.53, 595.28], letter:[612, 792]};
+
+  function runs(str){
+    const out = [];
+    let cur = null;
+    for (const ch of String(str == null ? '' : str)) {
+      const c = ch.codePointAt(0);
+      let sym = false, code;
+      if (c >= 32 && c < 127) code = c;
+      else if (c >= 160 && c <= 255) code = c;
+      else if (CP[ch] !== undefined) code = CP[ch];
+      else if (SYM[ch]) { sym = true; code = SYM[ch][0]; }
+      else if (c === 9) code = 32;
+      else if (c === 0x2009 || c === 0x202F || c === 0x2007) code = 32;
+      else if (c === 0x2010 || c === 0x2011 || c === 0x2012) code = 45;
+      else if (c === 0x2713 || c === 0x2714) code = 118;
+      else if (c < 32) continue;
+      else code = 63;
+      if (!cur || cur.sym !== sym) { cur = {sym, codes:[]}; out.push(cur); }
+      cur.codes.push(code);
+    }
+    return out;
+  }
+  function runWidth(r, bold){
+    let w = 0;
+    const T = bold ? HBW : HW;
+    for (const c of r.codes) w += r.sym ? (SYMW[c] || 500) : (T[c - 32] || 556);
+    return w / 1000;
+  }
+  function esc(codes){
+    let s = '';
+    for (const c of codes) {
+      if (c === 40 || c === 41 || c === 92) s += '\\' + String.fromCharCode(c);
+      else if (c < 32 || c > 126) s += '\\' + c.toString(8).padStart(3, '0');
+      else s += String.fromCharCode(c);
+    }
+    return s;
+  }
+  function pdfStr(s){
+    let o = '';
+    for (const ch of String(s)) {
+      const c = ch.codePointAt(0);
+      if (c === 40 || c === 41 || c === 92) o += '\\' + ch;
+      else if (c >= 32 && c < 127) o += ch;
+      else if (c >= 160 && c <= 255) o += '\\' + c.toString(8).padStart(3, '0');
+      else o += '?';
+    }
+    return '(' + o + ')';
+  }
+  const num = v => { const r = Math.round(v * 100) / 100; return Object.is(r, -0) ? '0' : String(r); };
+
+  function Doc(opts){
+    opts = opts || {};
+    const fmt = Array.isArray(opts.format) ? opts.format.map(v => v * K) : (SIZES[String(opts.format || 'a4').toLowerCase()] || SIZES.a4);
+    let PW = fmt[0], PH = fmt[1];
+    if (String(opts.orientation || 'p').toLowerCase().startsWith('l')) { const t = PW; PW = PH; PH = t; }
+    const pages = [], annots = [];
+    let cur = null;
+    let bold = false, size = 16, lhf = 1.15;
+    let tc = [0, 0, 0], dc = [0, 0, 0], fc = [0, 0, 0], lw = 0.2;
+    const images = [];
+    const props = {};
+    const X = x => num(x * K), Y = y => num(PH - y * K);
+    const rgb = c => c.map(v => num(Math.max(0, Math.min(255, v)) / 255)).join(' ');
+    function newPage(){ cur = []; pages.push(cur); annots.push([]); }
+    newPage();
+    function color(args){
+      if (args.length >= 3) return [+args[0], +args[1], +args[2]];
+      const a = args[0];
+      if (typeof a === 'string' && /^#?[0-9a-f]{6}$/i.test(a)) {
+        const h = a.replace('#', '');
+        return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+      }
+      if (typeof a === 'number') return [a, a, a];
+      return [0, 0, 0];
+    }
+    function width(s){
+      let w = 0;
+      for (const r of runs(s)) w += runWidth(r, bold);
+      return w * size;
+    }
+    function drawLine(s, x, y, align){
+      const rs = runs(s);
+      if (!rs.length) return;
+      let w = 0;
+      rs.forEach(r => { w += runWidth(r, bold) * size; });
+      let px = x * K;
+      if (align === 'right') px -= w;
+      else if (align === 'center') px -= w / 2;
+      const py = PH - y * K;
+      let ops = 'BT ' + rgb(tc) + ' rg';
+      rs.forEach(r => {
+        const f = r.sym ? '/F3' : (bold ? '/F2' : '/F1');
+        ops += ` ${f} ${num(size)} Tf 1 0 0 1 ${num(px)} ${num(py)} Tm (${esc(r.codes)}) Tj`;
+        px += runWidth(r, bold) * size;
+      });
+      cur.push(ops + ' ET');
+    }
+    function paint(style){
+      const s = String(style || 'S').toUpperCase();
+      if (s === 'F') return 'f';
+      if (s === 'FD' || s === 'DF' || s === 'B') return 'B';
+      return 'S';
+    }
+    function prefix(){ return `${num(lw * K)} w ${rgb(dc)} RG ${rgb(fc)} rg `; }
+    const api = {
+      internal:{ pageSize:{ getWidth:() => PW / K, getHeight:() => PH / K, width:PW / K, height:PH / K } },
+      addPage(){ newPage(); return api; },
+      setPage(n){ if (pages[n - 1]) cur = pages[n - 1]; return api; },
+      getNumberOfPages(){ return pages.length; },
+      getCurrentPageInfo(){ return {pageNumber:pages.indexOf(cur) + 1}; },
+      setFont(name, style, weight){
+        const st = String(style || '').toLowerCase();
+        bold = st.includes('bold') || weight === 700 || weight === 'bold' || /bold/i.test(String(name || '')) && !style;
+        return api;
+      },
+      setFontSize(s){ size = +s || size; return api; },
+      getFontSize(){ return size; },
+      setLineHeightFactor(f){ lhf = +f || lhf; return api; },
+      getLineHeightFactor(){ return lhf; },
+      setTextColor(){ tc = color(arguments); return api; },
+      setDrawColor(){ dc = color(arguments); return api; },
+      setFillColor(){ fc = color(arguments); return api; },
+      setLineWidth(w){ lw = +w; return api; },
+      setProperties(p){ Object.assign(props, p || {}); return api; },
+      getTextWidth(s){ return width(s) / K; },
+      getStringUnitWidth(s){ return width(s) / size; },
+      splitTextToSize(text, maxW){
+        const lines = [];
+        const fits = s => width(s) / K <= maxW;
+        const breakWord = w => {
+          const parts = [];
+          let part = '';
+          for (const ch of w) {
+            if (part && !fits(part + ch)) { parts.push(part); part = ch; }
+            else part += ch;
+          }
+          parts.push(part);
+          return parts;
+        };
+        String(text == null ? '' : text).split(/\r?\n/).forEach(par => {
+          const words = par.split(/ +/);
+          let line = '';
+          words.forEach(w => {
+            const cand = line ? line + ' ' + w : w;
+            if (fits(cand)) { line = cand; return; }
+            if (line) lines.push(line);
+            if (fits(w)) { line = w; return; }
+            const parts = breakWord(w);
+            line = parts.pop();
+            parts.forEach(p => lines.push(p));
+          });
+          lines.push(line);
+        });
+        return lines;
+      },
+      text(t, x, y, opt){
+        opt = opt || {};
+        const arr = Array.isArray(t) ? t : String(t == null ? '' : t).split(/\r?\n/);
+        const lh = size * lhf / K;
+        const asc = size * 0.76 / K;
+        let by = y;
+        if (opt.baseline === 'top' || opt.baseline === 'hanging') by = y + asc;
+        else if (opt.baseline === 'middle') by = y + asc / 2 - size * 0.1 / K;
+        else if (opt.baseline === 'bottom') by = y - size * 0.22 / K;
+        arr.forEach((ln, i) => drawLine(ln, x, by + i * lh, opt.align));
+        return api;
+      },
+      line(x1, y1, x2, y2){
+        cur.push(`${num(lw * K)} w ${rgb(dc)} RG ${X(x1)} ${Y(y1)} m ${X(x2)} ${Y(y2)} l S`);
+        return api;
+      },
+      rect(x, y, w, h, style){
+        cur.push(prefix() + `${X(x)} ${Y(y + h)} ${num(w * K)} ${num(h * K)} re ${paint(style)}`);
+        return api;
+      },
+      roundedRect(x, y, w, h, rx, ry, style){
+        rx = Math.min(rx, w / 2); ry = Math.min(ry, h / 2);
+        const c = 0.5523;
+        const p = [];
+        p.push(`${X(x + rx)} ${Y(y)} m`);
+        p.push(`${X(x + w - rx)} ${Y(y)} l`);
+        p.push(`${X(x + w - rx + rx * c)} ${Y(y)} ${X(x + w)} ${Y(y + ry - ry * c)} ${X(x + w)} ${Y(y + ry)} c`);
+        p.push(`${X(x + w)} ${Y(y + h - ry)} l`);
+        p.push(`${X(x + w)} ${Y(y + h - ry + ry * c)} ${X(x + w - rx + rx * c)} ${Y(y + h)} ${X(x + w - rx)} ${Y(y + h)} c`);
+        p.push(`${X(x + rx)} ${Y(y + h)} l`);
+        p.push(`${X(x + rx - rx * c)} ${Y(y + h)} ${X(x)} ${Y(y + h - ry + ry * c)} ${X(x)} ${Y(y + h - ry)} c`);
+        p.push(`${X(x)} ${Y(y + ry)} l`);
+        p.push(`${X(x)} ${Y(y + ry - ry * c)} ${X(x + rx - rx * c)} ${Y(y)} ${X(x + rx)} ${Y(y)} c`);
+        cur.push(prefix() + p.join(' ') + ' h ' + paint(style));
+        return api;
+      },
+      /* Línea quebrada o polígono (pts = [[x,y],…] en mm). style 'S' traza, 'F' rellena, 'FD' ambas. */
+      path(pts, style, close){
+        if (!pts || pts.length < 2) return api;
+        let p = `${X(pts[0][0])} ${Y(pts[0][1])} m`;
+        for (let i = 1; i < pts.length; i++) p += ` ${X(pts[i][0])} ${Y(pts[i][1])} l`;
+        cur.push(prefix() + p + (close ? ' h ' : ' ') + paint(style));
+        return api;
+      },
+      /* Trazo discontinuo en mm; sin argumentos vuelve a continuo. */
+      setLineDash(a){
+        cur.push(a && a.length ? '[' + a.map(v => num(v * K)).join(' ') + '] 0 d' : '[] 0 d');
+        return api;
+      },
+      /* Enlace pulsable a una web sobre un rectángulo de la página. */
+      link(x, y, w, h, url){
+        annots[pages.indexOf(cur)].push({r:[X(x), Y(y + h), X(x + w), Y(y)], url:String(url || '')});
+        return api;
+      },
+      /* Imagen JPEG: bytes (Uint8Array) con su tamaño en píxeles. Las demás imágenes se pasan antes a JPEG con MiniPDF.toJpeg. */
+      addJpeg(bytes, pxW, pxH, x, y, w, h){
+        const name = '/Im' + (images.length + 1);
+        images.push({name, bytes, pxW, pxH});
+        cur.push(`q ${num(w * K)} 0 0 ${num(h * K)} ${X(x)} ${Y(y + h)} cm ${name} Do Q`);
+        return api;
+      },
+      output(type){
+        const parts = [];
+        let len = 0;
+        const offs = [];
+        const push = p => { parts.push(p); len += typeof p === 'string' ? p.length : p.length; };
+        const obj = (n, body) => { offs[n] = len; push(`${n} 0 obj\n`); body.forEach(push); push('\nendobj\n'); };
+        push('%PDF-1.4\n');
+        const nPages = pages.length;
+        const first = 6 + images.length;
+        const kids = pages.map((_, i) => `${first + i * 2} 0 R`).join(' ');
+        obj(1, ['<< /Type /Catalog /Pages 2 0 R >>']);
+        obj(2, [`<< /Type /Pages /Kids [${kids}] /Count ${nPages} >>`]);
+        obj(3, ['<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>']);
+        obj(4, ['<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>']);
+        obj(5, ['<< /Type /Font /Subtype /Type1 /BaseFont /Symbol >>']);
+        const xo = images.map((im, i) => `${im.name} ${6 + i} 0 R`).join(' ');
+        images.forEach((im, i) => {
+          obj(6 + i, [`<< /Type /XObject /Subtype /Image /Width ${im.pxW} /Height ${im.pxH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${im.bytes.length} >>\nstream\n`, im.bytes, '\nendstream']);
+        });
+        let an = first + nPages * 2;
+        const annotNums = annots.map(list => list.map(() => an++));
+        const infoN = an;
+        pages.forEach((ops, i) => {
+          const pn = first + i * 2, cn = pn + 1;
+          const al = annotNums[i].length ? ` /Annots [${annotNums[i].map(n => n + ' 0 R').join(' ')}]` : '';
+          obj(pn, [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${num(PW)} ${num(PH)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >>${xo ? ` /XObject << ${xo} >>` : ''} >>${al} /Contents ${cn} 0 R >>`]);
+          const content = ops.join('\n');
+          obj(cn, [`<< /Length ${content.length} >>\nstream\n`, content, '\nendstream']);
+        });
+        const d = new Date(), p2 = v => String(v).padStart(2, '0');
+        const date = `D:${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
+        annots.forEach((list, i) => list.forEach((a, j) => {
+          let u = a.url;
+          try { u = /[^\x20-\x7e]/.test(u) ? encodeURI(u) : u; } catch (e) {}
+          obj(annotNums[i][j], [`<< /Type /Annot /Subtype /Link /Rect [${a.r.join(' ')}] /Border [0 0 0] /A << /S /URI /URI ${pdfStr(u)} >> >>`]);
+        }));
+        let info = `<< /Producer (MiniPDF) /CreationDate (${date})`;
+        if (props.title) info += ` /Title ${pdfStr(props.title)}`;
+        if (props.author) info += ` /Author ${pdfStr(props.author)}`;
+        if (props.subject) info += ` /Subject ${pdfStr(props.subject)}`;
+        if (props.creator) info += ` /Creator ${pdfStr(props.creator)}`;
+        obj(infoN, [info + ' >>']);
+        const xref = len;
+        let x = `xref\n0 ${infoN + 1}\n0000000000 65535 f \n`;
+        for (let n = 1; n <= infoN; n++) x += String(offs[n]).padStart(10, '0') + ' 00000 n \n';
+        push(x + `trailer\n<< /Size ${infoN + 1} /Root 1 0 R /Info ${infoN} 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+        const blob = new Blob(parts, {type:'application/pdf'});
+        if (type === 'blob' || !type) return blob;
+        if (type === 'arraybuffer') return blob.arrayBuffer();
+        return blob;
+      }
+    };
+    return api;
+  }
+
+  /* Convierte cualquier imagen (dataURL, Blob o <img>) a JPEG para meterla en el PDF. */
+  async function toJpeg(src, maxPx, quality){
+    maxPx = maxPx || 1600;
+    const img = await new Promise((res, rej) => {
+      const el = new Image();
+      el.onload = () => res(el);
+      el.onerror = () => rej(new Error('img'));
+      if (src instanceof Blob) el.src = URL.createObjectURL(src);
+      else if (src && src.tagName === 'IMG') el.src = src.src;
+      else el.src = src;
+    });
+    let w = img.naturalWidth, h = img.naturalHeight;
+    const s = Math.min(1, maxPx / Math.max(w, h));
+    w = Math.max(1, Math.round(w * s)); h = Math.max(1, Math.round(h * s));
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const blob = await new Promise(res => cv.toBlob(res, 'image/jpeg', quality || 0.88));
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    return {bytes, width:w, height:h};
+  }
+
+  return { Doc, toJpeg, textWidth:(s, sz, b) => { let w = 0; runs(s).forEach(r => { w += runWidth(r, !!b); }); return w * sz / K; } };
+})();
+
+/* Guardar o compartir un archivo generado. En iPad abre el menú Compartir (Guardar en Archivos, AirDrop, WhatsApp…). */
+const FileOut = (function(){
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  function download(blob, name){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  /* Devuelve 'shared', 'downloaded', 'cancelled' o 'needs-tap' (el iPad pide otro toque para compartir).
+     Llamar dentro del clic, sin esperas antes. */
+  async function save(blob, name, mime){
+    if (isIOS && navigator.canShare && navigator.share) {
+      let file = null;
+      try { file = new File([blob], name, {type: mime || blob.type || 'application/octet-stream'}); } catch (e) { file = null; }
+      let ok = false;
+      try { ok = !!file && navigator.canShare({files:[file]}); } catch (e) { ok = false; }
+      if (ok) {
+        try { await navigator.share({files:[file], title:name}); return 'shared'; }
+        catch (e) {
+          if (e && e.name === 'AbortError') return 'cancelled';
+          if (e && e.name === 'NotAllowedError') return 'needs-tap';
+        }
+      }
+    }
+    download(blob, name);
+    return 'downloaded';
+  }
+  return { save, download, isIOS };
+})();
+
+</script>
+<script>
+{
+/* ---------- utilidades ---------- */
+const $=s=>document.querySelector(s);
+const nf=(x,d=1)=>(x==null||!isFinite(x))?'–':Number(x).toLocaleString('es-ES',{maximumFractionDigits:d});
+const nf2=x=>(x==null||!isFinite(x))?'–':Number(x).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+const near=(a,v)=>a.reduce((p,c)=>Math.abs(c-v)<Math.abs(p-v)?c:p,a[0]);
+
+/* ---------- UNE-HD 60364-5-52 ---------- */
+const SCU=[1.5,2.5,4,6,10,16,25,35,50,70,95,120,150,185,240,300];
+const COLS=['2','3','4','5a','5b','6a','6b','7a','7b','8a','8b','9a','9b','10a','10b','11','12','13'];
+const T52=[[11,11.5,12.5,13.5,14,14.5,15.5,16,16.5,17,17.5,19,20,20,20,21,23,25],[15,15.5,17,18,19,20,20,21,22,23,24,26,27,26,28,30,32,34],[20,20,22,24,25,26,28,29,30,31,32,34,36,36,38,40,44,46],[25,26,29,31,32,34,36,37,39,40,41,44,46,46,49,52,57,59],[33,36,40,43,45,46,49,52,54,54,57,60,63,65,68,72,78,82],[45,48,53,59,61,63,66,69,72,73,77,81,85,87,91,97,104,110],[59,63,69,77,80,82,86,87,91,95,100,103,108,110,115,122,135,146],[72,77,86,95,100,101,106,109,114,119,124,127,133,137,143,153,168,182],[86,94,103,116,121,122,128,133,139,145,151,155,162,167,174,188,204,220],[109,118,130,148,155,155,162,170,178,185,193,199,208,214,223,243,262,282],[131,143,156,180,188,187,196,207,216,224,234,241,252,259,271,298,320,343],[150,164,179,207,217,216,226,240,251,260,272,280,293,301,314,350,373,397],[171,188,196,224,236,247,259,276,289,299,313,322,337,343,359,401,430,458],[194,213,222,256,268,281,294,314,329,341,356,368,385,391,409,460,493,523],[227,249,258,299,315,330,345,368,385,401,419,435,455,468,489,545,583,617],[259,285,295,343,360,398,396,432,414,461,468,516,524,547,549,630,674,713]];
+const MAP={A1:{PVC3:'3',PVC2:'4',XLPE3:'6b',XLPE2:'7b'},A2:{PVC3:'2',PVC2:'3',XLPE3:'5b',XLPE2:'6b'},B1:{PVC3:'5a',PVC2:'6a',XLPE3:'8b',XLPE2:'10b'},B2:{PVC3:'4',PVC2:'5a',XLPE3:'7b',XLPE2:'8b'},C:{PVC3:'6a',PVC2:'8a',XLPE3:'9b',XLPE2:'11'},E:{PVC3:'7a',PVC2:'9a',XLPE3:'10b',XLPE2:'12'},F:{PVC3:'8a',PVC2:'10a',XLPE3:'11',XLPE2:'13'}};
+const DCU={PVC2:[20,27,36,44,59,76,98,118,140,173,205,233,264,296,342,387],PVC3:[17,22,29,37,49,63,81,97,115,143,170,192,218,245,282,319],XLPE2:[24,32,42,53,70,91,116,140,166,204,241,275,311,348,402,455],XLPE3:[21,27,35,44,58,75,96,117,138,170,202,230,260,291,336,380]};
+const SAL=[16,25,35,50,70,95,120,150,185,240,300];
+const DAL={XLPE2:[70,89,107,126,156,185,211,239,267,309,349],XLPE3:[58,74,90,107,132,157,178,201,226,261,295]};
+const ALM={A1:{2:[58,76,93,113,143,173,200,230,262,307,352],3:[52,69,85,102,129,155,179,205,232,273,313]},A2:{2:[54,70,87,104,131,159,182,209,238,279,320],3:[50,64,79,94,119,142,163,187,212,248,284]},B1:{2:[71,95,118,142,182,220,255,279,319,374,428],3:[64,84,105,127,162,197,228,242,273,319,365]},B2:{2:[65,85,104,125,159,191,220,237,273,325,377],3:[58,76,93,112,141,171,196,218,247,289,331]},C:{2:[76,91,114,140,180,219,254,294,337,399,462],3:[69,81,101,123,158,192,222,257,293,347,400]},E:{2:[82,98,122,149,192,233,273,314,361,427,494],3:[70,88,109,132,170,206,239,276,315,372,428]},F:{2:[null,110,136,167,215,262,306,353,406,482,557],3:[null,93,117,144,187,230,269,312,359,428,497]}};
+const MET=[
+['A1','Unipolares en tubo','Tubo en pared con aislamiento térmico'],
+['A2','Manguera en tubo','Tubo en pared con aislamiento térmico'],
+['B1','Unipolares en tubo','Empotrado en obra, en superficie o en canal'],
+['B2','Manguera en tubo','Empotrado en obra, en superficie o en canal'],
+['C','Sobre la pared','Grapado a pared o techo, o en bandeja lisa'],
+['E','Manguera en bandeja','Bandeja perforada, de rejilla o escalera'],
+['F','Unipolares en bandeja','En contacto sobre bandeja perforada'],
+['D1','Enterrado en tubo','Tubo enterrado · 0,70 m'],
+['D2','Enterrado directo','Cable enterrado sin tubo · 0,70 m']];
+const G17={n:[1,2,3,4,5,6,7,8,9,12,16,20],r1:[1,0.80,0.70,0.65,0.60,0.57,0.54,0.52,0.50,0.45,0.41,0.38],r2:[1,0.85,0.79,0.75,0.73,0.72,0.72,0.71,0.70],r4:[1,0.88,0.82,0.77,0.75,0.73,0.73,0.72,0.72]};
+const g17=(r,n)=>r===1?G17.r1[(i=>i<0?11:i)(G17.n.findIndex(x=>x>=n))]:G17['r'+r][Math.min(n,9)-1];
+/* Aluminio al aire: tabla C.52.1 bis (UNE-HD 60364-5-52:2014), columnas 2 … 13; null = casilla vacía en la norma */
+const ALT={16:[35,37,41,46,48,50,52,53,55,57,60,63,66,66,70,76,82,null],25:[46,49,54,60,63,63,66,67,70,72,75,78,81,84,88,91,98,110],
+35:[null,null,null,74,78,78,81,83,87,89,93,97,101,104,109,114,122,136],50:[null,null,null,90,94,95,100,101,106,108,113,118,123,127,132,140,149,167],
+70:[null,null,null,115,121,121,127,130,136,139,145,151,158,162,170,180,192,215],95:[null,null,null,140,146,147,154,159,166,169,177,183,192,197,206,219,233,262],
+120:[null,null,null,161,169,171,179,184,192,196,205,213,222,228,239,254,273,306],150:[null,null,null,null,null,196,205,213,222,227,237,246,257,264,276,294,314,353],
+185:[null,null,null,null,null,222,232,243,254,259,271,281,293,301,315,337,361,406],240:[null,null,null,null,null,261,273,287,300,306,320,332,347,355,372,399,427,482]};
+/* casillas con valor en la tabla C.52.1 bis (el resto son «–» en la norma) */
+function inTab(c,s){if(s>240)return false;if(c==='2'||c==='3'||c==='4')return s<=25;if(c==='5a'||c==='5b')return s<=120;if(c==='13')return s>=25;return true;}
+/* agrupamiento al aire: tabla C.52.3 (anexo nacional, para usar con C.52.1 bis) */
+const C523={n:[1,2,3,4,6,9,12,16,20],r:{1:[1,0.80,0.70,0.65,0.55,0.50,0.45,0.40,0.40],2:[1,0.85,0.80,0.75,0.70,0.70,0.70,0.70,0.70],3:[0.95,0.80,0.70,0.70,0.65,0.60,0.60,0.60,0.60],4:[1,0.90,0.80,0.75,0.75,0.70,0.70,0.70,0.70],5:[1,0.85,0.80,0.80,0.80,0.80,0.80,0.80,0.80]}};
+const c523=(row,n)=>{const j=C523.n.findIndex(x=>x>=n);return C523.r[row][j<0?8:j];};
+/* enterrados directamente (D2): tabla B.52.18, por separación */
+const SEP2=['en contacto','un diámetro','0,125 m','0,25 m','0,5 m'],N518=[2,3,4,5,6,7,8,9,12,16,20];
+const B518T=[[0.75,0.65,0.60,0.55,0.50,0.45,0.43,0.41,0.36,0.32,0.29],[0.80,0.70,0.60,0.55,0.55,0.51,0.48,0.46,0.42,0.38,0.35],[0.85,0.75,0.70,0.65,0.60,0.59,0.57,0.55,0.51,0.47,0.44],[0.90,0.80,0.75,0.70,0.70,0.67,0.65,0.63,0.59,0.56,0.53],[0.90,0.85,0.80,0.80,0.80,0.76,0.75,0.74,0.71,0.68,0.66]];
+/* en tubos enterrados (D1): tabla B.52.19, un circuito por tubo, de 2 a 20 tubos */
+const SEP1=['tubos en contacto','0,25 m','0,5 m','1 m'];
+const B519=[[0.85,0.75,0.70,0.65,0.60,0.57,0.54,0.52,0.49,0.47,0.45,0.44,0.42,0.41,0.39,0.38,0.37,0.35,0.34],[0.90,0.85,0.80,0.80,0.80,0.76,0.74,0.73,0.72,0.70,0.69,0.68,0.68,0.67,0.66,0.65,0.65,0.64,0.63],[0.95,0.90,0.85,0.85,0.80,0.80,0.78,0.77,0.76,0.75,0.74,0.73,0.72,0.72,0.71,0.70,0.70,0.69,0.68],[0.95,0.95,0.90,0.90,0.90,0.88,0.88,0.87,0.86,0.86,0.85,0.85,0.84,0.84,0.83,0.83,0.83,0.82,0.82]];
+const RES=[0.5,0.7,1,1.5,2,2.5,3],RESF={D1:[1.28,1.20,1.18,1.10,1.05,1.00,0.96],D2:[1.88,1.62,1.50,1.28,1.12,1.00,0.90]};
+const PRO=[0.5,0.6,0.7,0.8,1,1.25,1.5,2],PROF={D2:[1.04,1.02,1.00,0.99,0.97,0.95,0.93,0.91],D1:[1.03,1.01,1.00,0.99,0.97,0.96,0.95,0.93]};
+
+/* ---------- desnudos ---------- */
+const DESN={s:[10,16,25,35,50,70,95,120,150],Cu:[8.75,7.60,6.35,5.75,5.10,4.50,4.05,null,null],Al:[null,6.00,5.00,4.55,4.00,3.55,3.20,2.90,2.70]};
+const LAT={s:[10,15,25,35,50,70,95,125,160,200,250,300,400,500,600],Cu:[8.75,7.60,6.35,5.75,5.10,4.50,4.05,3.70,3.40,3.20,2.90,2.75,2.50,2.30,2.10],Al:[null,6.00,5.00,4.55,4.00,3.55,3.20,2.90,2.70,2.50,2.30,2.15,1.95,1.80,1.65]};
+const LATS={Cu:[10,16,25,35,50,70,95,120,150,185,240,300,400,500,600],Al:[16,25,35,50,70,95,120,150,185,240,300,400,500,600]};
+const LA=[['LA-30',31.1,'6+1'],['LA-56',54.6,'6+1'],['LA-78',78.6,'6+1'],['LA-110',116.2,'30+7'],['LA-145',147.1,'30+7'],['LA-180',181.6,'30+7'],['LA-280',281.1,'26+7'],['LA-380',381,'54+7'],['LA-455',454.5,'54+7']];
+const ACO={'6+1':0.937,'26+7':0.937,'30+7':0.916,'54+7':0.95};
+function dens(m,S){const p=LAT.s.map((s,i)=>[s,LAT[m][i]]).filter(x=>x[1]!=null);if(S<p[0][0]||S>p[p.length-1][0])return null;for(let i=0;i<p.length-1;i++){const a=p[i],b=p[i+1];if(S>=a[0]&&S<=b[0])return a[1]+(b[1]-a[1])*(S-a[0])/(b[0]-a[0]);}return null;}
+const DIN=[['12×2',12,2,123,108],['15×3',15,3,187,162],['20×3',20,3,237,204],['20×5',20,5,319,274],['20×10',20,10,497,427],['25×5',25,5,384,327],['30×5',30,5,447,379],['30×10',30,10,676,573],['40×5',40,5,573,482],['40×10',40,10,850,715],['50×5',50,5,697,583],['50×10',50,10,1020,852],['60×10',60,10,1180,985],['80×10',80,10,1500,1240],['100×10',100,10,1810,1490],['120×10',120,10,2110,1740]];
+
+/* ---------- protecciones ---------- */
+const TB=In=>In<=63?1:2;                      /* tiempo convencional de automáticos (h) */
+const TF=In=>In<=63?1:In<=160?2:In<=400?3:4;   /* tiempo convencional de fusibles (h) */
+const KG=In=>In<=4?2.1:In<16?1.9:1.6;          /* If de gG, gS y gR */
+const S898=[0.5,1,1.6,2,3,4,6,8,10,13,16,20,25,32,40,50,63,80,100,125];
+const S947=[0.5,1,1.6,2,3,4,6,8,10,13,16,20,25,32,40,50,63,80,100,125];
+const MCIN=[16,25,32,40,50,63,80,100,125,160,200,250,320,400,500,630,800,1000,1250,1600]; /* caja moldeada */
+/* poder de corte (kA) por gama: lista, valor por defecto, nombre y norma */
+const PDC={
+ '898':{l:[1.5,3,4.5,6,10,15,20,25],d:6,s:'I<sub>cn</sub>',t:'UNE-EN 60898-1'},
+ '947':{l:[6,10,15,20,25,36,50],d:10,s:'I<sub>cu</sub>',t:'UNE-EN 60947-2'},
+ mc:{l:[16,18,25,36,50,70,85,100,150,200],d:36,s:'I<sub>cu</sub>',t:'UNE-EN 60947-2'},
+ fus:{l:[50,80,100,120,200],d:100,s:'',t:'UNE-EN 60269'},
+ pv:{l:[10,20,30,50],d:30,s:'c.c.',t:'UNE-EN 60269-6'}};
+const pgrp=D=>D.fam==='fus'?(D.id==='gPV'?'pv':'fus'):D.fam==='ia'?'mc':D.e898?'898':'947';
+const icsOf=c=>c<=6?c:c<=10?Math.max(6,0.75*c):Math.max(7.5,0.5*c); /* UNE-EN 60898-1: Ics según Icn */
+const ICCQ=[0,3,4.5,6,10,15,20,25,36,50];
+const iccTr=(kva,u)=>kva*1000/(Math.sqrt(3)*400)/(u/100)/1000; /* Icc máxima en bornes de baja, kA */
+const fkA=v=>nf(v,1)+' kA';
+const CURV={
+ B:{m:[3,5],r:'3–5 In',d:'Uso general y líneas largas',std:'898'},
+ C:{m:[5,10],r:'5–10 In',d:'Uso general',std:'898'},
+ D:{m:[10,20],r:'10–20 In',d:'Arranques fuertes',std:'898'},
+ K:{m:[10,14],r:'10–14 In',d:'Motores y transformadores',std:'947'},
+ Z:{m:[2,3.6],r:'2–3,6 In',d:'Electrónica',std:'947'},
+ MA:{m:[9.6,14.4],r:'12 In ±20 %',d:'Solo magnético, motores',std:'947'}};
+/* puertas gG (UNE-EN 60269-2): Imín 10 s, Imáx 5 s, Imín 0,1 s, Imáx 0,1 s */
+const GG={16:[33,65,85,150],20:[42,85,110,200],25:[52,110,150,260],32:[75,150,200,350],40:[95,190,260,450],50:[125,250,350,610],63:[160,320,450,820],80:[215,425,610,1100],100:[290,580,820,1450],125:[355,715,1100,1910],160:[460,950,1450,2590],200:[610,1250,1910,3420],250:[750,1650,2590,4500],315:[1050,2200,3420,6000],400:[1420,2840,4500,8060],500:[1780,3800,6000,10600],630:[2200,5100,8060,14140],800:[3060,7000,10600,19000]};
+const KVA=[50,75,100,125,160,200,250,315,400,500,630,800,1000];
+const TRI=KVA.map(k=>Math.round(k*1000/(Math.sqrt(3)*400)));
+const kvaOf=In=>KVA[TRI.indexOf(+In)];
+const SFU=[0.5,1,2,4,6,8,10,12,16,20,25,32,35,40,50,63,80,100,125,160,200,224,250,300,315,355,400,425,500,630,800,1000,1250];
+const SAM=[0.5,1,2,4,6,8,10,12,16,20,25,32,40,50,63,80,100,125,160,200,250,315,400,500,630,800,1000,1250];
+const SSC=[6,8,10,12,16,20,25,32,40,50,63,80,100,125,160,200,250,315,350,400,450,500,630,700,800,900,1000,1250];
+const SPV=[1,2,3,4,5,6,8,10,12,15,16,20,25,30,32,40,50,63,80,100,125,160,200,250,315,400,500,630];
+const FUS={
+ gG:{c:'Uso general',d:'Uso general (antes gL)',norm:'UNE-EN 60269-1 y -2',ser:SFU,k:KG,inf:In=>In<16?1.5:1.25,T:TF},
+ aM:{c:'Motores',d:'Motores · solo cortocircuito',norm:'UNE-EN 60269-1 y -2',ser:SAM,k:null,T:TF,why:'El fusible aM solo protege contra cortocircuito. La sobrecarga la tiene que cubrir un relé térmico o un guardamotor con I<sub>B</sub> ≤ Ir ≤ I<sub>z</sub>.'},
+ gS:{c:'Semicond. y cable',d:'Semiconductores y cables',norm:'UNE-EN 60269-4',ser:SSC,k:KG,inf:In=>In<16?1.5:1.25,T:TF},
+ gR:{c:'Semicond. completo',d:'Semiconductores',norm:'UNE-EN 60269-4',ser:SSC,k:KG,inf:()=>1.1,T:TF},
+ aR:{c:'Semicond. parcial',d:'Semiconductores · solo cortocircuito',norm:'UNE-EN 60269-4',ser:SSC,k:null,T:TF,why:'El fusible aR solo protege contra cortocircuito. La sobrecarga la tiene que cubrir otro aparato.'},
+ gPV:{c:'Fotovoltaica',d:'Fotovoltaica, corriente continua',norm:'UNE-EN 60269-6',ser:SPV,k:()=>1.45,inf:()=>1.13,T:TF},
+ gTr:{c:'Transformador',d:'Transformadores · calibre en kVA',norm:'UNE-EN 60269-2 · DIN VDE 0636',ser:TRI,k:()=>1.5,inf:()=>1.3,T:()=>2,Tinf:()=>10}};
+function devi(){
+ if(st.fam==='fus')return Object.assign({fam:'fus',id:st.fus,n:'Fusible '+st.fus},FUS[st.fus]);
+ if(st.fam==='ia'){const im=+st.im;return {fam:'ia',id:'ia',n:'Automático regulable',norm:'UNE-EN 60947-2',ser:null,k:()=>1.30,inf:()=>1.05,T:()=>TB(+st.mcin||16),mag:[im*0.8,im*1.2],r:'Im '+nf(im)+'·Ir ±20 %',d:'Caja moldeada'};}
+ const c=CURV[st.cur],e=c.std==='898';
+ return {fam:'auto',id:st.cur,n:'Automático curva '+st.cur,norm:e?'UNE-EN 60898-1':'UNE-EN 60947-2',ser:e?S898:S947,k:st.cur==='MA'?null:()=>e?1.45:1.30,inf:()=>e?1.13:1.05,T:TB,mag:c.m,r:c.r,e898:e,d:c.d,
+  why:st.cur==='MA'?'La curva MA no tiene disparo térmico: no protege contra sobrecargas. Necesita un relé térmico con I<sub>B</sub> ≤ Ir ≤ I<sub>z</sub>.':''};}
+function devOf(o){ /* aparato con otra curva o clase, sin cambiar la elección */
+ const sv={fam:st.fam,cur:st.cur,fus:st.fus};Object.assign(st,o);const D=devi();Object.assign(st,sv);return D;}
+let PD=null;
+function pdcOf(D){const g=pgrp(D),G=PDC[g],v=+((st.pdcs||{})[g])||G.d,icc=+st.icc||0;
+ return {g,G,v,icc,ics:g==='898'?icsOf(v):null,ok:icc>0?v>=icc-1e-9:null,need:icc>0?G.l.find(x=>x>=icc-1e-9):null};}
+
+/* ---------- estado ---------- */
+const DEF={mode:'ais',mat:'Cu',ins:'PVC',ph:2,met:'B1',sec:2.5,ta:40,tg:25,nc:1,res:2.5,prof:0.7,arm:0,fx:1,more:false,
+bk:'Cu',bv:'BT',bs:35,la:3,bar:7,pint:false,fxb:1,ibm:'kW',ib:15,P:3.45,cos:1,fam:'auto',cur:'C',fus:'gG',im:10,inn:16,ir:16,tab:'ais',tmode:'cond',L:0,dumax:3,h3:0,sep:0,mont:'a',ccm:'calc',rup:0,zm:0,
+mfam:'auto',mcin:16,pdcs:{},icc:0,tkva:0,tucc:4,tx:false,rep:{},inc:{}};
+let st=Object.assign({},DEF);
+try{const s=JSON.parse(localStorage.getItem('iz-rebt-2')||'null');if(s&&typeof s==='object'){if(s.dev&&!s.fam){s.fam=s.dev==='gg'?'fus':s.dev==='ia'?'ia':'auto';if(s.dev==='gg')s.fus='gG';}delete s.dev;if(s.h3==null&&s.arm)s.h3={15:25,33:45,45:50}[s.arm]||0;delete s.arm;st=Object.assign({},DEF,s);}}catch(e){}
+if(st.rep&&typeof st.rep==='object')st.rep=Object.assign({},st.rep,{fecha:''}); /* la fecha del informe empieza en hoy cada vez que se abre */
+const save=()=>{try{localStorage.setItem('iz-rebt-2',JSON.stringify(st));}catch(e){}};
+const isD=()=>st.met==='D1'||st.met==='D2';
+const maxNc=()=>20;
+const bsecs=()=>st.bk==='LA'?LA.map((x,i)=>i):st.bk==='DIN'?DIN.map((x,i)=>i):st.bv==='BT'?DESN.s.filter((s,i)=>DESN[st.bk][i]!=null):LATS[st.bk];
+function fix(){
+ if(!['ais','bare'].includes(st.mode))st.mode='ais';
+ if(!['ais','bare','prot','tabla','normas','inf'].includes(st.tab))st.tab=st.mode;st.L=Math.min(1e5,Math.max(0,+st.L||0));st.dumax=Math.min(20,Math.max(0.1,+st.dumax||3));st.cos=Math.min(1,Math.max(0.1,+st.cos||1));if(!['cond','tab'].includes(st.tmode))st.tmode='cond';
+ if(st.mat!=='Al')st.mat='Cu';if(st.mat==='Al')st.ins='XLPE';if(st.ins!=='XLPE')st.ins='PVC';
+ if(st.ph!==3)st.ph=2;if(!MET.some(m=>m[0]===st.met))st.met='B1';
+ const ss=st.mat==='Al'?SAL:SCU;if(!ss.includes(st.sec))st.sec=near(ss,+st.sec||2.5);
+ st.nc=Math.min(Math.max(1,Math.round(+st.nc||1)),maxNc());
+ if(!RES.includes(+st.res))st.res=2.5;st.prof=0.7;
+ const fin=(v,d,lo,hi)=>{v=+v;return Number.isFinite(v)?Math.min(hi,Math.max(lo,v)):d;};
+ st.ta=fin(st.ta,40,-20,85);st.tg=fin(st.tg,25,0,85);st.h3=fin(st.h3,0,0,100);st.sep=Math.round(fin(st.sep,0,0,4));if(st.met==='D1'&&st.sep>3)st.sep=3;
+ if(!['a','b'].includes(st.mont))st.mont='a';st.ccm='calc';st.rup=0;st.zm=0;delete st.pdc;if(!['kW','A'].includes(st.ibm))st.ibm='kW';
+ st.P=fin(st.P,3.45,0,1e6);st.ib=fin(st.ib,15,0,1e5);if(!(+st.fx>0))st.fx=1;if(!(+st.fxb>0))st.fxb=1;st.fx=Math.min(2,Math.max(0.1,+st.fx));st.fxb=Math.min(2,Math.max(0.1,+st.fxb));
+ if(!['Cu','Al','LA','DIN'].includes(st.bk))st.bk='Cu';if(!['BT','AT'].includes(st.bv))st.bv='BT';
+ const bs=bsecs();if(!bs.includes(st.bs))st.bs=['LA','DIN'].includes(st.bk)?bs[Math.min(bs.length-1,3)]:near(bs,+st.bs||35);
+ if(!['auto','fus','ia'].includes(st.fam))st.fam='auto';if(!CURV[st.cur])st.cur='C';if(!FUS[st.fus])st.fus='gG';
+ if(st.fam!=='fus')st.mfam=st.fam;if(!['auto','ia'].includes(st.mfam))st.mfam='auto';
+ st.im=fin(st.im,10,2,20);st.ir=fin(st.ir,16,0.1,1600);if(!(st.ir>0))st.ir=16;
+ if(!MCIN.includes(+st.mcin)||st.ir>+st.mcin||st.ir<0.4*st.mcin-1e-9)st.mcin=MCIN.find(x=>x>=st.ir)||1600;st.mcin=+st.mcin;
+ const se=devi().ser;if(se&&!se.includes(+st.inn))st.inn=near(se,+st.inn||16);
+ /* poder de corte: uno guardado por gama; Icc presunta y ayuda del transformador */
+ st.pdcs=Object.assign({},st.pdcs&&typeof st.pdcs==='object'&&!Array.isArray(st.pdcs)?st.pdcs:{});
+ for(const g of Object.keys(st.pdcs))if(!PDC[g]||!PDC[g].l.includes(+st.pdcs[g]))delete st.pdcs[g];else st.pdcs[g]=+st.pdcs[g];
+ const pg=pgrp(devi());if(st.pdcs[pg]==null)st.pdcs[pg]=PDC[pg].d;
+ st.icc=fin(st.icc,0,0,500);st.tkva=KVA.includes(+st.tkva)?+st.tkva:0;st.tucc=[4,4.5,5,6].includes(+st.tucc)?+st.tucc:4;st.tx=!!st.tx;
+ /* informe: datos de la obra (texto) y apartados que se incluyen */
+ const rp=st.rep&&typeof st.rep==='object'&&!Array.isArray(st.rep)?st.rep:{};st.rep={};
+ REPF.forEach(f=>{const v=rp[f[0]];st.rep[f[0]]=typeof v==='string'?v.slice(0,f[0]==='obs'?1500:200):'';});
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(st.rep.fecha))st.rep.fecha=hoy();
+ const ic=st.inc&&typeof st.inc==='object'&&!Array.isArray(st.inc)?st.inc:{};st.inc={};
+ INCS.forEach(x=>{st.inc[x[0]]=typeof ic[x[0]]==='boolean'?ic[x[0]]:true;});
+}
+
+/* ---------- cálculo ---------- */
+const NT_OUT='No figura en la tabla C.52.1 bis (casilla «–» o 300 mm²): valor orientativo calculado con IEC 60364-5-52. Confírmalo con el fabricante.';
+function tabIz(s){
+ const key=st.ins+st.ph,i=(st.mat==='Al'?SAL:SCU).indexOf(s),nt=[];
+ if(isD())return st.mat==='Cu'?{v:DCU[key][i],src:'Tabla C.52.2 bis',col:null,key,nt}:{v:DAL['XLPE'+st.ph][i],src:'Tabla C.52.2 bis · aluminio',col:null,key,nt};
+ const c=MAP[st.met][key],ok=inTab(c,s);
+ const v=st.mat==='Cu'?T52[i][COLS.indexOf(c)]:(ok&&ALT[s]?ALT[s][COLS.indexOf(c)]:ALM[st.met][st.ph][i]);
+ if(v!=null&&!ok)nt.push(NT_OUT);
+ if(v!=null&&st.met==='F'&&s<25)nt.push('La norma da el método F a partir de 25 mm²: valor orientativo.');
+ return {v,src:st.mat==='Cu'?'Tabla C.52.1 bis':'Tabla C.52.1 bis · aluminio',col:c,key,nt,out:!ok};}
+const h3=()=>st.ph===3?Math.min(100,Math.max(0,+st.h3||0)):0;
+function factors(){
+ const f=[],tm=st.ins==='PVC'?70:90,m=st.met,n=st.nc;
+ if(isD()){f.push(['Terreno a '+nf(st.tg)+' °C','B.52.15 · ref. 25 °C',st.tg>=tm?0:Math.sqrt((tm-st.tg)/(tm-25))]);
+  f.push(['Resistividad '+nf(st.res)+' K·m/W','B.52.16 · ref. 2,5',RESF[m][RES.indexOf(+st.res)]]);
+  if(n>1){if(m==='D1'){const j=Math.min(3,Math.max(0,+st.sep||0));f.push([n+' tubos · '+SEP1[j],'B.52.19 · un circuito por tubo',B519[j][n-2]]);}
+   else{const j=Math.min(4,Math.max(0,+st.sep||0)),k=N518.findIndex(x=>x>=n);f.push([n+' cables · '+SEP2[j],'B.52.18',B518T[j][k<0?10:k]]);}}}
+ else{f.push(['Aire a '+nf(st.ta)+' °C','B.52.14 · ref. 40 °C',st.ta>=tm?0:Math.sqrt((tm-st.ta)/(tm-40))]);
+  let row=1,lab='juntos en tubo o empotrados';
+  if(m==='C'){row=st.mont==='b'?3:2;lab=st.mont==='b'?'en una capa bajo techo':'en una capa sobre pared o bandeja lisa';}
+  else if(m==='E'||m==='F'){row=st.mont==='b'?5:4;lab=st.mont==='b'?'en una capa en escalera o soportes':'en una capa en bandeja perforada';}
+  if(n>1||row===3)f.push([(n>1?n+' circuitos ':'1 circuito ')+lab,'C.52.3 · fila '+row,c523(row,n)]);}
+ const h=h3();
+ if(h>15)f.push(['3er armónico '+nf(h)+' %','E.52.1 · '+(h>33?'sección por la corriente del neutro':'sección por la corriente de fase'),h>45?1:0.86]);
+ if(+st.fx!==1&&+st.fx>0)f.push(['Factor adicional','Introducido',+st.fx]);
+ return f;}
+function bareIz(k){
+ if(st.bk==='LA'){const x=LA[k],d=dens('Al',x[1]),c=ACO[x[2]];return {v:d*c*x[1],src:'ITC-LAT 07 · tabla 11',det:'δ '+nf(d,2)+' A/mm² × '+nf(c,3)+' ('+x[2]+') × '+nf(x[1])+' mm²',nt:[]};}
+ if(st.bk==='DIN'){const x=DIN[k];return {v:st.pint?x[3]:x[4],src:'DIN 43671',det:(st.pint?'Pintada':'Desnuda')+' · c.a. · 35 °C ambiente, 65 °C pletina',nt:['DIN 43671 es norma alemana (no UNE); el cuadro se verifica según UNE-EN 61439.']};}
+ if(st.bv==='BT'){const d=DESN[st.bk][DESN.s.indexOf(k)];return {v:d*k,src:'ITC-BT-06 · tabla 10',det:'δ '+nf2(d)+' A/mm² × '+nf(k)+' mm²',nt:[]};}
+ const d=dens(st.bk,k);return {v:d*k,src:'ITC-LAT 07 · tabla 11',det:'δ '+nf(d,3)+' A/mm² × '+nf(k)+' mm²'+(LAT.s.includes(k)?'':' (δ interpolada)'),nt:[]};}
+function compute(){
+ let keys,base,f,lab;
+ if(st.mode==='ais'){keys=st.mat==='Al'?SAL:SCU;base=tabIz;f=factors();lab=s=>nf(s)+' mm²';}
+ else{keys=bsecs();base=bareIz;f=+st.fxb!==1&&+st.fxb>0?[['Factor adicional','Introducido',+st.fxb]]:[];lab=k=>st.bk==='LA'?LA[k][0]:st.bk==='DIN'?DIN[k][0]:nf(k)+' mm²';}
+ const F=f.reduce((p,x)=>p*x[2],1);const cur=st.mode==='ais'?st.sec:st.bs;const b=base(cur);
+ const list=keys.map(k=>{const r=base(k);return {k,v:r.v,iz:r.v==null?null:r.v*F,nt:(r.nt||[]).length};});
+ return Object.assign(b,{F,f,cur,iz:b.v==null?null:b.v*F,list,lab,label:lab(cur)});}
+function ibCalc(){if(st.ibm==='A')return +st.ib;const c=+st.cos||1;return st.ph===3?(+st.P*1000)/(Math.sqrt(3)*400*c):(+st.P*1000)/(230*c);}
+function prot(R){
+ const D=devi(),L=D.ser?'In':'Ir',In=D.ser?+st.inn:+st.ir,k=D.k?D.k(In):null,I2=k?k*In:null,ib=ibCalc(),Iz=R.iz,sc=!D.k;
+ const okFor=(iz,i)=>!sc&&iz!=null&&i<=iz+1e-9&&D.k(i)*i<=1.45*iz+1e-9;
+ const c=[{ok:ib<=In+1e-9,t:'I<sub>B</sub> '+nf(ib)+' A ≤ '+L+' '+nf(In)+' A'}];
+ if(!sc)c.push({ok:Iz!=null&&In<=Iz+1e-9,t:L+' '+nf(In)+' A ≤ I<sub>z</sub> '+nf(Iz)+' A'},{ok:Iz!=null&&I2<=1.45*Iz+1e-9,t:'I<sub>2</sub> = '+nf2(k)+'·'+L+' = '+nf(I2)+' A ≤ 1,45·I<sub>z</sub> = '+nf(1.45*Iz)+' A'});
+ const minK=sc?null:R.list.find(x=>okFor(x.iz,In)&&x.iz>=ib);
+ return {D,L,In,k,I2,ib,Iz,c,sc,ok:!sc&&c.every(x=>x.ok),okFor,minK};}
+
+
+/* ---------- curva de disparo (tiempo–corriente) ---------- */
+const TOP=1e4,BOT=0.01;
+function fitT(r1,t1,r2,t2){ /* t = τ·ln(r²/(r²−a²)) que pasa por (r1,t1) y (r2,t2) */
+ const g=(a,r)=>Math.log(r*r/(r*r-a*a));let lo=1e-4,hi=r1*(1-1e-9);
+ for(let i=0;i<200;i++){const a=(lo+hi)/2;if(g(a,r1)/g(a,r2)>t1/t2)hi=a;else lo=a;}
+ const a=(lo+hi)/2,tau=t1/g(a,r1);return {a,t:r=>r<=a?Infinity:tau*g(a,r)};}
+function thermal(f,m){ /* curva térmica desde arriba del gráfico hasta el magnético m (múltiplos de In) */
+ if(m<=f.a*1.001||f.t(m)>=TOP)return [[m,TOP]];
+ let lo=f.a*(1+1e-9),hi=m;for(let i=0;i<100;i++){const x=(lo+hi)/2;if(f.t(x)>TOP)lo=x;else hi=x;}
+ const o=[],n=48;for(let i=0;i<=n;i++){const r=hi*Math.pow(m/hi,i/n);o.push([r,Math.min(TOP,f.t(r))]);}return o;}
+function band(D,In){
+ const sc=(a,f)=>a.map(p=>[p[0]*f,p[1]]);
+ if(D.fam==='auto'||D.fam==='ia'){
+  const m1=D.mag[0],m2=D.mag[1];
+  if(!D.k)return {lo:[[m1*In,TOP],[m1*In,BOT]],hi:[[m2*In,TOP],[m2*In,BOT]],q:false};
+  const T=D.T(In)*3600,i1=D.inf(),i2=D.k(In),e=!!D.e898;
+  const fl=fitT(i1,T,2.55*(e?1:i1/1.13),1),fh=fitT(i2,T,2.55*(e?1:i2/1.45),In<=32?60:120);
+  const lo=sc(thermal(fl,m1),In);lo.push([m1*In,BOT]);const hi=sc(thermal(fh,m2),In);hi.push([m2*In,BOT]);
+  return {lo,hi,q:!e};}
+ const r10=Math.sqrt(10);
+ if(D.id==='gG'){
+  let g=GG[In],q=false;if(!g){const ks=Object.keys(GG).map(Number),r=near(ks,In);g=GG[r].map(v=>v*In/r);q=true;}
+  const T=D.T(In)*3600,a=D.inf(In)*In,b=D.k(In)*In;
+  return {lo:[[a,TOP],[a,T],[g[0],10],[g[2],0.1],[g[2]*r10,BOT]],hi:[[b,TOP],[b,T],[g[1],5],[g[3],0.1],[g[3]*r10,BOT]],q};}
+ if(D.id==='aM')return {lo:sc([[4,TOP],[4,60],[8,0.5],[10,0.2],[10*Math.sqrt(20),BOT]],In),hi:sc([[6.3,TOP],[6.3,60],[12.5,0.5],[19,0.1],[19*r10,BOT]],In),q:false};
+ return null;}
+const fA=v=>v>=1000?nf(v/1000)+' kA':nf(v)+' A';
+const fT=t=>t<1?nf(t,2):t===1?'1 s':t>=1e4?'10⁴':nf(t);
+
+/* ---------- caída de tensión (Guía-BT anexo 2) ---------- */
+const GAM={Cu:{PVC:48,XLPE:44},Al:{PVC:30,XLPE:28}};   /* conductividad a 70 / 90 °C, m/(Ω·mm²) */
+const XL=0.1e-3;                                          /* reactancia estimada, Ω/m */
+const DUP=[[3,'3 %','Vivienda · alumbrado'],[5,'5 %','Otros usos'],[1.5,'1,5 %','DI · un usuario'],[1,'1 %','DI concentrados · LGA parcial'],[0.5,'0,5 %','LGA concentrados · DI parcial'],[4.5,'4,5 %','Trafo propio · alumbrado'],[6.5,'6,5 %','Trafo propio · otros']];
+const duOn=()=>st.mode==='ais'&&+st.L>0;
+const kU=()=>st.ph===3?[Math.sqrt(3),400]:[2,230];
+function zl(s){const c=Math.min(1,Math.max(0.1,+st.cos||1)),sn=Math.sqrt(1-c*c);return c/(GAM[st.mat][st.ins]*s)+XL*sn;}
+function duPct(s,I){const [k,U]=kU();return k*(+st.L)*I*zl(s)/U*100;}
+function iDu(s){const [k,U]=kU();return (+st.dumax/100*U)/(k*(+st.L)*zl(s));}
+function lMax(s,I){const [k,U]=kU();return I>0?(+st.dumax/100*U)/(k*I*zl(s)):Infinity;}
+const duOk=s=>!duOn()||duPct(s,P.ib)<=+st.dumax+1e-9;
+const neuOk=iz=>!P||P.IN==null||(iz!=null&&iz>=P.IN-1e-9);
+function vdrop(R,P){
+ if(!duOn())return null;const s=R.cur,[k,U]=kU(),pct=duPct(s,P.ib),idu=iDu(s);
+ return {pct,v:pct*U/100,lim:+st.dumax,ok:pct<=+st.dumax+1e-9,idu,lmax:lMax(s,P.ib),pIn:duPct(s,P.In),imax:R.iz==null?idu:Math.min(R.iz,idu),by:R.iz!=null&&R.iz<=idu?'iz':'du'};}
+/* ---------- cortocircuito (Guía-BT anexo 3 y UNE-HD 60364-6) ---------- */
+const RHO20={Cu:0.018,Al:0.029};                 /* Ω·mm²/m a 20 °C */
+const U0=230;
+let C=null;
+const ccOn=()=>st.mode==='ais';
+function iAt(poly,t){ /* corriente a la que la curva (de arriba abajo) llega al tiempo t */
+ for(let i=0;i<poly.length-1;i++){const a=poly[i],b=poly[i+1];
+  if(a[1]>=t&&b[1]<=t&&a[1]>b[1]){if(a[0]===b[0])return a[0];const f=(Math.log(t)-Math.log(a[1]))/(Math.log(b[1])-Math.log(a[1]));return Math.exp(Math.log(a[0])+f*(Math.log(b[0])-Math.log(a[0])));}}
+ return null;}
+function iaDev(D,In){ /* corriente que asegura el corte: magnético máximo, o fusión antes de 5 s */
+ if(D.mag)return D.mag[1]*In;
+ const b=band(D,In);return b?iAt(b.hi,5):null;}
+const iaTxt=D=>D.mag?(D.fam==='ia'?'1,2 · Im':D.id==='MA'?'1,2 · 12 · In':nf(D.mag[1])+' · In'):'funde antes de 5 s';
+const rLine=(s,hot)=>2*(+st.L)*(hot?1/GAM[st.mat][st.ins]:RHO20[st.mat])/s;
+const ccAt=s=>0.8*U0/rLine(s,true);
+const ccOk=k=>!(C&&!C.noL&&C.Ia)||ccAt(k)>=C.Ia-1e-9;
+function shortc(R,P){
+ if(!ccOn()||R.cur==null)return null;
+ const D=P.D,Ia=iaDev(D,P.In),s=R.cur,L=+st.L,o={Ia,s,noL:!(L>0)};
+ o.rmax=Ia?0.8*U0/Ia:null;o.lmax=Ia?o.rmax*GAM[st.mat][st.ins]*s/2:null;
+ if(o.noL){o.st=o.all=Ia?'nl':'na';return o;}
+ o.r=rLine(s,true);o.icc=0.8*U0/o.r;o.iccMax=0.8*U0/rLine(s,false);
+ o.st=!Ia?'na':o.icc>=Ia-1e-9?'ok':'ko';
+ const b=band(D,P.In),kS=cableK()*s;o.tc=(kS/o.icc)**2;o.tt=b?tAt(b.hi,o.icc):null;
+ o.thOk=o.tt==null?null:isFinite(o.tt)&&o.tt<=Math.min(5,o.tc)+1e-9;o.i2t=o.tc<0.1;o.k2s2=kS*kS;
+ o.all=o.st==='ko'||o.thOk===false?'ko':o.st;
+ return o;}
+function verdict(){
+ const nf_=!!P.nfail,pf=!P.sc&&!P.ok&&!(nf_&&P.c.slice(0,3).every(x=>x.ok)),df=V&&!V.ok;
+ const cf=C&&C.all==='ko',pdf=!!(PD&&PD.ok===false);
+ if(pf||df||nf_||cf||pdf)return {c:'ko',t:'No cumple',why:[pf?'protección':'',nf_?'neutro con armónicos':'',df?'caída de tensión':'',cf?'cortocircuito':'',pdf?'poder de corte':''].filter(Boolean).join(', ')};
+ if(P.sc)return {c:'wa',t:'Solo cortocircuito',why:''};
+ return {c:'ok',t:V?'Cumple':'Protección correcta',why:''};}
+
+/* ---------- dibujos de instalación ---------- */
+const WIRES={2:['marron','azul'],3:['marron','negro','gris']};
+const WC={marron:'var(--w-marron)',negro:'var(--w-negro)',gris:'var(--w-gris)',azul:'var(--w-azul)'};
+function cores(cx,cy,r){ /* conductores con el color de cada fase y el cobre dentro */
+ const c=WIRES[st.ph].map(x=>WC[x]),R=r*1.04;
+ const pos=st.ph===2?[[-R,0],[R,0]]:[[0,-R*1.15],[R,R*.58],[-R,R*.58]];
+ return pos.map((p,i)=>`<circle cx="${cx+p[0]}" cy="${cy+p[1]}" r="${r}" fill="${c[i]}" stroke="var(--line-strong)" stroke-width=".7"/><circle cx="${cx+p[0]}" cy="${cy+p[1]}" r="${(r*.46).toFixed(2)}" fill="var(--cu)"/>`).join('');}
+function pic(m){
+ const bg=`<rect width="120" height="72" fill="var(--surface)"/>`;
+ const lana=`<rect width="120" height="72" fill="var(--lana)"/>`+[9,27,45,63].map(y=>`<path d="M-4 ${y} q6 -5 12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0" fill="none" stroke="var(--lana-l)" stroke-width="1.6"/>`).join('');
+ const brk=w=>`<rect width="${w}" height="72" fill="var(--sunk)"/>`+[0,1,2,3].map(r=>`<path d="M0 ${r*18+18}H${w}" stroke="var(--line)" stroke-width="1.6"/>`+Array.from({length:Math.ceil(w/30)+1},(x,j)=>`<path d="M${j*30+(r%2?15:0)} ${r*18}v18" stroke="var(--line)" stroke-width="1.6"/>`).join('')).join('');
+ const tube=(cx,cy,r)=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--surface)" stroke="var(--line-strong)" stroke-width="3.2" stroke-dasharray="2.2 1.4"/>`;
+ const sh=(cx,cy,r)=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--sheath)" stroke="var(--line-strong)" stroke-width=".8"/>`;
+ const gr=`<rect width="120" height="72" fill="var(--surface)"/><rect y="20" width="120" height="52" fill="var(--tierra)"/><path d="M0 20H120" stroke="var(--tierra-l)" stroke-width="2.6"/>`+[[14,34],[30,60],[92,32],[104,56],[20,66],[84,66],[110,40],[46,30]].map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="1.6" fill="var(--tierra-l)"/>`).join('');
+ const tray=y=>`<path d="M10 ${y-9}V${y}H110V${y-9}" fill="none" stroke="var(--line-strong)" stroke-width="3"/>`+Array.from({length:11},(x,i)=>`<rect x="${16+i*8.5}" y="${y-1.2}" width="4" height="2.6" fill="var(--surface)"/>`).join('');
+ const r2=st.ph===2?6.2:5.4,uni=st.ph===2?[[49,45],[71,45]]:[[49.5,47],[70.5,47],[60,28.8]];
+ const g={
+  A1:lana+tube(60,36,22)+cores(60,37,st.ph===2?7.4:6.4),
+  A2:lana+tube(60,36,22)+sh(60,36,15.5)+cores(60,37,r2*.82),
+  B1:brk(120)+tube(60,36,22)+cores(60,37,st.ph===2?7.4:6.4),
+  B2:brk(120)+tube(60,36,22)+sh(60,36,15.5)+cores(60,37,r2*.82),
+  C:bg+brk(34)+sh(53,36,16)+cores(53,37,r2*.84)+`<path d="M34 17h19a19 19 0 0 1 0 38H34" fill="none" stroke="var(--line-strong)" stroke-width="2.6"/>`,
+  E:bg+tray(58)+sh(60,41,15.5)+cores(60,42,r2*.82),
+  F:bg+tray(58)+uni.map(p=>sh(p[0],p[1],10.5)).join('')+uni.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="6.4" fill="${WC[WIRES[st.ph][i]]}"/><circle cx="${p[0]}" cy="${p[1]}" r="3.4" fill="var(--cu)"/>`).join(''),
+  D1:gr+tube(60,46,18.5)+sh(60,46,12.6)+cores(60,47,st.ph===2?5.2:4.4),
+  D2:gr+sh(60,46,13)+cores(60,47,st.ph===2?5.4:4.6)};
+ return `<svg viewBox="0 0 120 72" aria-hidden="true">${g[m]||bg}</svg>`;}
+function picBare(){
+ const bg=`<rect width="120" height="72" fill="var(--sunk)"/>`;
+ if(st.bk==='DIN'){const x=DIN[st.bs],s=Math.min(96/x[1],40/x[2],6),w=x[1]*s,h=Math.max(x[2]*s,5),col=st.pint?'#4B5054':'var(--cu)';
+  return `<svg viewBox="0 0 120 72" aria-hidden="true">${bg}<rect x="${60-w/2}" y="${36-h/2}" width="${w}" height="${h}" rx="2" fill="${col}"/><rect x="${60-w/2}" y="${36-h/2}" width="${w}" height="${Math.max(h*.3,1.5)}" rx="2" fill="#fff" opacity=".28"/></svg>`;}
+ const s=6.2,pts=[[0,0]];for(let i=0;i<6;i++){const a=i*Math.PI/3;pts.push([2*s*Math.cos(a),2*s*Math.sin(a)]);}
+ for(let i=0;i<12;i++){const a=i*Math.PI/6,R=i%2?2*s*Math.sqrt(3):4*s;pts.push([R*Math.cos(a),R*Math.sin(a)]);}
+ const nst=st.bk==='LA'?(LA[st.bs][2]==='6+1'?1:7):0,col=st.bk==='Cu'?'var(--cu)':'#B7BDC5';
+ return `<svg viewBox="0 0 120 72" aria-hidden="true">${bg}${pts.map((p,i)=>`<circle cx="${60+p[0]}" cy="${36+p[1]}" r="${s-.5}" fill="${i<nst?'#6E767E':col}" stroke="var(--line-strong)" stroke-width=".8"/>`).join('')}</svg>`;}
+
+/* ---------- piezas de interfaz ---------- */
+const pressed=(a,b)=>String(a)===String(b);
+const seg=(k,opts,cls)=>`<div class="seg${cls?' '+cls:''}">${opts.map(o=>`<button type="button" aria-pressed="${pressed(st[k],o[0])}" data-k="${k}" data-v="${o[0]}"${o[3]?' disabled':''}><b>${o[1]}</b>${o[2]?`<small>${o[2]}</small>`:''}</button>`).join('')}</div>`;
+const blk=(label,inner,sub,subcls)=>`<div class="block"><p class="block-label">${label}${sub?`<span class="bl-sub${subcls?' '+subcls:''}">${sub}</span>`:''}</p>${inner}</div>`;
+const stepper=(k,val,unit,lab)=>`<div class="stepper"><button type="button" class="pm" data-st="${k}" data-d="-1" aria-label="Bajar ${lab}">−</button><output>${val}${unit?`<span class="u">${unit}</span>`:''}</output><button type="button" class="pm" data-st="${k}" data-d="1" aria-label="Subir ${lab}">+</button></div>`;
+const numIn=(k,unit,lab)=>`<div class="frow"><input type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" data-n="${k}" value="${String(st[k]).replace('.',',')}" aria-label="${lab}">${unit?`<span class="ufix">${unit}</span>`:''}<button type="button" class="okb" data-ok="${k}" aria-label="Aceptar ${lab}">OK</button></div>`;
+const field=(label,inner,sub)=>`<div class="field"><label>${label}${sub?` <small>${sub}</small>`:''}</label>${inner}</div>`;
+const wires=n=>`<span class="wires">${WIRES[n].map(c=>`<i class="wire wire-${c}"></i>`).join('')}</span>`;
+const fTime=t=>!isFinite(t)?'∞':t<=BOT*1.02?'< 10 ms':t<1?nf(t*1000,0)+' ms':t<60?nf(t,t<10?1:0)+' s':t<3600?nf(t/60,t<600?1:0)+' min':nf(t/3600,1)+' h';
+function devShort(P,In){
+ const D=P.D,i=In==null?P.In:In;
+ if(D.fam==='auto')return D.id==='MA'?'MA '+nf(i)+' A':D.id+nf(i);
+ if(D.fam==='fus')return D.id==='gTr'?'gTr '+kvaOf(i)+' kVA':D.id+' '+nf(i)+' A';
+ return 'Ir '+nf(i)+' A';}
+function devTitle(D){
+ if(D.fam==='auto')return D.id==='MA'?'Magnético curva MA':'Magnetotérmico curva '+D.id;
+ if(D.fam==='fus')return 'Fusible '+D.id;
+ return 'Caja moldeada de '+nf(+st.mcin)+' A';}
+function miniCurve(D){ /* dibujo pequeño de la curva en múltiplos de In: forma de cada aparato */
+ const In=D.fam==='fus'?(D.id==='gTr'?TRI[6]:63):D.fam==='ia'?160:16;
+ let b=band(D,In),dash=false;
+ if(!b){dash=true;b=band(devOf({fam:'fus',fus:D.id==='aR'?'aM':'gG'}),In);}
+ const X=v=>(6+(Math.log10(Math.max(.8,Math.min(80,v/In)))+0.09691)/2*108).toFixed(1);
+ const Y=t=>(6+(4-Math.log10(Math.min(TOP,Math.max(BOT,t))))/6*60).toFixed(1);
+ const pl=a=>a.map(p=>X(p[0])+','+Y(p[1])).join(' ');
+ let g=`<rect width="120" height="72" fill="var(--surface)"/>`;
+ [1,10].forEach(m=>g+=`<path d="M${X(m*In)} 6V66" class="mg"/>`);
+ [1,100].forEach(t=>g+=`<path d="M6 ${Y(t)}H114" class="mg"/>`);
+ g+=`<polygon points="${pl(b.lo)} ${pl([...b.hi].reverse())}" class="mz"/><polyline points="${pl(b.lo)}" class="ml${dash?' dsh':''}"/><polyline points="${pl(b.hi)}" class="ml${dash?' dsh':''}"/>`;
+ return `<svg viewBox="0 0 120 72" aria-hidden="true">${g}</svg>`;}
+
+/* ---------- vistas: cable aislado ---------- */
+function pCable(){
+ return `<section class="panel"><div class="p-head"><h2>Cable</h2></div>
+ ${blk('Conductor',seg('mat',[['Cu','Cobre'],['Al','Aluminio','Solo con XLPE']]))}
+ ${blk('Aislamiento',seg('ins',[['PVC','PVC · 70 °C','H07V-K, H07Z1-K, ES07Z1-K, VV-K',st.mat==='Al'],['XLPE','XLPE · 90 °C','RV-K, RZ1-K, SZ1-K, XZ1, H1Z2Z2']],'seg-big'))}
+ ${blk('Conductores cargados',seg('ph',[[2,'Monofásico',wires(2)+'2 conductores'],[3,'Trifásico',wires(3)+'3 conductores']],'seg-big'))}
+ </section>`;}
+function pInst(){
+ return `<section class="panel"><div class="p-head"><h2>Instalación</h2><p class="hint">Método de referencia de UNE-HD 60364-5-52. Elige el que más se parezca a tu obra.</p></div>
+ <div class="tiles">${MET.map(m=>`<button type="button" class="tile" aria-pressed="${st.met===m[0]}" data-k="met" data-v="${m[0]}">${pic(m[0])}<span class="tc"><b>${m[0]}</b><span>${m[1]}</span></span><small>${m[2]}</small></button>`).join('')}</div>
+ <p class="hint">Los hilos sin cubierta (H07V-K, H07Z1-K, ES07Z1-K) solo pueden ir en tubo o canal: métodos A1 o B1.</p></section>`;}
+function pCond(){
+ const d=isD(),tm=st.ins==='PVC'?70:90,m=st.met;
+ let h=`<section class="panel"><div class="p-head"><h2>Condiciones</h2><p class="hint">Cada cambio aplica su factor de corrección a la I<sub>z</sub> de la tabla.</p></div><div class="block">`;
+ h+=`<div class="crow"><div class="cl"><b>${d?'Temperatura del terreno':'Temperatura ambiente'}</b><small>Tabla a ${d?25:40} °C · máximo del aislamiento ${tm} °C</small></div>${stepper(d?'tg':'ta',nf(d?st.tg:st.ta),'°C','la temperatura')}</div>`;
+ const sub=d?(m==='D1'?'Tubos enterrados en la misma zanja, un circuito por tubo (ITC-BT-07)':'Cables enterrados en la misma zanja'):m==='C'?'En una sola capa':(m==='E'||m==='F')?'En una sola capa':'En el mismo tubo o empotrados juntos';
+ h+=`<div class="crow"><div class="cl"><b>Circuitos juntos</b><small>${sub}</small></div>${stepper('nc',st.nc,'','los circuitos')}</div>`;
+ if(m==='C')h+=`<div class="crow" style="display:grid"><div class="cl"><b>Montaje</b><small>Tabla C.52.3</small></div>${seg('mont',[['a','Pared, suelo o bandeja lisa','Fila 2'],['b','Bajo techo','Fila 3 · ya resta con 1 circuito']])}</div>`;
+ if(m==='E'||m==='F')h+=`<div class="crow" style="display:grid"><div class="cl"><b>Soporte</b><small>Tabla C.52.3</small></div>${seg('mont',[['a','Bandeja perforada','Fila 4'],['b','Escalera, abrazaderas o soportes','Fila 5']])}</div>`;
+ if(d&&st.nc>1)h+=`<div class="crow" style="display:grid"><div class="cl"><b>Separación</b><small>${m==='D1'?'Entre tubos · tabla B.52.19':'Entre cables · tabla B.52.18'}</small></div>${seg('sep',(m==='D1'?SEP1:SEP2).map((x,i)=>[i,x.charAt(0).toUpperCase()+x.slice(1)]))}</div>`;
+ if(st.more){
+  if(d)h+=`<div class="crow"><div class="cl"><b>Resistividad del terreno</b><small>K·m/W · tabla a 2,5</small></div>${stepper('res',nf(st.res),'','la resistividad')}</div>`;
+  if(st.ph===3)h+=`<div class="crow"><div class="cl"><b>Tercer armónico</b><small>% de la corriente de fase · tabla E.52.1</small></div><div style="width:min(100%,240px)">${numIn('h3','%','Tercer armónico')}</div></div>`;
+  h+=`<div class="crow"><div class="cl"><b>Factor adicional</b><small>Por ejemplo 0,85 al sol directo</small></div><div style="width:min(100%,240px)">${numIn('fx','','Factor adicional')}</div></div>`;}
+ h+=`</div><button type="button" class="linkbtn" data-more="1">${st.more?'Menos ajustes':'Más ajustes: '+(d?'resistividad, ':'')+(st.ph===3?'armónicos, ':'')+'factor adicional'}</button>`;
+ if(d)h+=`<p class="hint">La UNE-HD 60364-5-52 no aplica factor por profundidad en instalaciones interiores: la tabla vale para 0,70 m.</p>`;
+ return h+`</section>`;}
+function pSecs(R,P){
+ const lab=st.mode==='ais'?'Sección':st.bk==='LA'?'Conductor':st.bk==='DIN'?'Pletina':'Sección';
+ const wide=st.mode==='bare'&&(st.bk==='LA'||st.bk==='DIN');
+ return `<section class="panel"><div class="p-head"><h2>${lab}</h2><p class="hint" id="secsub">${secSub(P)}</p></div><div class="cards${wide||duOn()?' wide':''}" id="secs">${secsHTML(R,P)}</div></section>`;}
+function secSub(P){
+ const d=duOn()?` y ${nf(st.L)} m al ${nf(st.dumax)} %: la cifra grande es la I<sub>máx</sub>, la menor entre calentamiento (I<sub>z</sub>) y caída de tensión (I<sub>ΔU</sub>)`:'';
+ const star=R&&R.list&&R.list.some(x=>x.nt)?' * Valor orientativo: no figura en la tabla de la norma.':'';
+ return `Con tus condiciones${d}.`+(P.sc?'':` Con <span style="color:var(--ok);font-weight:700">✓</span>, cumple con ${devShort(P)} e I<sub>B</sub> ${nf(P.ib)} A.`)+star;}
+function secsHTML(R,P){
+ const bare=st.mode==='bare',named=bare&&(st.bk==='LA'||st.bk==='DIN'),du=duOn();
+ return R.list.map(x=>{
+  const fit=x.iz!=null&&P.okFor(x.iz,P.In)&&duOk(x.k)&&neuOk(x.iz)&&ccOk(x.k);
+  const s=(named?R.lab(x.k)+(st.bk==='DIN'?' mm':''):nf(x.k)+' mm²')+(x.nt?'*':'');
+  let big=x.iz,sub='<span class="u">A</span>';
+  if(du&&x.iz!=null){const idu=iDu(x.k),ok=duPct(x.k,P.ib)<=+st.dumax+1e-9;big=Math.min(x.iz,idu);
+   sub=`<span class="u">A</span><span class="lim${x.iz<=idu?' gov':''}">I<sub>z</sub> ${nf(x.iz,x.iz<100?1:0)}</span><span class="lim${idu<x.iz?' gov':''}${ok?'':' bad'}">ΔU ${nf(idu,idu<100?1:0)}</span>`;}
+  return `<button type="button" class="card${fit?' fit':''}" aria-pressed="${String(x.k)===String(R.cur)}" data-k="${bare?'bs':'sec'}" data-v="${x.k}"${x.iz==null?' disabled':''}><span class="s">${s}</span><span class="n">${big==null?'–':nf(big,big<100?1:0)}</span>${sub}</button>`;}).join('');}
+/* ---------- vistas: conductor desnudo ---------- */
+function pBare(){
+ let h=`<section class="panel"><div class="p-row"><div class="p-head"><h2>Conductor desnudo</h2><p class="hint">Densidad de corriente admisible o tabla de pletinas.</p></div><div class="bare-pic">${picBare()}</div></div>`;
+ h+=blk('Material',seg('bk',[['Cu','Cobre'],['Al','Aluminio'],['LA','Aluminio-acero','Cables LA'],['DIN','Pletina','Cobre · DIN 43671']]));
+ if(st.bk==='Cu'||st.bk==='Al')h+=blk('Tensión',seg('bv',[['BT','Baja tensión','ITC-BT-06'],['AT','Alta tensión','ITC-LAT 07']],'seg-big'));
+ if(st.bk==='DIN')h+=blk('Acabado',seg('pint',[[false,'Desnuda'],[true,'Pintada']],'seg-big'));
+ h+=`<div class="crow" style="border-top:0;padding-top:0"><div class="cl"><b>Factor adicional</b><small>${st.bk==='DIN'?'Otra temperatura o varias pletinas por fase':'Si procede'}</small></div><div style="width:min(100%,240px)">${numIn('fxb','','Factor adicional')}</div></div>`;
+ return h+`</section>`;}
+
+/* ---------- protección y carga ---------- */
+function typeHint(P){const D=P.D,In=P.In,T=D.T?D.T(In):1,h=T+(T>1?' horas':' hora');
+ if(D.fam==='auto'&&!D.k)return `${D.d}. Disparo magnético ${D.r}, sin disparo térmico. ${D.norm}.`;
+ if(D.fam==='auto')return `${D.d}. Térmico: no dispara a ${nf2(D.inf())}·In y dispara antes de ${h} a ${nf2(D.k())}·In. Magnético: ${D.r}. ${D.norm}.`;
+ if(D.fam==='ia')return `Caja moldeada de ${nf(+st.mcin)} A. Térmico regulable: no dispara a 1,05·Ir y dispara antes de ${h} a 1,30·Ir. Magnético: ${D.r}. ${D.norm}.`;
+ if(!D.k)return `${D.d}. ${D.norm}.`;
+ if(D.id==='gTr')return `${D.d}. Aguanta 1,3·In durante 10 horas y funde antes de 2 horas a 1,5·In. ${D.norm}.`;
+ return `${D.d}. No funde a ${nf2(D.inf(In))}·In y funde antes de ${h} a ${nf2(D.k(In))}·In. ${D.norm}.`;}
+function calHTML(R,P){const tr=P.D.id==='gTr';
+ return P.D.ser.map(i=>{const v=P.ib<=i+1e-9&&P.okFor(R.iz,i)&&(!V||V.ok);return `<button type="button" class="${v?'fit':''}" aria-pressed="${i===+st.inn}" data-k="inn" data-v="${i}"><b>${tr?kvaOf(i):nf(i)}</b><small>${tr?'kVA · '+i+' A':'A'}</small></button>`;}).join('');}
+const ibHint=P=>st.ibm==='kW'?`I<sub>B</sub> = ${nf(P.ib)} A (${st.ph===3?'√3 · 400 V':'230 V'} · cos φ ${nf2(+st.cos||1)})`:`Trabaja con I<sub>B</sub> = ${nf(P.ib)} A.`;
+function pProt(R,P){
+ const D=P.D;
+ let h=`<section class="panel" id="prot"><div class="p-head"><h2>Protección y carga</h2></div>`;
+ const pd=PD,pdt=`Poder de corte ${fkA(pd.v)}`+(pd.icc>0?(pd.ok?` ≥ I<sub>cc</sub> ${fkA(pd.icc)}`:` &lt; I<sub>cc</sub> ${fkA(pd.icc)}: no la corta`):'');
+ h+=blk('Aparato',`<div class="devsum"><div class="dp">${miniCurve(D)}</div><div class="dsx"><b>${devTitle(D)} · ${devShort(P)}</b><small class="${pd.icc>0?(pd.ok?'ok':'ko'):''}">${pdt}</small><small>${D.norm}</small></div><button type="button" class="gobtn" data-tab="prot">Cambiar</button></div>`,'curva, calibre y poder de corte en Protecciones');
+ h+=`<p class="hint" id="thint">${typeHint(P)}</p>`;
+ h+=blk('Carga',seg('ibm',[['kW','Por potencia'],['A','Por corriente']])+(st.ibm==='kW'
+   ?`<div class="fields">${field('Potencia',numIn('P','kW','Potencia'),st.ph===3?'trifásica 400 V':'monofásica 230 V')}${field('cos φ',numIn('cos','','cos φ'))}</div>`
+   :`<div class="fields">${field('Corriente de empleo I<sub>B</sub>',numIn('ib','A','Corriente de empleo'))}${field('cos φ',numIn('cos','','cos φ'),'para la caída de tensión')}</div>`)+`<p class="hint" id="ibh">${ibHint(P)}</p>`);
+ if(st.mode==='ais')h+=blk('Línea y caída de tensión',`<div class="fields">${field('Longitud de la línea',numIn('L','m','Longitud de la línea'),'ida · para la caída y el cortocircuito')}${field('Caída máxima',numIn('dumax','%','Caída máxima'))}</div>${seg('dumax',DUP.map(d=>[d[0],d[1],d[2]]),'seg-du')}<p class="hint">Límites del REBT: ITC-BT-19 (interiores), ITC-BT-15 (derivación individual) e ITC-BT-14 (línea general). Se calcula con I<sub>B</sub> a ${st.ph===3?'400':'230'} V.</p>`);
+ else h+=`<p class="hint">La caída de tensión se calcula en la pestaña Cable aislado.</p>`;
+ if(D.ser)h+=blk(D.id==='gTr'?'Transformador a 400 V':'Calibre',`<div class="seg seg-num" id="cal">${calHTML(R,P)}</div>`,P.sc?'':'subrayado en verde, cumple con este cable','ok');
+ else h+=blk('Ajustes',`<div class="fields">${field('Térmico I<sub>r</sub>',numIn('ir','A','Ajuste térmico'),'aparato de '+nf(+st.mcin)+' A')}${field('Magnético I<sub>m</sub>',numIn('im','× Ir','Disparo magnético'),'±20 %')}</div>`);
+ return h+`</section>`;}
+
+/* ---------- pantalla LCD ---------- */
+const lrow=(l,v)=>`<div class="lcd-row"><span class="lcd-label">${l}</span><span class="lcd-val">${v}</span></div>`;
+function ccResult(R,P){
+ if(!C)return '';
+ const big={ok:'Cumple',ko:'No cumple',na:'Sin datos',nl:'Falta la longitud'}[C.all],dot={ok:'ok',ko:'ko',na:'wa',nl:'wa'}[C.all];
+ let h=`<p class="lcd-cap">Cortocircuito fase-neutro · Guía-BT anexo 3</p><div class="lcd-row" style="border-top:0;padding-top:0;justify-content:flex-start;gap:12px"><i class="dot ${dot}"></i><span class="lcd-verd">${big}</span></div>`;
+ if(!C.noL){h+=lrow('I<sub>cc</sub> mínima al final',fA(C.icc));h+=lrow(`R del bucle · ${nf(st.L)} m de fase + neutro`,nf(C.r,3)+' Ω');}
+ h+=lrow(`Disparo seguro I<sub>a</sub> · ${iaTxt(P.D)}`,C.Ia?fA(C.Ia):'–');
+ if(C.Ia){h+=lrow('R máxima admisible · 0,8·230/I<sub>a</sub>',nf(C.rmax,3)+' Ω');h+=lrow(`Longitud máxima con ${R.label}`,nf(C.lmax,C.lmax<100?1:0)+' m');}
+ if(!C.noL){h+=lrow('I<sub>cc</sub> máxima al final · cable a 20 °C',fA(C.iccMax));if(C.tt!=null)h+=lrow('Corta en · el cable aguanta',`${fTime(C.tt)} · ${fTime(C.tc)}`);}
+ const n=[];
+ if(C.all==='na')n.push('Este fusible no tiene curva normalizada: busca su I<sub>a</sub> en el catálogo del fabricante.');
+ if(C.all==='nl')n.push('Pon la longitud de la línea en «Protección y carga» y salen la R del bucle y la I<sub>cc</sub> al final.');
+ if(C.st==='ko')n.push('La corriente de cortocircuito no llega a la de disparo seguro: la línea es demasiado larga o fina para esta protección.');
+ if(C.thOk===false)n.push('El cable no aguanta hasta que corta la protección.');
+ if(!C.noL&&C.i2t&&C.thOk!==false)n.push(`Por debajo de 0,1 s compara la I²t del aparato con k²S² = ${nf(C.k2s2,0)} A²s.`);
+ n.forEach(x=>h+=`<p class="lcd-note">${x}</p>`);
+ return h;}
+function pCC(R,P){
+ return `<section class="panel" id="ccp"><div class="p-head"><h2>Cortocircuito</h2><p class="hint">Sale solo con el cable, la protección y la longitud de la línea.</p></div><div class="lcd mini"><div class="lcd-screen" id="ccres">${ccResult(R,P)}</div></div><p class="hint">I<sub>cc</sub> = 0,8 · 230 V / R (Guía-BT anexo 3), con R de fase y neutro a la temperatura máxima del cable, la más desfavorable. R máxima = 0,8 · 230 V / I<sub>a</sub>. Cumple si I<sub>cc</sub> ≥ I<sub>a</sub> y la protección corta antes de que se dañe el cable.</p></section>`;}
+function lcdHTML(R,P){
+ const izs=R.iz==null||R.F===0?'– –':nf(R.iz,R.iz<100?1:0);
+ const big=V?nf(V.imax,V.imax<100?1:0):izs;
+ const what=st.mode==='ais'?`${R.label} ${st.mat==='Cu'?'cobre':'aluminio'} · ${st.ins} · ${st.ph} cargados · ${st.met}`:`${R.label} · ${R.src}`;
+ let h=`<div class="lcd"><div class="lcd-screen"><p class="lcd-cap">${V?'Intensidad máxima del circuito':'Intensidad admisible · I<sub>z</sub>'}</p><div class="lcd-row main"><span class="lcd-val">${big}<span class="lcd-u">A</span></span><span class="lcd-label">${what}${V?` · ${nf(st.L)} m`:''}</span></div>`;
+ h+=st.mode==='ais'?lrow(`${R.src}${R.col?' · col. '+R.col:''}`,R.v==null?'–':nf(R.v)+' A'):lrow(R.det,R.v==null?'–':nf(R.v)+' A');
+ R.f.forEach(x=>h+=lrow(x[0],'× '+nf2(x[2])));
+ if(R.f.length>1)h+=lrow('Factor total','× '+nf2(R.F));
+ if(V){
+  h+=lrow((V.by==='iz'?'▸ ':'')+'Por calentamiento · I<sub>z</sub>',izs+' A');
+  h+=lrow((V.by==='du'?'▸ ':'')+`Por caída de tensión · ${nf(V.lim)} %`,nf(V.idu,V.idu<100?1:0)+' A');
+  h+=lrow(`ΔU con I<sub>B</sub> ${nf(P.ib)} A`,`${nf2(V.pct)} % · ${nf(V.v)} V`);
+  h+=lrow(`Longitud máxima con ${R.label}`,isFinite(V.lmax)?nf(V.lmax,V.lmax<100?1:0)+' m':'–');}
+ if(C&&!C.noL)h+=lrow('I<sub>cc</sub> mínima al final',fA(C.icc)+({ok:' · cumple',ko:' · no cumple',na:''}[C.all]||''));
+ if(C&&C.Ia)h+=lrow('R máxima de bucle · longitud máxima',nf(C.rmax,3)+' Ω · '+nf(C.lmax,C.lmax<100?1:0)+' m');
+ if(PD&&PD.icc>0)h+=lrow('Poder de corte · I<sub>cc</sub> presunta',fkA(PD.v)+(PD.ok?' ≥ ':' &lt; ')+fkA(PD.icc)+(PD.ok?' · cumple':' · no cumple'));
+ const nt=[...(R.nt||[])];if(R.F===0)nt.unshift('La temperatura supera la máxima del aislamiento.');
+ nt.forEach(n=>h+=`<p class="lcd-note">${n}</p>`);
+ const vd=verdict();
+ h+=`<div class="lcd-row"><span class="lcd-verd"><i class="dot ${vd.c}"></i>${vd.t}</span><span class="lcd-val">${devShort(P)} · I<sub>B</sub> ${nf(P.ib)} A</span></div>`;
+ if(vd.why)h+=`<p class="lcd-note">Falla: ${vd.why}.</p>`;
+ return h+`</div></div>`;}
+/* ---------- coordinación ---------- */
+function track(max,zone,ms){
+ const pos=v=>Math.max(0,Math.min(100,v/max*100));
+ ms=ms.filter(m=>m.v!=null&&isFinite(m.v)).map(m=>Object.assign({},m,{p:pos(m.v)})).sort((a,b)=>a.p-b.p);
+ ms.forEach((m,i)=>m.L=ms.length-1-i);
+ return `<div class="trk" style="height:${(ms.length-1)*21+48}px"><div class="bar"></div>${zone?`<div class="zone" style="left:${pos(zone[0])}%;width:${Math.max(0,pos(zone[1])-pos(zone[0]))}%"></div>`:''}${ms.map(m=>`<div class="mk ${m.c||''}" style="left:${m.p}%;--h:${16+m.L*21}px"><i></i><span>${m.t}</span></div>`).join('')}</div>`;}
+function trySet(ch){ /* prueba un cambio sin tocar la pantalla: true si deja de fallar */
+ const sv=Object.assign({},st);Object.assign(st,ch);calc();const ok=verdict().c!=='ko';
+ for(const k of Object.keys(st))delete st[k];Object.assign(st,sv);calc();return ok;}
+function fixData(R0,P0){ /* arreglos comprobados: [{ch,html}] o un mensaje */
+ const D=P0.D,kS=st.mode==='bare'?'bs':'sec',keys=R0.list.filter(x=>x.iz!=null).map(x=>x.k),ci=keys.findIndex(k=>String(k)===String(R0.cur));
+ /* si falla el poder de corte, cada arreglo lleva también el poder de corte que hace falta */
+ const pd0=PD;let base={},bl='';
+ if(pd0&&pd0.ok===false){
+  if(pd0.need==null)return {items:[],tab:true,msg:`Con ${fkA(pd0.icc)} de I<sub>cc</sub> no vale ningún poder de corte de esta gama (hasta ${fkA(Math.max(...pd0.G.l))}): elige otro aparato en Protecciones.`};
+  base={pdcs:Object.assign({},st.pdcs,{[pd0.g]:pd0.need})};bl=` · <b>${fkA(pd0.need)}</b>`;}
+ const trySet0=trySet,out=[],add=(ch,html,solo)=>out.push({ch:Object.assign({},base,ch),html:html+(solo?'':bl)});
+ {const trySet=ch=>trySet0(Object.assign({},base,ch));
+ if(base.pdcs&&trySet({}))add({},`Poder de corte <b>${fkA(pd0.need)}</b>`,true);
+ for(const k of keys){if(String(k)===String(R0.cur))continue;if(trySet({[kS]:k})){add({[kS]:k},`${keys.indexOf(k)>ci?'Subir':'Bajar'} a <b>${R0.lab(k)}</b>`);break;}}
+ if(D.ser){const cs=D.ser.filter(i=>i!==P0.In).sort((a,b)=>Math.abs(a-P0.In)-Math.abs(b-P0.In));
+  for(const i of cs){if(trySet({inn:i})){add({inn:i},`${i<P0.In?'Bajar':'Subir'} a <b>${devShort(P0,i)}</b>`);break;}}}
+ else if(R0.iz!=null){const cs=[Math.floor(Math.min(R0.iz,1.45*R0.iz/1.30)*10)/10,Math.ceil(P0.ib*10)/10].filter(v=>v>=0.1&&v!==+st.ir);
+  for(const v of cs){if(trySet({ir:v})){add({ir:v},`Ajustar a <b>Ir ${nf(v)} A</b>`);break;}}}
+ if(+st.L>0){const ls=[V&&!V.ok?V.lmax:null,C&&!C.noL&&C.st==='ko'?C.lmax:null].filter(x=>x!=null&&isFinite(x)&&x>0);
+  if(ls.length){const l=Math.floor(Math.min(...ls)*10)/10;if(l>0&&l<+st.L&&trySet({L:l}))add({L:l},`Acortar a <b>${nf(l)} m</b>`);}}
+ if(!out.length&&D.ser){
+  outer:for(const i of D.ser.filter(i=>i>=P0.ib-1e-9))for(const k of keys)if(trySet({[kS]:k,inn:i})){add({[kS]:k,inn:i},`<b>${R0.lab(k)}</b> con <b>${devShort(P0,i)}</b>`);break outer;}}
+ if(!out.length&&!D.ser){const v=Math.ceil(P0.ib*10)/10;
+  for(const k of keys)if(trySet({[kS]:k,ir:v})){add({[kS]:k,ir:v},`<b>${R0.lab(k)}</b> con <b>Ir ${nf(v)} A</b>`);break;}}
+ if(!out.length&&D.fam==='auto'&&P0.ib>Math.max(...D.ser)){
+  outer2:for(const c of ['C','B','D'])for(const i of S898.filter(i=>i>=P0.ib-1e-9))for(const k of keys)if(trySet({cur:c,[kS]:k,inn:i})){add({cur:c,[kS]:k,inn:i},`<b>${R0.lab(k)}</b> con <b>${c}${nf(i)}</b><small>curva ${D.id} no llega a ${nf(P0.ib)} A</small>`);break outer2;}}
+ }
+ if(!out.length)return {items:[],msg:'Ningún cambio de sección, calibre o longitud lo arregla: revisa la carga o el tipo de protección.'};
+ return {items:out};}
+function fixesHTML(R0,P0){
+ const f=fixData(R0,P0);
+ if(f.tab)return `<p class="hint">${f.msg}</p><button type="button" class="fix" data-tab="prot"><b>Elegir otro aparato en Protecciones</b></button>`;
+ if(!f.items.length)return `<p class="hint">${f.msg}</p>`;
+ return `<div class="block"><p class="block-label">Para que cumpla</p><div class="fixes">${f.items.map(x=>`<button type="button" class="fix" data-set='${JSON.stringify(x.ch)}'>${x.html}</button>`).join('')}</div><p class="hint">Cada botón está comprobado: deja el circuito cumpliendo.</p></div>`;}
+function coordHTML(R,P){
+ const L=P.L,Iz=P.Iz||0,max=Math.max(P.ib,P.In,Iz,P.I2||0,1.45*Iz)*1.12||1;
+ let h=`<section class="panel"><div class="p-head"><h2>Coordinación</h2><p class="hint">ITC-BT-22 · UNE-HD 60364-4-43${V?' · ITC-BT-19':''}</p></div>`;
+ if(P.sc)h+=`<div class="warnbox">${P.D.why}</div>`;
+ const ok1=P.c[0].ok&&(P.sc||P.c[1].ok);
+ h+=`<div class="rule"><div class="rule-h"><span>① I<sub>B</sub> ≤ ${L}${P.sc?'':' ≤ I<sub>z</sub>'}</span><span class="st ${ok1?'ok':'ko'}">${ok1?'Cumple':'No cumple'}</span></div>${track(max,[P.ib,P.sc?max:Iz],[{v:P.ib,t:'I<sub>B</sub> '+nf(P.ib),c:'ib'},{v:P.In,t:L+' '+nf(P.In),c:ok1?'':'bad'},{v:R.iz==null?null:Iz,t:'I<sub>z</sub> '+nf(Iz),c:'iz'}])}</div>`;
+ if(!P.sc){const ok2=P.c[2].ok;h+=`<div class="rule"><div class="rule-h"><span>② I<sub>2</sub> ≤ 1,45·I<sub>z</sub></span><span class="st ${ok2?'ok':'ko'}">${ok2?'Cumple':'No cumple'}</span></div>${track(max,[0,1.45*Iz],[{v:P.I2,t:'I<sub>2</sub> '+nf(P.I2),c:ok2?'':'bad'},{v:R.iz==null?null:1.45*Iz,t:'1,45·I<sub>z</sub> '+nf(1.45*Iz),c:'iz'}])}</div>`;}
+ const chk=[...P.c];
+ if(V){
+  const m3=Math.min(Math.max(P.ib,V.idu,Iz)*1.12,Math.max(P.ib*4,Iz*1.6,P.In*1.6));
+  h+=`<div class="rule"><div class="rule-h"><span>${P.sc?'②':'③'} I<sub>B</sub> ≤ I<sub>ΔU</sub></span><span class="st ${V.ok?'ok':'ko'}">${V.ok?'Cumple':'No cumple'}</span></div>${track(m3,[0,V.idu],[{v:P.ib,t:'I<sub>B</sub> '+nf(P.ib),c:'ib'},{v:V.idu,t:'I<sub>ΔU</sub> '+nf(V.idu,V.idu<100?1:0)+(V.idu>m3?' →':''),c:V.ok?'du':'bad'}])}</div>`;
+  const mx=Math.max(Iz,V.idu)||1,bar=(lab,v,c,gov)=>`<div class="mbar${gov?' gov':''}"><span class="ml">${lab}</span><span class="mt"><i class="${c}" style="width:${Math.max(2,v/mx*100)}%"></i></span><b>${nf(v,v<100?1:0)} A</b></div>`;
+  h+=`<div class="block"><p class="block-label">Intensidad máxima<span class="bl-sub">de ${R.label} con ${nf(st.L)} m · manda la menor</span></p>${bar('Calentamiento · I<sub>z</sub>',Iz,'iz',V.by==='iz')}${bar(`Caída ${nf(V.lim)} % · I<sub>ΔU</sub>`,V.idu,'du',V.by==='du')}<p class="hint">Máxima del circuito: <b style="color:var(--ink)">${nf(V.imax,V.imax<100?1:0)} A</b>, manda ${V.by==='iz'?'el calentamiento':'la caída de tensión'}. Con I<sub>B</sub> ${nf(P.ib)} A llega hasta <b style="color:var(--ink)">${isFinite(V.lmax)?nf(V.lmax,V.lmax<100?1:0)+' m':'–'}</b>.${P.In>V.idu+1e-9?` Si la carga llegara al calibre (${nf(P.In)} A), la caída sería del ${nf2(V.pIn)} %.`:''}</p></div>`;
+  chk.push({ok:V.ok,t:`ΔU = ${nf2(V.pct)} % ≤ ${nf(V.lim)} %`});}
+ if(C&&C.Ia&&!C.noL){
+  const num=['①','②','③','④','⑤'][(P.sc?1:2)+(V?1:0)],okc=C.st==='ok',m4=Math.max(C.icc,C.Ia)*1.15;
+  h+=`<div class="rule"><div class="rule-h"><span>${num} I<sub>cc</sub> ≥ I<sub>a</sub></span><span class="st ${okc?'ok':'ko'}">${okc?'Cumple':'No cumple'}</span></div>${track(m4,[C.Ia,m4],[{v:C.Ia,t:'I<sub>a</sub> '+nf(C.Ia,0),c:''},{v:C.icc,t:'I<sub>cc</sub> '+nf(C.icc,0),c:okc?'cc':'bad'}])}</div>`;
+  chk.push({ok:okc,t:`I<sub>cc</sub> = 0,8·230/${nf(C.r,3)} Ω = ${nf(C.icc,0)} A ≥ I<sub>a</sub> ${nf(C.Ia,0)} A`});
+  chk.push({ok:C.r<=C.rmax+1e-12,t:`R bucle ${nf(C.r,3)} Ω ≤ R máx. ${nf(C.rmax,3)} Ω`});
+  if(C.thOk!=null)chk.push({ok:C.thOk,t:`Corta en ${fTime(C.tt)} ≤ el cable aguanta ${fTime(C.tc)}`});}
+ if(PD&&PD.icc>0)chk.push({ok:PD.ok,t:`Poder de corte ${fkA(PD.v)} ≥ I<sub>cc</sub> presunta ${fkA(PD.icc)}`});
+ h+=`<ul class="checks">${chk.map(x=>`<li class="${x.ok?'y':'n'}"><b>${x.ok?'✓':'✕'}</b><span>${x.t}</span></li>`).join('')}</ul>`;
+ if(verdict().c==='ko')h+=fixesHTML(R,P);
+ return h+`</section>`;}
+/* ---------- qué es cada dato ---------- */
+function dataHTML(R,P){
+ const D=P.D,L=P.L,fu=D.fam==='fus';
+ const ibT=st.ibm==='A'?'el valor que has puesto':nf(st.P,2)+' kW a '+(st.ph===3?'400':'230')+' V con cos φ '+nf2(+st.cos||1);
+ const lim=st.mode==='ais'?'sin que el aislamiento pase de '+(st.ins==='PVC'?70:90)+' °C':'sin calentarse por encima de su límite';
+ const inT=D.id==='gTr'?'<b>Calibre del fusible gTr.</b> Corriente del transformador a 400 V ('+kvaOf(P.In)+' kVA → '+nf(P.In)+' A).':'<b>'+(fu?'Calibre del fusible':D.fam==='ia'?'Ajuste térmico del automático':'Calibre del automático')+'.</b> Corriente que puede pasar siempre sin que '+(fu?'se funda':'dispare')+'.';
+ const hT=P.sc?0:D.T(P.In);
+ const i2=P.sc?'<b>No tiene.</b> '+(fu?'Este fusible':'Este automático')+' no protege contra sobrecargas.':'<b>Corriente de disparo seguro.</b> Con ella la protección '+(fu?'se funde':'dispara')+' seguro antes de '+hT+(hT>1?' horas':' hora')+' ('+nf2(P.k)+'·'+L+').';
+ const rows=[
+  ['ib','I<sub>B</sub>','<b>Corriente de empleo.</b> Lo que consume la carga ('+ibT+').'],
+  ['',L,inT],
+  ['iz','I<sub>z</sub>','<b>Intensidad admisible del cable.</b> Lo que aguanta de forma permanente '+lim+', ya corregida con los factores.'],
+  ['','I<sub>2</sub>',i2],
+  ['iz','1,45·I<sub>z</sub>','<b>Sobrecarga que soporta el cable.</b> Lo máximo que tolera durante el tiempo convencional sin dañarse.'],
+  ['','Factor','<b>Factor de corrección.</b> Ajusta la I<sub>z</sub> de la tabla a tus condiciones: mayor que 1 la sube, menor que 1 la baja.'],
+  ['du','ΔU','<b>Caída de tensión.</b> Lo que baja la tensión desde el principio hasta el final de la línea con I<sub>B</sub>, en % de '+(st.ph===3?'400':'230')+' V.'],
+  ['du','I<sub>ΔU</sub>','<b>Intensidad máxima por caída de tensión.</b> La mayor corriente con la que, con estos metros, la caída no pasa del límite.'],
+  ['','I<sub>máx</sub>','<b>Intensidad máxima del circuito.</b> La menor entre I<sub>z</sub> e I<sub>ΔU</sub>: la que manda en esa sección.'],
+  ['cc','I<sub>cc</sub>','<b>Corriente de cortocircuito.</b> La que pasa si se tocan fase y neutro al final de la línea. Cuanto más larga y fina la línea, menor.'],
+  ['','I<sub>a</sub>','<b>Corriente de disparo seguro.</b> Con ella la protección corta sin retardo: el magnético máximo del automático o la que funde el fusible antes de 5 s.'],
+  ['cc','R','<b>Resistencia del bucle.</b> Fase más neutro hasta el final de la línea. La máxima admisible es la que todavía deja pasar I<sub>a</sub>.'],
+  ['','PdC','<b>Poder de corte.</b> La mayor corriente de cortocircuito que la protección corta sin romperse. Tiene que superar la I<sub>cc</sub> presunta del cuadro. Se elige en Protecciones.']];
+ const tail=P.sc?'Con este aparato solo cuenta la regla ①: la carga no puede pasar del calibre. La sobrecarga del cable la tiene que vigilar otro aparato.':'Regla ①: el '+(D.ser?'calibre':'ajuste')+' tiene que caer en la zona verde, entre lo que consume la carga y lo que aguanta el cable. Regla ②: la protección tiene que disparar antes de que la sobrecarga dañe el cable.';
+ return `<section class="panel data"><div class="p-head"><h2>Qué es cada dato</h2></div><dl>${rows.map(r=>`<dt class="${r[0]}">${r[1]}</dt><dd>${r[2]}</dd>`).join('')}</dl><p class="tail">${tail}</p></section>`;}
+
+/* ---------- curva de disparo interactiva ---------- */
+let tcI=null,TC=null,lastW=0;
+function tAt(poly,I){ /* tiempo de una curva (de arriba abajo) para la corriente I, interpolando en log-log */
+ if(I<poly[0][0])return Infinity;
+ for(let i=0;i<poly.length-1;i++){const a=poly[i],b=poly[i+1];if(b[0]>a[0]&&I>=a[0]&&I<=b[0]){const f=(Math.log(I)-Math.log(a[0]))/(Math.log(b[0])-Math.log(a[0]));return Math.exp(Math.log(a[1])+f*(Math.log(b[1])-Math.log(a[1])));}}
+ return BOT;}
+function cableK(){return st.mat==='Cu'?(st.ins==='PVC'?115:143):(st.ins==='PVC'?76:94);}
+function quickReads(P,b){
+ const q=[],D=P.D;
+ if(P.I2)q.push(['I<sub>2</sub>',P.I2]);
+ if(P.Iz)q.push(['1,45·I<sub>z</sub>',1.45*P.Iz]);
+ if(D.mag)q.push(['Magnético máx.',D.mag[1]*P.In]);
+ if(C&&C.icc)q.push(['I<sub>cc</sub>',C.icc]);
+ if(D.id==='gG'){const g=GG[P.In];if(g)q.push(['Funde en 5 s',g[1]]);}
+ if(D.id==='aM')q.push(['12,5·In',12.5*P.In]);
+ if(st.tab==='prot'&&PD){if(PD.icc>0)q.push(['I<sub>cc</sub> presunta',PD.icc*1000]);q.push(['Poder de corte',PD.v*1000]);}
+ return q.filter(x=>x[1]>0);}
+function tccPanel(R,P){
+ const D=P.D,b=band(D,P.In),cab=st.mode==='ais'&&R.iz!=null,pt=st.tab==='prot'&&!!PD;
+ let h=`<section class="panel"><div class="p-head"><h2>Curva de disparo</h2><p class="hint">Tiempo–corriente de ${D.n.charAt(0).toLowerCase()+D.n.slice(1)} ${D.id==='gTr'?kvaOf(P.In)+' kVA':D.ser?nf(P.In)+' A':'Ir '+nf(P.In)+' A'}, en escala logarítmica.</p></div>`;
+ if(!b){const T=D.T?D.T(P.In):1;
+  const t=!D.k?'Fusible de rango parcial: solo actúa en cortocircuito. Su curva tiempo–corriente la da el fabricante.':D.id==='gTr'?'La norma fija que aguanta 1,3·In durante 10 horas y funde antes de 2 horas a 1,5·In. La curva completa la da el fabricante.':'La norma solo fija dos puntos: no funde a '+nf2(D.inf(P.In))+'·In y funde antes de '+T+(T>1?' horas':' hora')+' a '+nf2(D.k(P.In))+'·In. La curva completa la da el fabricante.';
+  return h+`<div class="warnbox">${t}</div></section>`;}
+ const q=quickReads(P,b);
+ h+=`<div class="tcbox" id="tcbox" aria-label="Curva de disparo. Toca o arrastra para leer tiempos."></div>`;
+ h+=`<div class="lcd mini"><div class="lcd-screen" id="tcread"></div></div>`;
+ if(q.length)h+=`<div class="qk"><span class="block-label" style="align-self:center">Leer en</span>${q.map(x=>`<button type="button" data-tread="${x[1]}">${x[0]} · <b>${x[1]>=1000?fA(x[1]):nf(x[1],x[1]<100?1:0)+' A'}</b></button>`).join('')}</div>`;
+ h+=`<div class="tlg"><span><i class="z"></i>Zona de disparo</span><span><i class="ln ib"></i><em>I<sub>B</sub></em></span><span><i class="ln iz"></i><em>I<sub>z</sub></em></span><span><i class="ln izd"></i><em>1,45·I<sub>z</sub></em></span>${cab?`<span><i class="ln kc"></i>Límite del cable en cortocircuito</span>`:''}${C&&C.icc?`<span><i class="ln cc"></i><em>I<sub>cc</sub></em></span>`:''}${pt?`<span><i class="ln pdc"></i>Poder de corte ${fkA(PD.v)}</span>${PD.icc>0?`<span><i class="ln icp"></i><em>I<sub>cc</sub></em> presunta ${fkA(PD.icc)}</span>`:''}`:''}</div>`;
+ h+=`<p class="hint">La zona va del disparo más rápido al más lento que permite la norma; cada marca da su curva exacta.${b.q?' En este aparato o calibre la zona es orientativa.':''}${cab?` La línea del cable es k²·S² con k = ${cableK()} y vale hasta 5 s: en cortocircuito la zona tiene que quedar por debajo de ella.`:''}${pt?' La línea continua gruesa es el poder de corte: la I<sub>cc</sub> presunta tiene que quedar a su izquierda.':''}</p>`;
+ return h+`</section>`;}
+function drawTCC(){
+ const box=document.getElementById('tcbox');if(!box){TC=null;return;}
+ const b=band(P.D,P.In);if(!b)return;
+ const W=Math.max(300,Math.round(box.clientWidth||600)),H=Math.round(Math.min(440,Math.max(270,W*.62)));lastW=W;
+ const PL=50,PR=W-14,PT=16,PB=H-30;
+ const xs=[...b.lo,...b.hi].map(p=>p[0]);
+ const pt=st.tab==='prot'&&!!PD,ex=pt?[PD.v*1000,PD.icc*1000]:[0];
+ let ea=Math.floor(Math.log10(Math.min(P.ib>0?P.ib:P.In,P.In)*0.8)),eb=Math.ceil(Math.log10(Math.max(...xs,1.45*(P.Iz||0),C&&C.icc?Math.min(C.icc,1e6):0,...ex)*1.15));
+ if(!Number.isFinite(ea)||!Number.isFinite(eb))return;if(eb-ea<2)eb=ea+2;if(eb-ea>9)ea=eb-9;
+ const ya=-2,yb=4,xa=Math.pow(10,ea),xb=Math.pow(10,eb);
+ const X=v=>PL+(Math.log10(Math.min(xb,Math.max(xa,v)))-ea)/(eb-ea)*(PR-PL);
+ const Y=t=>PT+(yb-Math.log10(Math.min(TOP,Math.max(BOT,t))))/(yb-ya)*(PB-PT);
+ const f1=v=>v.toFixed(1);
+ let g=`<rect x="${PL}" y="${PT}" width="${PR-PL}" height="${PB-PT}" fill="var(--surface)"/>`;
+ for(let e=ea;e<=eb;e++){const v=Math.pow(10,e);if(e<eb)[2,3,4,5,6,7,8,9].forEach(m=>g+=`<path d="M${f1(X(v*m))} ${PT}V${PB}" class="g2"/>`);g+=`<path d="M${f1(X(v))} ${PT}V${PB}" class="g1"/><text x="${f1(X(v))}" y="${PB+18}" text-anchor="${e===ea?'start':e===eb?'end':'middle'}">${fA(v)}</text>`;}
+ for(let e=ya;e<=yb;e++){const t=Math.pow(10,e);if(e<yb)[2,5].forEach(m=>g+=`<path d="M${PL} ${f1(Y(t*m))}H${PR}" class="g2"/>`);g+=`<path d="M${PL} ${f1(Y(t))}H${PR}" class="g1"/><text x="${PL-6}" y="${f1(Y(t)+4)}" text-anchor="end">${fT(t)}</text>`;}
+ g+=`<path d="M${PL} ${f1(Y(3600))}H${PR}" class="g3"/><text x="${PR-4}" y="${f1(Y(3600)-4)}" text-anchor="end">1 h</text><text x="${PL+6}" y="${PT+14}" class="ax">t (s)</text>`;
+ const pl=a=>a.map(p=>f1(X(p[0]))+','+f1(Y(p[1]))).join(' ');
+ g+=`<polygon points="${pl(b.lo)} ${pl([...b.hi].reverse())}" class="zb"/><polyline points="${pl(b.lo)}" class="zl"/><polyline points="${pl(b.hi)}" class="zl"/>`;
+ const cab=st.mode==='ais'&&R.iz!=null,kS=cab?cableK()*R.cur:0;
+ if(cab){const i0=Math.max(kS/Math.sqrt(5),xa),i1=Math.min(kS/Math.sqrt(BOT),xb);if(i0<i1)g+=`<polyline points="${f1(X(i0))},${f1(Y((kS/i0)**2))} ${f1(X(i1))},${f1(Y((kS/i1)**2))}" class="kc"/>`;}
+ const vl=(v,c)=>v>0&&v>=xa&&v<=xb?`<path d="M${f1(X(v))} ${PT}V${PB}" class="${c}"/>`:'';
+ g+=vl(P.ib,'mib')+(P.Iz?vl(P.Iz,'miz')+vl(1.45*P.Iz,'mizd'):'')+(C&&C.icc?vl(C.icc,'micc'):'');
+ if(pt){g+=vl(PD.v*1000,'mpdc');if(PD.icc>0)g+=vl(PD.icc*1000,'micp');}
+ g+=`<g id="xh" style="display:none"><path class="xh" d=""/><circle class="xd" r="5"/><circle class="xd" r="5"/><circle class="xd c" r="5"/><text class="xl" text-anchor="middle"></text></g>`;
+ box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Curva de disparo de ${P.D.n}">${g}</svg>`;
+ TC={X,Y,W,H,PL,PR,PT,PB,ea,eb,xa,xb,b,cab,kS};
+ const svg=box.firstChild;
+ const at=e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*W/r.width;if(px<PL||px>PR)return null;return Math.pow(10,ea+(px-PL)/(PR-PL)*(eb-ea));};
+ let down=false;
+ svg.addEventListener('pointerdown',e=>{const I=at(e);if(I==null)return;down=true;tcI=I;setCross();});
+ svg.addEventListener('pointermove',e=>{if(!down&&e.pointerType!=='mouse')return;const I=at(e);if(I==null)return;tcI=I;setCross();});
+ ['pointerup','pointercancel','pointerleave'].forEach(n=>svg.addEventListener(n,()=>{down=false;}));
+ setCross();}
+function setCross(){
+ const rd=document.getElementById('tcread');if(!TC||!rd)return;
+ const g=document.getElementById('xh');
+ if(tcI==null||tcI<TC.xa||tcI>TC.xb){g.style.display='none';rd.innerHTML=`<p class="lcd-cap">Lectura</p><p class="lcd-big">Toca o arrastra sobre la gráfica</p><p class="lcd-note">Te dice cuánto tarda en disparar con cada corriente${TC.cab?' y cuánto aguanta el cable en cortocircuito':''}.</p>`;return;}
+ const I=tcI,x=TC.X(I),tl=tAt(TC.b.lo,I),th=tAt(TC.b.hi,I),tc=TC.cab?(TC.kS/I)**2:Infinity;
+ g.style.display='';const [ln,d1,d2,d3,tx]=g.children;
+ ln.setAttribute('d',`M${x.toFixed(1)} ${TC.PT}V${TC.PB}`);
+ const put=(c,t)=>{if(isFinite(t)&&t<=TOP&&t>=BOT){c.style.display='';c.setAttribute('cx',x.toFixed(1));c.setAttribute('cy',TC.Y(t).toFixed(1));}else c.style.display='none';};
+ put(d1,tl);put(d2,th);put(d3,tc<=5?tc:Infinity);
+ tx.textContent=fA(I);tx.setAttribute('x',Math.min(TC.PR-28,Math.max(TC.PL+28,x)).toFixed(1));tx.setAttribute('y',TC.PT-3);
+ let main,sub='',cls='';
+ if(!isFinite(tl))main='No dispara';
+ else if(!isFinite(th))main=`Puede disparar desde ${fTime(tl)} o no disparar`;
+ else if(th<=BOT*1.02)main='Dispara al instante';
+ else main=`Dispara entre ${fTime(tl)} y ${fTime(th)}`;
+ if(TC.cab&&tc<=5){
+  if(isFinite(th)&&th<=tc){cls='ok';sub=`El cable aguanta ${fTime(tc)}: queda protegido.`;}
+  else if(!isFinite(tl)||tl>tc){cls='ko';sub=`El cable aguanta ${fTime(tc)}: se daña antes de que dispare.`;}
+  else{cls='wa';sub=`El cable aguanta ${fTime(tc)}: depende de la curva exacta del aparato.`;}
+  if(tc<0.1)sub+=` Por debajo de 0,1 s compara la I²t del aparato con k²S² = ${nf(TC.kS*TC.kS,0)} A²s.`;}
+ const mult=P.In?` · ${nf(I/P.In,1)}·${P.L}`:'';
+ rd.innerHTML=`<p class="lcd-cap">Lectura a ${fA(I)}<span style="text-transform:none">${mult}</span></p><p class="lcd-big">${main}</p>${sub?`<div class="lcd-row" style="justify-content:flex-start;gap:10px"><i class="dot ${cls}"></i><span class="lcd-note" style="flex:1 1 0;min-width:0">${sub}</span></div>`:''}`;}
+
+/* ---------- pestaña Protecciones ---------- */
+function tileProt(t){
+ return `<button type="button" class="tile" aria-pressed="${t.on}" data-set='${JSON.stringify(t.set)}'>${miniCurve(t.D)}<span class="tc"><b>${t.b}</b><span>${t.s}</span></span><small>${t.d}</small><span class="tn">${t.n}</span></button>`;}
+function irHTML(R,P){
+ return [0.4,0.5,0.6,0.7,0.8,0.9,1].map(f=>{const i=Math.round(f*st.mcin*10)/10,v=P.ib<=i+1e-9&&P.okFor(R.iz,i)&&(!V||V.ok);
+  return `<button type="button" class="${v?'fit':''}" aria-pressed="${Math.abs(i-st.ir)<1e-9}" data-k="ir" data-v="${i}"><b>${nf(i)}</b><small>${nf(f,1)}·In</small></button>`;}).join('');}
+const mcHTML=()=>MCIN.map(i=>`<button type="button" aria-pressed="${i===st.mcin}" data-k="mcin" data-v="${i}"><b>${nf(i)}</b><small>A</small></button>`).join('');
+function imHTML(){
+ return [3,4,5,6,8,10,12,15].map(m=>`<button type="button" aria-pressed="${m===+st.im}" data-k="im" data-v="${m}"><b>${m}×</b><small>${fA(m*st.ir)}</small></button>`).join('');}
+function pdcHTML(){
+ const pd=PD;return pd.G.l.map(v=>{const f=pd.icc>0&&v>=pd.icc-1e-9,ics=pd.g==='898'?icsOf(v):null;
+  return `<button type="button" class="${f?'fit':''}" aria-pressed="${v===pd.v}" data-pdc="${v}"><b>${nf(v)}</b><small>kA${ics!=null&&ics<v?' · I<sub>cs</sub> '+nf(ics):''}</small></button>`;}).join('');}
+const pdcSub=pd=>[pd.G.s,pd.G.t].filter(Boolean).join(' · ')+(pd.g==='pv'?' · corriente continua':'')+(pd.icc>0?` · en verde, cortan ${fkA(pd.icc)}`:'');
+const iccSeg=()=>seg('icc',ICCQ.map(v=>[v,v?nf(v):'Sin dato',v?'kA':'']),'seg-num');
+function trHTML(){
+ const v=st.tkva?iccTr(st.tkva,st.tucc):null;
+ return blk('Potencia del transformador',seg('tkva',KVA.map(k=>[k,nf(k),'kVA']),'seg-num'))
+  +blk('Tensión de cortocircuito',seg('tucc',[[4,'4 %'],[4.5,'4,5 %'],[5,'5 %'],[6,'6 %']]),'u<sub>cc</sub>, en la placa del transformador')
+  +`<p class="hint">${v?`En bornes de baja de un transformador de ${nf(st.tkva)} kVA con u<sub>cc</sub> ${nf(st.tucc)} % salen <b style="color:var(--ink)">${nf(v,1)} kA</b> como máximo, y ya está puesto arriba. Es el caso peor: no cuenta la red de alta ni el cable hasta tu cuadro, así que queda del lado de la seguridad.`:'Toca la potencia del transformador que alimenta la zona. La u<sub>cc</sub> suele ser del 4 % hasta 630 kVA y del 6 % por encima.'}</p>`;}
+function fmtFus(id,In){ /* formato habitual del cartucho, orientativo */
+ if(!['gG','aM'].includes(id))return '';
+ const c=In<=32?'cilíndrico 10×38':In<=50?'cilíndrico 14×51':In<=125?'cilíndrico 22×58':'';
+ const n=In<2?'':In<=100?'NH000':In<=160?'NH00':In<=250?'NH1':In<=400?'NH2':In<=630?'NH3':In<=1250?'NH4a':'';
+ return [c,n].filter(Boolean).join(' o ');}
+function fichaHTML(){
+ const D=P.D,In=P.In,pd=PD,vd=verdict(),fu=D.fam==='fus',L=P.L,n=[];
+ const main=D.fam==='auto'?(D.id==='MA'?'MA '+nf(In):D.id+nf(In)):D.id==='gTr'?kvaOf(In)+'<span class="lcd-u">kVA</span>':nf(In)+'<span class="lcd-u">A</span>';
+ const lab=D.fam==='auto'?devTitle(D):fu?'Fusible '+D.id+(D.id==='gTr'?' · '+nf(In)+' A a 400 V':''):`Caja moldeada de ${nf(+st.mcin)} A · I<sub>r</sub> = ${nf(In/st.mcin,2)}·In`;
+ let h=`<div class="lcd"><div class="lcd-screen"><p class="lcd-cap">Ficha de la protección</p><div class="lcd-row main"><span class="lcd-val">${main}</span><span class="lcd-label">${lab} · ${D.norm}</span></div>`;
+ if(fu)h+=lrow('Uso',FUS[D.id].d);
+ if(D.k){const T=D.T(In),tt=T+(T>1?' horas':' hora');
+  h+=lrow(`${fu?'No funde':'No dispara'} · ${nf2(D.inf(In))}·${L}`,fA(D.inf(In)*In));
+  h+=lrow(`${fu?'Funde':'Dispara'} antes de ${tt} · ${nf2(D.k(In))}·${L}`,fA(D.k(In)*In));}
+ else h+=lrow('Sobrecarga','no protege');
+ if(D.mag)h+=lrow(`Magnético · ${D.r}`,fA(D.mag[0]*In)+' – '+fA(D.mag[1]*In));
+ else{const b=band(D,In);
+  if(b){const r=t=>{const a=iAt(b.lo,t),c=iAt(b.hi,t);return a&&c?fA(a)+' – '+fA(c):'–';};h+=lrow('Funde en 5 s',r(5));h+=lrow('Funde en 0,1 s',r(0.1));}
+  else n.push('La curva completa de este fusible la da el fabricante.');}
+ h+=lrow('Poder de corte'+(pd.G.s?' · '+pd.G.s:''),fkA(pd.v));
+ if(pd.ics!=null)h+=lrow('De servicio · I<sub>cs</sub>',fkA(pd.ics)+' · '+nf(pd.ics/pd.v*100,0)+' %');
+ if(pd.icc>0)h+=`<div class="lcd-row"><span class="lcd-verd"><i class="dot ${pd.ok?'ok':'ko'}"></i>${pd.ok?'Corta la I<sub>cc</sub>':'No corta la I<sub>cc</sub>'}</span><span class="lcd-val">${fkA(pd.v)} ${pd.ok?'≥':'&lt;'} ${fkA(pd.icc)}</span></div>`;
+ else n.push('Pon la I<sub>cc</sub> presunta del cuadro para comprobar el poder de corte.');
+ if(pd.icc>0&&!pd.ok)n.push(pd.need!=null?`Hace falta al menos ${fkA(pd.need)}.`:`Ninguno de esta gama llega a ${fkA(pd.icc)}: ${fu?'busca en catálogo uno de más poder de corte':'usa caja moldeada o fusibles'}.`);
+ if(!fu&&pd.v<4.5)n.push('Como IGA no vale: la ITC-BT-17 pide al menos 4,5 kA.');
+ const fm=fmtFus(D.id,In);if(fm)n.push('Formato habitual: '+fm+' (orientativo, según fabricante).');
+ if(D.why)n.push(D.why);
+ n.forEach(x=>h+=`<p class="lcd-note">${x}</p>`);
+ h+=`<div class="lcd-row"><span class="lcd-verd"><i class="dot ${vd.c}"></i>${vd.t}</span><span class="lcd-val">${R.label} · I<sub>B</sub> ${nf(P.ib)} A</span></div>`;
+ if(vd.why)h+=`<p class="lcd-note">Falla: ${vd.why}.</p>`;
+ return h+`</div></div><button type="button" class="linkbtn" data-tab="${st.mode}">Ver el circuito completo en ${st.mode==='ais'?'Cable aislado':'Conductor desnudo'}</button>`;}
+function protData(){
+ const rows=[
+  ['','In','<b>Calibre.</b> La corriente que puede pasar siempre sin que dispare o se funda.'],
+  ['','Curva','<b>Curva o clase.</b> A cuántas veces In salta el magnético (B 3–5, C 5–10, D 10–20…) o cómo funde el fusible (gG uso general, aM motores).'],
+  ['','I<sub>2</sub>','<b>Disparo por sobrecarga.</b> Con esta corriente dispara o funde seguro antes del tiempo convencional (1 o 2 horas).'],
+  ['','I<sub>cn</sub>','<b>Poder de corte</b> de los magnetotérmicos modulares (UNE-EN 60898-1). Es el número del recuadro del frontal: 4500, 6000, 10000…'],
+  ['','I<sub>cs</sub>','<b>Poder de corte de servicio.</b> Lo que corta y sigue sirviendo. En modulares, el 100 % de I<sub>cn</sub> hasta 6 kA, el 75 % hasta 10 kA y el 50 % por encima.'],
+  ['','I<sub>cu</sub>','<b>Poder de corte último</b> de industriales y caja moldeada (UNE-EN 60947-2). Su I<sub>cs</sub> la da el fabricante en % de I<sub>cu</sub>.'],
+  ['du','I<sub>cc</sub> presunta','<b>Cortocircuito máximo en el cuadro.</b> La que pasaría con un cortocircuito justo a la salida de la protección. Te la da la distribuidora o el proyecto.'],
+  ['cc','I<sub>a</sub>','<b>Disparo seguro.</b> La corriente que hace saltar el magnético o funde el fusible en menos de 5 s. Sirve para el cortocircuito al final de la línea.']];
+ return `<section class="panel data"><div class="p-head"><h2>Qué es cada dato</h2></div><dl>${rows.map(r=>`<dt class="${r[0]}">${r[1]}</dt><dd>${r[2]}</dd>`).join('')}</dl><p class="tail">El poder de corte tiene que ser mayor que la I<sub>cc</sub> presunta donde va la protección (ITC-BT-22). El IGA, al menos 4,5 kA (ITC-BT-17).</p></section>`;}
+function vProt(){
+ const D=P.D,mag=st.fam!=='fus',pd=PD;
+ let h=`<section class="panel"><div class="p-head"><h2>Protecciones</h2><p class="hint">Elige el aparato, la curva, el calibre y el poder de corte. Es la protección del circuito: la usan Cable aislado y Conductor desnudo.</p></div>`;
+ h+=`<div class="stabs" role="tablist" aria-label="Tipo de protección"><button type="button" class="stab" role="tab" aria-selected="${mag}" data-set='${JSON.stringify({fam:st.mfam})}'><b>Magnetotérmicos</b><small>Curvas B, C, D, K, Z, MA y regulables</small></button><button type="button" class="stab" role="tab" aria-selected="${!mag}" data-set='{"fam":"fus"}'><b>Fusibles</b><small>gG, aM, gS, gR, aR, gPV y gTr</small></button></div>`;
+ const T=mag?[...Object.keys(CURV).map(c=>({set:{fam:'auto',cur:c},on:st.fam==='auto'&&st.cur===c,D:devOf({fam:'auto',cur:c}),b:c,s:CURV[c].r,d:CURV[c].d,n:CURV[c].std==='898'?'UNE-EN 60898-1':'UNE-EN 60947-2'})),
+   {set:{fam:'ia'},on:st.fam==='ia',D:devOf({fam:'ia'}),b:'Regulable',s:'',d:'Caja moldeada, térmico y magnético regulables',n:'UNE-EN 60947-2'}]
+  :Object.keys(FUS).map(f=>({set:{fam:'fus',fus:f},on:st.fus===f,D:devOf({fam:'fus',fus:f}),b:f,s:FUS[f].c,d:(FUS[f].k?'Sobrecarga y cortocircuito':'Solo cortocircuito')+(f==='gTr'?' · calibre en kVA':''),n:FUS[f].norm}));
+ h+=blk(mag?'Curva':'Clase de fusible',`<div class="tiles pt">${T.map(tileProt).join('')}</div>`,mag?'el dibujo es la curva de disparo, en veces In':'en trazos, forma orientativa: curva del fabricante');
+ h+=`<p class="hint" id="thint">${typeHint(P)}</p>`;
+ if(D.ser)h+=blk(D.id==='gTr'?'Transformador a 400 V':'Calibre',`<div class="seg seg-num" id="pcal">${calHTML(R,P)}</div>`,`${D.ser.length} calibres`+(P.sc?'':` · en verde, cumplen con ${R.label} e I<sub>B</sub> ${nf(P.ib)} A`),P.sc?'':'ok');
+ else{
+  h+=blk('Calibre del aparato',`<div class="seg seg-num" id="pmc">${mcHTML()}</div>`,`${MCIN.length} tamaños, de 16 a 1600 A`);
+  h+=blk('Térmico regulable',`<div class="seg seg-num" id="pcal">${irHTML(R,P)}</div><div class="fields">${field('Otro valor de I<sub>r</sub>',numIn('ir','A','Ajuste térmico'))}</div>`,`en verde, cumple con ${R.label} e I<sub>B</sub> ${nf(P.ib)} A`);
+  h+=blk('Magnético regulable',`<div class="seg seg-num" id="pim">${imHTML()}</div>`,'veces I<sub>r</sub> · ±20 %');}
+ h+=blk('Poder de corte',`<div class="seg seg-num" id="ppdc">${pdcHTML()}</div>`,`<span id="ppdcs">${pdcSub(pd)}</span>`);
+ h+=`</section>`;
+ h+=`<section class="panel"><div class="p-head"><h2>Cortocircuito en el cuadro</h2><p class="hint">La I<sub>cc</sub> máxima prevista donde va la protección. El poder de corte tiene que ser mayor (ITC-BT-22). Te la da la distribuidora o el proyecto.</p></div>`
+  +blk('Cortocircuito presunto',`<div class="fields">${field('I<sub>cc</sub> máxima en el punto',numIn('icc','kA','Icc presunta'),'0 si no la sabes')}</div><div id="piccseg">${iccSeg()}</div>`)
+  +`<button type="button" class="linkbtn" data-tx="1">${st.tx?'Ocultar el cálculo con el transformador':'¿No la sabes? Estímala con el transformador'}</button>${st.tx?`<div class="block" id="ptr">${trHTML()}</div>`:''}</section>`;
+ return `<div class="split"><div class="col">${h}</div><div class="side" id="side"><div id="pficha">${fichaHTML()}</div></div></div>
+ <div class="lower"><div id="tccwrap">${tccPanel(R,P)}</div><div id="pdata">${protData()}</div></div>`;}
+
+/* ---------- pestaña Informe PDF ---------- */
+const REPF=[['obra','Obra o instalación','Ej.: vivienda unifamiliar'],['dir','Emplazamiento','Dirección y localidad'],['titular','Titular','Nombre del titular o cliente'],['cuadro','Cuadro','Ej.: cuadro general de vivienda'],['circ','Circuito','Ej.: C2 · tomas de uso general'],['inst','Instalador o empresa','Nombre y empresa'],['nreg','Nº de empresa instaladora','Nº de registro'],['fecha','Fecha',''],['obs','Observaciones','Lo que quieras que salga en el informe']];
+const INCS=[['cab','Cable e intensidad admisible','Tabla, factores de corrección e I<sub>z</sub>'],['car','Carga','Potencia, tensión y corriente de empleo'],['pro','Protección','Aparato, curva, calibre y poder de corte'],['du','Caída de tensión','Cálculo, límite y longitud máxima'],['cc','Cortocircuito','Al final de la línea y tiempo de corte'],['cur','Curva de disparo','Gráfica tiempo–corriente'],['fix','Cómo hacer que cumpla','Arreglos comprobados'],['nor','Normativa aplicada','ITC y normas UNE usadas'],['fir','Firma','Espacio para firmar']];
+const hoy=()=>{const d=new Date(),p=v=>String(v).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());};
+const fechaEs=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');return m?m[3]+'/'+m[2]+'/'+m[1]:'';};
+const hesc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+/* textos con subíndices: en el PDF se escriben I_{B}; en pantalla, I<sub>B</sub> */
+const p2h=s=>hesc(s).replace(/_\{([^}]*)\}/g,'<sub>$1</sub>');
+const h2p=s=>String(s==null?'':s).replace(/<sub>(.*?)<\/sub>/g,(m,x)=>'_{'+x.replace(/ /g,' ')+'}').replace(/<small>(.*?)<\/small>/g,' ($1)').replace(/<br\s*\/?>/g,' ').replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/\s+/g,' ').trim();
+function incAvail(k){ /* [se puede incluir, por qué no] */
+ if(k==='du')return st.mode!=='ais'?[false,'Solo en cable aislado']:!duOn()?[false,'Pon la longitud de la línea en Cable aislado']:[true,''];
+ if(k==='cc')return st.mode!=='ais'?[false,'Solo en cable aislado']:[true,''];
+ if(k==='cur')return band(P.D,P.In)?[true,'']:[false,'Este aparato no tiene curva normalizada'];
+ if(k==='fix')return verdict().c==='ko'?[true,'']:[false,'Solo si el circuito no pasa'];
+ return [true,''];}
+const incOn=k=>!!st.inc[k]&&incAvail(k)[0];
+const REF_SC='ITC-BT-22 · UNE-HD 60364-4-43 (433.1)';
+const izRef=()=>st.mode==='ais'?'ITC-BT-19 (2.2.3) · UNE-HD 60364-5-52'+(isD()?' · ITC-BT-07':''):R.src;
+function duRef(){const d=+st.dumax;return [3,5,4.5,6.5].includes(d)?'ITC-BT-19 (2.2.2)':d===1.5?'ITC-BT-15':d===1?'ITC-BT-15 · ITC-BT-14':d===0.5?'ITC-BT-14 · ITC-BT-15':'Límite elegido';}
+const duUse=()=>{const x=DUP.find(d=>d[0]===+st.dumax);return x?x[2].toLowerCase():'límite elegido';};
+const devName=()=>{const D=P.D;return D.fam==='auto'?(D.id==='MA'?'Magnético '+devShort(P):'Magnetotérmico '+devShort(P)):D.fam==='fus'?'Fusible '+devShort(P):'Caja moldeada de '+nf(+st.mcin)+' A · Ir '+nf(P.In)+' A';};
+function cabTxt(){
+ if(st.mode==='ais')return `${R.label} de ${st.mat==='Cu'?'cobre':'aluminio'} ${st.ins==='PVC'?'PVC 70 °C':'XLPE 90 °C'}, ${st.ph===3?'trifásico':'monofásico'}, método ${st.met}${+st.L>0?', '+nf(+st.L)+' m':''}`;
+ return {Cu:'Cobre desnudo',Al:'Aluminio desnudo',LA:'Aluminio-acero',DIN:'Pletina de cobre'}[st.bk]+' '+R.label+(st.bk==='Cu'||st.bk==='Al'?(st.bv==='BT'?', baja tensión':', alta tensión'):'');}
+/* comprobaciones con su valor, lo exigido, la referencia y pasa / no pasa (ok: true, false o null si falta un dato) */
+function checks(){
+ const L=P.L,D=P.D,o=[];
+ o.push({t:'Corriente de empleo y '+(D.ser?'calibre':'ajuste térmico'),v:`I_{B} ${nf(P.ib)} A · ${L} ${nf(P.In)} A`,l:`I_{B} ≤ ${L}`,r:REF_SC,ok:P.c[0].ok});
+ if(!P.sc){
+  o.push({t:(D.ser?'Calibre':'Ajuste térmico')+' e intensidad admisible',v:`${L} ${nf(P.In)} A · I_{z} ${R.iz==null?'–':nf(R.iz)} A`,l:`${L} ≤ I_{z}`,r:'ITC-BT-22 · '+izRef(),ok:P.c[1].ok});
+  o.push({t:'Disparo por sobrecarga',v:`I_{2} ${nf(P.I2)} A · 1,45·I_{z} ${R.iz==null?'–':nf(1.45*R.iz)} A`,l:'I_{2} ≤ 1,45·I_{z}',r:REF_SC,ok:P.c[2].ok});}
+ else o.push({t:'Protección contra sobrecargas',v:`${devShort(P)} no tiene disparo térmico`,l:'Otro aparato (relé térmico)',r:REF_SC,ok:null,wa:true});
+ if(P.IN!=null)o.push({t:'Neutro con armónicos',v:`I_{N} ${nf(P.IN)} A · I_{z} ${nf(R.iz)} A`,l:'I_{N} ≤ I_{z}',r:'UNE-HD 60364-5-52 (anexo E)',ok:!P.nfail});
+ if(st.mode==='ais'){
+  if(V)o.push({t:'Caída de tensión',v:`ΔU ${nf2(V.pct)} % · ${nf(V.v)} V en ${nf(+st.L)} m`,l:`ΔU ≤ ${nf(V.lim)} %`,r:duRef(),ok:V.ok});
+  else o.push({t:'Caída de tensión',v:'Falta la longitud de la línea',l:`ΔU ≤ ${nf(+st.dumax)} %`,r:duRef(),ok:null,miss:'caída de tensión (falta la longitud)'});
+  const rc='ITC-BT-22 · Guía-BT anexo 3';
+  if(C&&!C.noL&&C.Ia){
+   o.push({t:'Cortocircuito al final de la línea',v:`I_{cc} ${fA(C.icc)} · I_{a} ${fA(C.Ia)}`,l:'I_{cc} ≥ I_{a}',r:rc,ok:C.st==='ok'});
+   if(C.thOk!=null)o.push({t:'Tiempo de corte en cortocircuito',v:`Corta en ${fTime(C.tt)} · el cable aguanta ${fTime(C.tc)}`,l:'t ≤ (k·S/I)² y ≤ 5 s',r:'UNE-HD 60364-4-43 (434.5.2)',ok:C.thOk});}
+  else if(C&&C.noL)o.push({t:'Cortocircuito al final de la línea',v:'Falta la longitud de la línea',l:'I_{cc} ≥ I_{a}',r:rc,ok:null,miss:'cortocircuito (falta la longitud)'});
+  else if(C)o.push({t:'Cortocircuito al final de la línea',v:'Fusible sin curva normalizada',l:'I_{cc} ≥ I_{a}',r:rc,ok:null,miss:'cortocircuito (I_{a} en el catálogo del fabricante)'});}
+ const rp='ITC-BT-22 · UNE-HD 60364-4-43 (434.5.1)';
+ if(PD.icc>0)o.push({t:'Poder de corte',v:`${fkA(PD.v)} · I_{cc} presunta ${fkA(PD.icc)}`,l:'PdC ≥ I_{cc} presunta',r:rp,ok:PD.ok});
+ else o.push({t:'Poder de corte',v:`${fkA(PD.v)} · falta la I_{cc} presunta`,l:'PdC ≥ I_{cc} presunta',r:rp,ok:null,miss:'poder de corte (falta la I_{cc} presunta del cuadro)'});
+ return o;}
+function overall(){
+ const vd=verdict(),cs=checks(),miss=cs.filter(x=>x.ok==null&&x.miss).map(x=>x.miss);
+ const t=vd.c==='ko'?'No pasa':vd.c==='wa'?'Pasa con aviso':'Pasa';
+ const s=vd.c==='ko'?`No cumple: ${vd.why}.`:vd.c==='wa'?'Cumple, pero el aparato solo protege contra cortocircuitos: la sobrecarga necesita otra protección.':miss.length?'Cumple las comprobaciones que se han podido hacer.':'Cumple todas las comprobaciones.';
+ return {c:vd.c,t,s,why:vd.why,miss,cs};}
+const resTxt=x=>x.ok==null?(x.wa?'Aviso':'Sin datos'):x.ok?'Pasa':'No pasa';
+const resCls=x=>x.ok==null?(x.wa?'wa':'na'):x.ok?'ok':'ko';
+let pdfMsg='',pdfErr=false;
+function vInforme(){
+ const ov=overall();
+ let h=`<section class="panel"><div class="p-head"><h2>Informe en PDF</h2><p class="hint">Rellena los datos de la obra, elige qué incluir y genera el PDF. Sale el circuito tal como lo tienes en la app, con el pasa o no pasa de cada comprobación y la ITC que la exige.</p></div>`;
+ h+=blk('Circuito del informe',seg('mode',[['ais','Cable aislado','Con caída de tensión y cortocircuito'],['bare','Conductor desnudo','Densidad de corriente o pletina']],'seg-big'),cabTxt());
+ h+=blk('Datos de la obra',`<div class="fields">${REPF.filter(f=>f[0]!=='obs'&&f[0]!=='fecha').map(f=>field(f[1],`<input class="tin" type="text" data-r="${f[0]}" value="${hesc(st.rep[f[0]])}" placeholder="${hesc(f[2])}" aria-label="${hesc(f[1])}" autocomplete="off" enterkeyhint="next">`)).join('')}${field('Fecha',`<input class="tin" type="date" data-r="fecha" value="${hesc(st.rep.fecha)}" aria-label="Fecha">`)}</div>${field('Observaciones',`<textarea class="tin" data-r="obs" rows="3" placeholder="${hesc(REPF[8][2])}" aria-label="Observaciones">${hesc(st.rep.obs)}</textarea>`)}`,'todo opcional · se guarda solo');
+ h+=`</section><section class="panel"><div class="p-head"><h2>Qué incluir</h2><p class="hint">La primera página siempre lleva los datos de la obra, el resultado y la tabla de comprobaciones. Lo que marques va detrás, en el detalle del cálculo.</p></div><div class="incs">${INCS.map(x=>{const a=incAvail(x[0]),on=!!st.inc[x[0]]&&a[0];return `<button type="button" aria-pressed="${on}" data-inc="${x[0]}"${a[0]?'':' disabled'}><i aria-hidden="true">${on?'✓':''}</i><span><b>${x[1]}</b><small>${a[0]?x[2]:a[1]}</small></span></button>`;}).join('')}</div></section>`;
+ const side=`<div class="lcd"><div class="lcd-screen"><p class="lcd-cap">Resultado del informe</p><div class="lcd-res"><i class="dot ${ov.c}"></i>${ov.t}</div><p class="lcd-note">${p2h(ov.s)}</p>${ov.cs.map(x=>lrow(p2h(x.t),resTxt(x).toLowerCase())).join('')}${ov.miss.length?`<p class="lcd-note">Sin comprobar: ${p2h(ov.miss.join('; '))}.</p>`:''}</div></div>
+ <button type="button" class="genbtn" data-pdf="1"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M12 12v6m-3-3 3 3 3-3"/></svg>Generar PDF</button>
+ <p class="pdfmsg${pdfErr?' err':''}" id="pdfmsg" role="status" aria-live="polite">${hesc(pdfMsg)}</p>
+ <p class="hint">En el iPad se abre el menú Compartir: Guardar en Archivos, AirDrop, Mail o Imprimir. En el Mac se descarga.</p>`;
+ const tab=`<section class="panel"><div class="p-head"><h2>Comprobaciones</h2><p class="hint">Es la tabla que sale en la primera página del PDF.</p></div><div class="tablewrap"><table class="rt"><thead><tr><th scope="col">Comprobación</th><th scope="col">Valor obtenido</th><th scope="col">Exigido</th><th scope="col">Referencia</th><th scope="col">Resultado</th></tr></thead><tbody>${ov.cs.map(x=>`<tr><td><b>${p2h(x.t)}</b></td><td class="v">${p2h(x.v)}</td><td class="l">${p2h(x.l)}</td><td class="r">${p2h(x.r)}</td><td><span class="rb ${resCls(x)}">${resTxt(x).toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div>${ov.c==='ko'?fixesHTML(R,P):''}</section>`;
+ return `<div class="split"><div class="col">${h}</div><div class="side" id="side">${side}</div></div><div class="lower one">${tab}</div>`;}
+function setPdfMsg(m,err){pdfMsg=m||'';pdfErr=!!err;const e=document.getElementById('pdfmsg');if(e){e.textContent=pdfMsg;e.classList.toggle('err',pdfErr);}}
+function pdfName(){
+ const base=(st.rep.circ||st.rep.obra||'circuito').replace(/[\\/:*?"<>|#%{}~&]+/g,'-').replace(/\s+/g,' ').trim().slice(0,60)||'circuito';
+ return `Informe ${base} ${st.rep.fecha||hoy()}.pdf`;}
+/* guardar: con la capacidad de descargas de Claude si la vista la da; si no, menú Compartir del iPad o descarga */
+let DL=null;
+try{if(window.claude&&typeof window.claude.use==='function')Promise.resolve(window.claude.use('downloads')).then(d=>{DL=d||null;},()=>{});}catch(e){}
+const framed=(()=>{try{return window.self!==window.top;}catch(e){return true;}})();
+function makePdf(){
+ let blob;
+ try{blob=buildPDF();}catch(e){setPdfMsg('No se ha podido generar el PDF.',true);if(window.console)console.error(e);return;}
+ const name=pdfName();setPdfMsg('');
+ if(DL){DL.save({filename:name,data:blob}).then(r=>setPdfMsg(r&&r.status==='delivered'?'PDF entregado: '+name:'PDF guardado: '+name)).catch(e=>{const c=e&&e.code;setPdfMsg(c==='declined'?'Guardado cancelado.':c==='rate_limited'?'Espera un momento y vuelve a tocar «Generar PDF».':'No se ha podido guardar el PDF en esta vista.',c!=='declined');});return;}
+ const fr=framed?' Si no aparece, esta vista no deja guardar archivos: usa la app instalada en el iPad o ábrela en Safari.':'';
+ FileOut.save(blob,name,'application/pdf').then(r=>{
+  if(r==='downloaded')setPdfMsg('PDF guardado: '+name+'.'+fr);
+  else if(r==='shared')setPdfMsg('PDF listo: '+name);
+  else if(r==='needs-tap')setPdfMsg('Toca otra vez «Generar PDF» para guardarlo o compartirlo.'+fr);});}
+
+/* ---------- PDF ---------- */
+const PT2MM=25.4/72;
+function rparse(s){const o=[],re=/_\{([^}]*)\}/g;let i=0,m;s=String(s==null?'':s);while((m=re.exec(s))){if(m.index>i)o.push([s.slice(i,m.index),0]);o.push([m[1],1]);i=re.lastIndex;}if(i<s.length)o.push([s.slice(i),0]);return o;}
+const rW=(s,z,b)=>rparse(s).reduce((w,p)=>w+MiniPDF.textWidth(p[0],p[1]?z*0.7:z,b),0);
+function rWrap(s,maxW,z,b){ /* parte en líneas que caben en maxW (mm), respetando los subíndices */
+ const L=[];
+ String(s==null?'':s).split('\n').forEach(par=>{let line='';
+  par.split(/ +/).forEach(w=>{if(!w)return;const c=line?line+' '+w:w;
+   if(rW(c,z,b)<=maxW){line=c;return;}
+   if(line)L.push(line);
+   if(rW(w,z,b)<=maxW){line=w;return;}
+   let part='';for(const ch of w){if(part&&rW(part+ch,z,b)>maxW){L.push(part);part=ch;}else part+=ch;}line=part;});
+  L.push(line);});
+ return L;}
+function buildPDF(){
+ calc();
+ const doc=MiniPDF.Doc({format:'a4'}),W=210,H=297,M=16,CW=W-2*M,FOOT=H-14;
+ const K={ink:[26,31,33],mut:[86,96,91],line:[195,201,195],sunk:[238,241,236],ok:[23,112,63],ko:[179,38,30],wa:[143,84,0],na:[120,128,123],acc:[242,183,5],white:[255,255,255],cu:[184,105,47],du:[107,79,168],cc:[14,124,123],blue:[47,104,179],zf:[251,233,171],zl:[138,100,0],lcd:[181,193,161],lcdInk:[23,32,16],lcdDim:[79,93,60]};
+ const fz=(z,b)=>{doc.setFontSize(z);doc.setFont('helvetica',b?'bold':'normal');};
+ const tc=c=>doc.setTextColor(c[0],c[1],c[2]),dc=c=>doc.setDrawColor(c[0],c[1],c[2]),fc=c=>doc.setFillColor(c[0],c[1],c[2]);
+ const txt=(s,x,yy,z,b,c,al)=>{tc(c||K.ink);const w=rW(s,z,b);let px=al==='right'?x-w:al==='center'?x-w/2:x;
+  rparse(s).forEach(p=>{const sz=p[1]?z*0.7:z;fz(sz,b);doc.text(p[0],px,p[1]?yy+z*0.24*PT2MM:yy);px+=MiniPDF.textWidth(p[0],sz,b);});return w;};
+ const lh=z=>z*1.34*PT2MM,asc=z=>z*0.74*PT2MM;
+ const rep=st.rep,ov=overall(),D=P.D,tm=st.ins==='PVC'?70:90;
+ let y=M,secN=0;
+ const runHead=()=>{txt('Informe de comprobación del circuito'+(rep.circ?' · '+rep.circ:''),M,M+2,7.8,false,K.mut);txt(fechaEs(rep.fecha),W-M,M+2,7.8,false,K.mut,'right');dc(K.line);doc.setLineWidth(0.3);doc.line(M,M+4.4,W-M,M+4.4);y=M+10;};
+ const newPage=()=>{doc.addPage();runHead();};
+ const need=hh=>{if(y+hh>FOOT-1)newPage();};
+ const para=(s,o={})=>{const z=o.z||9,b=!!o.b,x=o.x||M,w=o.w||CW;rWrap(s,w,z,b).forEach(l=>{need(lh(z));txt(l,x,y+asc(z),z,b,o.c);y+=lh(z);});};
+ const bullets=(arr,o={})=>{const z=o.z||9;arr.forEach(s=>{const ls=rWrap(s,CW-6,z,false);need(lh(z)*Math.min(2,ls.length));ls.forEach((l,j)=>{need(lh(z));if(!j){fc(o.dot||K.acc);doc.rect(M+0.6,y+asc(z)-1.9,1.7,1.7,'F');}txt(l,M+5,y+asc(z),z,false,o.c);y+=lh(z);});y+=0.8;});};
+ const cap=t=>{need(12);y+=2;txt(t.toUpperCase(),M,y+3,7.6,true,K.mut);dc(K.line);doc.setLineWidth(0.3);doc.line(M,y+5,W-M,y+5);y+=8;};
+ const head=(t,ref)=>{need(22);secN++;y+=3;fc(K.acc);doc.rect(M,y,1.6,6.4,'F');const tw=txt(secN+'. '+t,M+4.5,y+5,12.5,true);
+  if(ref){const rw=rW(ref,7.6,false);if(M+4.5+tw+6+rw<=W-M)txt(ref,W-M,y+5,7.6,false,K.mut,'right');else{y+=7.5;txt(ref,M+4.5,y+3.5,7.6,false,K.mut);}}
+  y+=10;};
+ const kv=(rows,o={})=>{const lw=o.lw||62,z=8.8,pad=1.7;
+  rows.filter(Boolean).forEach((r,i)=>{const vl=rWrap(r[1],CW-lw-4,z,!!r[2]),ll=rWrap(r[0],lw-5,z,false),n=Math.max(vl.length,ll.length),hh=n*lh(z)+pad*2;need(hh);
+   if(i%2===0){fc(K.sunk);doc.rect(M,y,CW,hh,'F');}
+   ll.forEach((l,j)=>txt(l,M+2.2,y+pad+asc(z)+j*lh(z),z,false,K.mut));
+   vl.forEach((l,j)=>txt(l,M+lw,y+pad+asc(z)+j*lh(z),z,!!r[2],r[3]||K.ink));
+   y+=hh;});
+  y+=2.5;};
+ const badge=(x,cx,cy,w)=>{const c=K[resCls(x)],t=resTxt(x).toUpperCase(),hh=5.6;
+  if(resCls(x)==='na'){dc(K.na);doc.setLineWidth(0.3);fc(K.white);doc.roundedRect(cx,cy,w,hh,1.2,1.2,'FD');txt(t,cx+w/2,cy+3.95,7,true,K.na,'center');}
+  else{fc(c);doc.roundedRect(cx,cy,w,hh,1.2,1.2,'F');txt(t,cx+w/2,cy+3.95,7.4,true,K.white,'center');}};
+ /* tabla genérica: cols [{t,w}], filas de textos; la columna con badge:true pinta el pasa / no pasa */
+ const table=(cols,rows,o={})=>{const z=o.z||8.4,pad=1.75,hz=7;
+  const hdr=()=>{const hh=lh(hz)+pad*2;fc(K.ink);doc.rect(M,y,CW,hh,'F');let x=M;cols.forEach(c=>{txt(c.t.toUpperCase(),c.right?x+c.w-2:x+2,y+pad+asc(hz),hz,true,K.white,c.right?'right':undefined);x+=c.w;});y+=hh;};
+  need(lh(hz)+pad*2+lh(z)*2+pad*2);hdr();
+  rows.forEach((r,i)=>{const cells=cols.map((c,j)=>c.badge?[]:rWrap(r[j],c.w-4,z,j===0&&!!o.bold0)),n=Math.max(1,...cells.map(c=>c.length)),hh=Math.max(n*lh(z)+pad*2,o.minH||0);
+   if(y+hh>FOOT-1){newPage();hdr();}
+   if(i%2===1){fc(K.sunk);doc.rect(M,y,CW,hh,'F');}
+   let x=M;cols.forEach((c,j)=>{if(c.badge)badge(r[j],x+1.5,y+(hh-5.6)/2,c.w-3);else cells[j].forEach((l,k)=>txt(l,c.right?x+c.w-2:x+2,y+pad+asc(z)+k*lh(z),z,j===0&&!!o.bold0,j===0?K.ink:(c.c||K.ink),c.right?'right':undefined));x+=c.w;});
+   dc(K.line);doc.setLineWidth(0.2);doc.line(M,y+hh,W-M,y+hh);y+=hh;});
+  y+=3;};
+
+ /* ===== página 1: cabecera ===== */
+ fc(K.ink);doc.rect(0,0,W,33,'F');fc(K.acc);doc.rect(0,33,W,1.5,'F');
+ txt('REBT · ITC-BT-19 · ITC-BT-22',M,10.5,7.6,true,[196,203,197]);
+ txt('Informe de comprobación del circuito',M,20,18.5,true,K.white);
+ txt('Intensidad admisible, protección y coordinación',M,27,9.6,false,[214,219,214]);
+ txt('FECHA',W-M,10.5,7.2,true,[196,203,197],'right');txt(fechaEs(rep.fecha)||'—',W-M,18,11.5,true,K.white,'right');
+ y=41;
+ /* datos de la obra */
+ cap('Datos de la instalación');
+ const cell=(lab,val,x,w,yy)=>{txt(lab.toUpperCase(),x,yy+2.5,6.6,true,K.mut);const ls=val?rWrap(val,w-2,9.6,false):[''];ls.forEach((l,j)=>txt(l,x,yy+6.9+j*lh(9.6),9.6,false));const hh=4.3+ls.length*lh(9.6);dc(K.line);doc.setLineWidth(0.25);doc.line(x,yy+hh+0.5,x+w,yy+hh+0.5);return hh+2.4;};
+ const vOf=k=>k==='fecha'?fechaEs(rep.fecha):rep[k];
+ const rowF=(a,b)=>{const gw=(CW-8)/2;if(!b){const hh=cell(a[1],vOf(a[0]),M,CW,y);y+=hh;return;}const y0=y,h1=cell(a[1],vOf(a[0]),M,gw,y0),h2=cell(b[1],vOf(b[0]),M+gw+8,gw,y0);y=y0+Math.max(h1,h2);};
+ const F=k=>REPF.find(f=>f[0]===k);
+ rowF(F('obra'),F('dir'));rowF(F('titular'),F('cuadro'));rowF(F('circ'),F('inst'));rowF(F('nreg'),['fecha','Fecha']);
+ y+=2;
+ /* resultado */
+ cap('Resultado');
+ {const col=K[ov.c==='ko'?'ko':ov.c==='wa'?'wa':'ok'],bw=50,tx=M+bw+5,tw=CW-bw-5;
+  const lines=[[ov.s,10.2,true,K.ink],[`Circuito: ${cabTxt()}, con ${devName().charAt(0).toLowerCase()+devName().slice(1)} (${fkA(PD.v)}) e I_{B} ${nf(P.ib)} A.`,8.8,false,K.ink]];
+  if(ov.miss.length)lines.push([`Sin comprobar: ${ov.miss.join('; ')}.`,8.4,false,K.mut]);
+  const wr=lines.map(l=>rWrap(l[0],tw-4,l[1],l[2]));let hh=4;wr.forEach((w,i)=>hh+=w.length*lh(lines[i][1])+1.2);hh=Math.max(hh+2,21);
+  need(hh);fc(col);doc.roundedRect(M,y,bw,hh,2,2,'F');
+  const big=ov.c==='ko'?'NO PASA':'PASA';txt(big,M+bw/2,y+hh/2+(ov.c==='wa'?1:3),big.length>4?19:23,true,K.white,'center');
+  if(ov.c==='wa')txt('CON AVISO',M+bw/2,y+hh/2+6.5,8,true,K.white,'center');
+  fc(K.sunk);doc.roundedRect(tx,y,tw,hh,2,2,'F');
+  let yy=y+3;wr.forEach((w,i)=>{const l=lines[i];w.forEach(s=>{txt(s,tx+3,yy+asc(l[1]),l[1],l[2],l[3]);yy+=lh(l[1]);});yy+=1.2;});
+  y+=hh+4;}
+ /* cifras clave, en la pantalla de polímetro */
+ {const t=[['I_{B}',nf(P.ib)+' A'],[P.L,P.D.id==='gTr'?kvaOf(P.In)+' kVA':nf(P.In)+' A'],['I_{z}',R.iz==null?'–':nf(R.iz)+' A']];
+  if(V)t.push(['ΔU',nf2(V.pct)+' %']);if(C&&!C.noL&&C.icc)t.push(['I_{cc} final',fA(C.icc)]);t.push(['Poder de corte',fkA(PD.v)]);
+  const n=t.length,g=2.5,w=(CW-g*(n-1))/n,hh=14;need(hh+4);fc(K.ink);doc.roundedRect(M-1.2,y-1.2,CW+2.4,hh+2.4,2.4,2.4,'F');
+  t.forEach((c,i)=>{const x=M+i*(w+g);fc(K.lcd);doc.roundedRect(x,y,w,hh,1.4,1.4,'F');txt(c[0],x+2.4,y+4.4,7.2,true,K.lcdDim);txt(c[1],x+2.4,y+10.9,w<30?11:12.5,true,K.lcdInk);});
+  y+=hh+5;}
+ /* tabla de comprobaciones */
+ cap('Comprobaciones');
+ table([{t:'Comprobación',w:42},{t:'Valor obtenido',w:47},{t:'Exigido',w:30},{t:'Referencia',w:36,c:K.mut},{t:'Resultado',w:23,badge:true}],ov.cs.map(x=>[x.t,x.v,x.l,x.r,x]),{bold0:true,minH:9});
+ if(st.mode==='bare'){para('En conductor desnudo no se calculan la caída de tensión ni el cortocircuito al final de la línea.',{z:8.2,c:K.mut});y+=1;}
+ /* arreglos si no pasa */
+ if(ov.c==='ko'&&incOn('fix')){const f=fixData(R,P),its=f.items.map(x=>h2p(x.html));
+  need(11+(its.length?its.reduce((hh,t)=>hh+rWrap(t,CW-6,9,false).length*lh(9)+0.8,0)+lh(8.2):lh(9)*2));cap('Para que cumpla');
+  if(its.length){bullets(its);para('Cada propuesta está comprobada con la app: deja el circuito cumpliendo.',{z:8.2,c:K.mut});}
+  else para(h2p(f.msg),{z:9});
+  y+=1;}
+ if(rep.obs){const nl=rWrap(rep.obs,CW,9.2,false).length;need(11+lh(9.2)*Math.min(nl,6));cap('Observaciones');para(rep.obs,{z:9.2});y+=1;}
+
+ /* ===== detalle del cálculo ===== */
+ const det=['cab','car','pro','du','cc','cur'].some(incOn);
+ if(det){if(doc.getNumberOfPages()===1||y>FOOT-110)newPage();else y+=6;need(30);txt('Detalle del cálculo',M,y+5,15,true);y+=11;}
+ if(incOn('cab')){
+  if(st.mode==='ais'){
+   const m=MET.find(x=>x[0]===st.met),d=isD();
+   head('Cable e intensidad admisible',izRef());
+   kv([['Conductor',st.mat==='Cu'?'Cobre':'Aluminio'],
+    ['Aislamiento',st.ins==='PVC'?'PVC · 70 °C (H07V-K, H07Z1-K, ES07Z1-K, VV-K)':'XLPE · 90 °C (RV-K, RZ1-K, SZ1-K, XZ1, H1Z2Z2)'],
+    ['Sección',R.label],
+    ['Conductores cargados',st.ph===3?'3 · trifásico 400 V':'2 · monofásico 230 V'],
+    ['Método de instalación',`${m[0]} · ${m[1]}: ${m[2].charAt(0).toLowerCase()+m[2].slice(1)}`],
+    [d?'Temperatura del terreno':'Temperatura ambiente',nf(d?st.tg:st.ta)+' °C'],
+    ['Circuitos agrupados',String(st.nc)],
+    d?['Resistividad del terreno',nf(st.res)+' K·m/W']:null,
+    h3()>0?['Tercer armónico',nf(h3())+' % de la corriente de fase']:null,
+    ['Tabla de la norma',`${R.src}${R.col?', columna '+R.col:''}`],
+    ['Intensidad de la tabla',R.v==null?'–':nf(R.v)+' A']]);
+   if(R.f.length){table([{t:'Factor de corrección',w:78},{t:'Tabla',w:68,c:K.mut},{t:'Valor',w:32,right:true}],[...R.f.map(x=>[h2p(x[0]),h2p(x[1]),'× '+nf2(x[2])]),['Factor total','',`× ${nf2(R.F)}`]],{z:8.6});}
+   kv([['Intensidad admisible I_{z}',R.iz==null?'–':`${nf(R.v)} A × ${nf2(R.F)} = ${nf(R.iz)} A`,true]]);
+   const nts=[...(R.nt||[])].map(h2p);if(R.F===0)nts.unshift('La temperatura supera la máxima del aislamiento.');
+   if(nts.length)bullets(nts,{z:8.2,c:K.mut,dot:K.wa});}
+  else{
+   head('Conductor e intensidad admisible',R.src);
+   kv([['Material',{Cu:'Cobre',Al:'Aluminio',LA:'Aluminio-acero (cable LA)',DIN:'Pletina de cobre · '+(st.pint?'pintada':'desnuda')}[st.bk]],
+    st.bk==='Cu'||st.bk==='Al'?['Tensión',st.bv==='BT'?'Baja tensión (ITC-BT-06)':'Alta tensión (ITC-LAT 07)']:null,
+    [st.bk==='LA'?'Conductor':st.bk==='DIN'?'Pletina':'Sección',R.label+(st.bk==='DIN'?' mm':'')],
+    ['Cálculo',h2p(R.det)],
+    ['Referencia',R.src],
+    +st.fxb!==1?['Factor adicional','× '+nf2(+st.fxb)]:null,
+    ['Intensidad admisible I_{z}',R.iz==null?'–':nf(R.iz)+' A',true]]);
+   if((R.nt||[]).length)bullets(R.nt.map(h2p),{z:8.2,c:K.mut,dot:K.wa});}}
+ if(incOn('car')){
+  head('Carga');
+  const c=+st.cos||1;
+  kv([['Suministro',st.ph===3?'Trifásico · 400 V':'Monofásico · 230 V'],
+   st.ibm==='kW'?['Potencia',`${nf(+st.P,2)} kW · cos φ ${nf2(c)}`]:['Dato','Corriente de empleo introducida'],
+   st.ibm==='kW'?['Fórmula',st.ph===3?'I_{B} = P / (√3 · 400 V · cos φ)':'I_{B} = P / (230 V · cos φ)']:null,
+   ['Corriente de empleo I_{B}',nf(P.ib)+' A',true]]);}
+ if(incOn('pro')){
+  head('Protección',D.norm+' · ITC-BT-22');
+  const In=P.In,fu=D.fam==='fus',rows=[['Aparato',devName()],['Norma',D.norm]];
+  if(fu)rows.push(['Uso',FUS[D.id].d]);
+  if(D.fam==='auto')rows.push(['Curva',`${D.id} · ${D.d.toLowerCase()}`]);
+  if(D.fam==='ia')rows.push(['Calibre del aparato',`${nf(+st.mcin)} A · I_{r} = ${nf(In)} A (${nf(In/st.mcin,2)}·In)`]);
+  if(D.k){const T=D.T(In),tt=T+(T>1?' horas':' hora');
+   rows.push([`${fu?'No funde':'No dispara'} (${nf2(D.inf(In))}·${P.L})`,fA(D.inf(In)*In)]);
+   rows.push([`${fu?'Funde':'Dispara'} antes de ${tt} (I_{2} = ${nf2(D.k(In))}·${P.L})`,fA(D.k(In)*In)]);}
+  else rows.push(['Sobrecarga','No protege: necesita otro aparato']);
+  if(D.mag)rows.push([`Magnético (${D.r})`,fA(D.mag[0]*In)+' – '+fA(D.mag[1]*In)]);
+  else{const b=band(D,In);if(b){const r=t=>{const a=iAt(b.lo,t),c=iAt(b.hi,t);return a&&c?fA(a)+' – '+fA(c):'–';};rows.push(['Funde en 5 s',r(5)],['Funde en 0,1 s',r(0.1)]);}}
+  const ia=iaDev(D,In);if(ia)rows.push(['Disparo seguro I_{a}',`${fA(ia)} (${iaTxt(D)})`]);
+  rows.push([`Poder de corte${PD.G.s?' '+h2p(PD.G.s):''}`,fkA(PD.v)+(PD.g==='pv'?' en corriente continua':''),true]);
+  if(PD.ics!=null)rows.push(['Poder de corte de servicio I_{cs}',`${fkA(PD.ics)} (${nf(PD.ics/PD.v*100,0)} %)`]);
+  rows.push(['I_{cc} presunta en el cuadro',PD.icc>0?fkA(PD.icc)+(st.tkva?` (estimada con un transformador de ${nf(st.tkva)} kVA y u_{cc} ${nf(st.tucc)} %)`:''):'Sin dato']);
+  kv(rows);
+  const n=[];if(D.fam!=='fus'&&PD.v<4.5)n.push('Como interruptor general automático no vale: la ITC-BT-17 pide al menos 4,5 kA.');if(D.why)n.push(h2p(D.why));const fm=fmtFus(D.id,In);if(fm)n.push('Formato habitual del cartucho: '+fm+' (orientativo, según fabricante).');
+  if(n.length)bullets(n,{z:8.2,c:K.mut,dot:K.wa});}
+ if(incOn('du')&&V){
+  head('Caída de tensión',duRef()+' · Guía-BT anexo 2');
+  kv([['Longitud de la línea',nf(+st.L)+' m'],
+   ['Fórmula',st.ph===3?'ΔU = √3 · L · I · (R·cos φ + X·sen φ)':'ΔU = 2 · L · I · (R·cos φ + X·sen φ)'],
+   ['Conductividad y reactancia',`γ = ${GAM[st.mat][st.ins]} m/(Ω·mm²) a ${tm} °C · X = 0,1 Ω/km · cos φ ${nf2(+st.cos||1)}`],
+   ['Caída con I_{B}',`${nf2(V.pct)} % · ${nf(V.v)} V`,true,V.ok?K.ok:K.ko],
+   ['Límite',`${nf(V.lim)} % · ${duUse()}`],
+   ['Intensidad máxima por caída I_{ΔU}',nf(V.idu)+' A'],
+   ['Intensidad máxima del circuito',`${nf(V.imax)} A (manda ${V.by==='iz'?'el calentamiento':'la caída de tensión'})`],
+   ['Longitud máxima con I_{B}',isFinite(V.lmax)?nf(V.lmax,V.lmax<100?1:0)+' m':'–']]);}
+ if(incOn('cc')&&C){
+  head('Cortocircuito al final de la línea','ITC-BT-22 · Guía-BT anexo 3');
+  const ia=C.Ia;
+  if(C.noL)para('Falta la longitud de la línea: sin ella no se calcula la corriente de cortocircuito al final.',{z:8.8,c:K.mut});
+  const rows=[];
+  if(!C.noL){rows.push(['Resistencia del bucle',`${nf(C.r,3)} Ω (${nf(+st.L)} m de fase y neutro, cable a ${tm} °C)`]);rows.push(['I_{cc} mínima al final',`0,8 · 230 V / R = ${fA(C.icc)}`,true,C.st==='ok'?K.ok:C.st==='ko'?K.ko:K.ink]);}
+  rows.push(['Disparo seguro I_{a}',ia?`${fA(ia)} (${iaTxt(D)})`:'Catálogo del fabricante']);
+  if(ia){rows.push(['R máxima admisible',`0,8 · 230 V / I_{a} = ${nf(C.rmax,3)} Ω`]);rows.push([`Longitud máxima con ${R.label}`,nf(C.lmax,C.lmax<100?1:0)+' m']);}
+  if(!C.noL){rows.push(['I_{cc} máxima al final (cable a 20 °C)',fA(C.iccMax)]);if(C.tt!=null){rows.push(['Tiempo de corte de la protección',fTime(C.tt)]);rows.push(['Lo que aguanta el cable',`${fTime(C.tc)} (k = ${cableK()} · k²S² = ${nf(C.k2s2,0)} A²s)`,false,C.thOk?K.ok:K.ko]);}}
+  kv(rows);
+  if(!C.noL&&C.i2t&&C.thOk!==false)bullets([`Por debajo de 0,1 s hay que comparar la I²t del aparato con k²S² = ${nf(C.k2s2,0)} A²s (catálogo del fabricante).`],{z:8.2,c:K.mut,dot:K.wa});}
+ if(incOn('cur')){
+  const b=band(D,P.In);
+  need(132);head('Curva de disparo',D.norm);
+  need(110);pdfCurve(doc,K,txt,M,y,CW,92,b);y+=94;
+  /* leyenda */
+  const cab=st.mode==='ais'&&R.iz!=null,lg=[['z','Zona de disparo'],['ib','I_{B}'],['iz','I_{z}'],['izd','1,45·I_{z}']];
+  if(cab)lg.push(['kc','Límite del cable (k²S²)']);if(C&&C.icc)lg.push(['cc','I_{cc} al final']);if(PD.icc>0)lg.push(['pdc','Poder de corte'],['icp','I_{cc} presunta']);
+  let lx=M;need(8);lg.forEach(l=>{const w=rW(l[1],7.6,false)+12;if(lx+w>W-M){lx=M;y+=5;}
+   if(l[0]==='z'){fc(K.zf);dc(K.zl);doc.setLineWidth(0.4);doc.rect(lx,y+0.4,7,3,'FD');}
+   else{const sty={ib:[K.blue,0.5,[1.2,0.9]],iz:[K.cu,0.6,null],izd:[K.cu,0.5,[1.2,0.9]],kc:[K.cu,1.1,null],cc:[K.cc,0.6,null],pdc:[K.ink,0.9,null],icp:[K.du,0.6,[1.6,1]]}[l[0]];dc(sty[0]);doc.setLineWidth(sty[1]);doc.setLineDash(sty[2]);doc.line(lx,y+1.9,lx+7,y+1.9);doc.setLineDash(null);}
+   txt(l[1],lx+9,y+3.1,7.6,false,K.mut);lx+=w+3;});
+  y+=8;
+  para(`La zona va del disparo más rápido al más lento que permite la norma; la curva exacta la da el fabricante.${b&&b.q?' En este aparato o calibre la zona es orientativa.':''}${cab?' En cortocircuito la zona tiene que quedar por debajo de la línea del cable (vale hasta 5 s).':''}`,{z:8.2,c:K.mut});}
+ if(incOn('nor')){
+  head('Normativa aplicada');
+  const n=['Reglamento Electrotécnico para Baja Tensión (Real Decreto 842/2002) y sus instrucciones técnicas complementarias (ITC-BT).'];
+  if(st.mode==='ais'){n.push('ITC-BT-19: instalaciones interiores o receptoras. Intensidades máximas admisibles (apartado 2.2.3) y caída de tensión (apartado 2.2.2).');
+   if(isD())n.push('ITC-BT-07: redes subterráneas; un circuito por tubo.');
+   if([1.5,1,0.5].includes(+st.dumax))n.push(+st.dumax===1.5?'ITC-BT-15: derivaciones individuales (caída de tensión).':'ITC-BT-14 y ITC-BT-15: línea general de alimentación y derivaciones individuales (caída de tensión).');}
+  else n.push(st.bk==='DIN'?'DIN 43671: intensidad admisible de pletinas de cobre. El cuadro se verifica según UNE-EN 61439.':st.bk==='LA'||st.bv==='AT'?'ITC-LAT 07: líneas aéreas de alta tensión con conductores desnudos (tabla 11).':'ITC-BT-06: redes aéreas de baja tensión con conductores desnudos (tabla 10).');
+  n.push('ITC-BT-22: protección contra sobreintensidades (sobrecargas y cortocircuitos).');
+  if(D.fam!=='fus')n.push('ITC-BT-17: el interruptor general automático tiene que tener al menos 4,5 kA de poder de corte.');
+  if(st.mode==='ais')n.push('UNE-HD 60364-5-52:2014: intensidades admisibles (tablas C.52.1 bis y C.52.2 bis) y factores de corrección.');
+  n.push('UNE-HD 60364-4-43: coordinación entre conductor y protección (433.1), poder de corte (434.5.1) y tiempo de corte en cortocircuito (434.5.2).');
+  if(st.mode==='ais')n.push('Guía Técnica de Aplicación del REBT (Guía-BT): anexo 2, caída de tensión, y anexo 3, corriente de cortocircuito.');
+  n.push(D.norm+': '+({'UNE-EN 60898-1':'interruptores automáticos para instalaciones domésticas y análogas','UNE-EN 60947-2':'interruptores automáticos de uso industrial'}[D.norm]||'fusibles de baja tensión')+'.');
+  bullets(n,{z:8.8});
+  y+=1;para('Límites del cálculo: método simplificado de la Guía-BT; no incluye la impedancia de la red aguas arriba, la selectividad ni la filiación entre protecciones. Las curvas son las zonas que fija la norma. Los valores marcados como orientativos no figuran en la tabla de la norma y hay que confirmarlos con el fabricante.',{z:8,c:K.mut});}
+ if(incOn('fir')){
+  need(44);y+=4;cap('Conformidad');
+  const gw=(CW-8)/2,y0=y,hh=30;
+  dc(K.line);doc.setLineWidth(0.3);fc(K.white);doc.roundedRect(M,y0,gw,hh,1.6,1.6,'FD');doc.roundedRect(M+gw+8,y0,gw,hh,1.6,1.6,'FD');
+  txt('EL INSTALADOR',M+3,y0+5,6.8,true,K.mut);txt(rep.inst||'',M+3,y0+10.5,9.2,false);if(rep.nreg)txt('Nº '+rep.nreg,M+3,y0+15,8.4,false,K.mut);txt('Firma',M+3,y0+hh-3,7,false,K.mut);
+  txt('FECHA',M+gw+11,y0+5,6.8,true,K.mut);txt(fechaEs(rep.fecha),M+gw+11,y0+10.5,9.2,false);txt('Sello',M+gw+11,y0+hh-3,7,false,K.mut);
+  y=y0+hh+4;}
+ /* pie de página */
+ const n=doc.getNumberOfPages(),now=new Date(),p2=v=>String(v).padStart(2,'0'),gen=`${p2(now.getDate())}/${p2(now.getMonth()+1)}/${now.getFullYear()} ${p2(now.getHours())}:${p2(now.getMinutes())}`;
+ for(let i=1;i<=n;i++){doc.setPage(i);dc(K.line);doc.setLineWidth(0.3);doc.line(M,H-11,W-M,H-11);txt(`Intensidad admisible (Iz REBT) · generado el ${gen}`,M,H-7,7.2,false,K.mut);txt(`Página ${i} de ${n}`,W-M,H-7,7.2,true,K.mut,'right');}
+ doc.setProperties({title:'Informe de comprobación del circuito'+(rep.circ?' · '+rep.circ:''),author:rep.inst||'',subject:'Intensidad admisible, protección y coordinación según REBT',creator:'Intensidad admisible (Iz REBT)'});
+ return doc.output('blob');}
+function pdfCurve(doc,K,txt,x0,y0,w,h,b){
+ if(!b)return;
+ const PL=x0+12,PR=x0+w-1,PT=y0+2,PB=y0+h-7;
+ const xs=[...b.lo,...b.hi].map(p=>p[0]),ex=PD&&PD.icc>0?[PD.v*1000,PD.icc*1000]:[0];
+ let ea=Math.floor(Math.log10(Math.min(P.ib>0?P.ib:P.In,P.In)*0.8)),eb=Math.ceil(Math.log10(Math.max(...xs,1.45*(P.Iz||0),C&&C.icc?Math.min(C.icc,1e6):0,...ex)*1.15));
+ if(!isFinite(ea)||!isFinite(eb))return;if(eb-ea<2)eb=ea+2;if(eb-ea>9)ea=eb-9;
+ const ya=-2,yb=4,xa=Math.pow(10,ea),xb=Math.pow(10,eb);
+ const X=v=>PL+(Math.log10(Math.min(xb,Math.max(xa,v)))-ea)/(eb-ea)*(PR-PL);
+ const Y=t=>PT+(yb-Math.log10(Math.min(TOP,Math.max(BOT,t))))/(yb-ya)*(PB-PT);
+ const set=(c,lw,dash)=>{doc.setDrawColor(c[0],c[1],c[2]);doc.setLineWidth(lw);doc.setLineDash(dash||null);};
+ doc.setFillColor(255,255,255);set(K.line,0.3);doc.rect(PL,PT,PR-PL,PB-PT,'FD');
+ for(let e=ea;e<eb;e++)for(let m=2;m<=9;m++){set([228,231,227],0.12);doc.line(X(Math.pow(10,e)*m),PT,X(Math.pow(10,e)*m),PB);}
+ for(let e=ya;e<yb;e++)[2,5].forEach(m=>{set([228,231,227],0.12);doc.line(PL,Y(Math.pow(10,e)*m),PR,Y(Math.pow(10,e)*m));});
+ for(let e=ea;e<=eb;e++){const v=Math.pow(10,e);set([178,185,179],0.25);doc.line(X(v),PT,X(v),PB);txt(fA(v),X(v),PB+4.2,6.6,false,K.mut,e===ea?undefined:e===eb?'right':'center');}
+ for(let e=ya;e<=yb;e++){const t=Math.pow(10,e);set([178,185,179],0.25);doc.line(PL,Y(t),PR,Y(t));txt(t>=1?nf(t,0):nf(t,2),PL-1.5,Y(t)+1.2,6.6,false,K.mut,'right');}
+ txt('t (s)',PL+1.5,PT+3.6,6.6,true,K.mut);
+ set(K.mut,0.25,[1,1]);doc.line(PL,Y(3600),PR,Y(3600));doc.setLineDash(null);txt('1 h',PR-1.5,Y(3600)-1,6.4,false,K.mut,'right');
+ const pts=a=>a.map(p=>[X(p[0]),Y(p[1])]);
+ doc.setFillColor(K.zf[0],K.zf[1],K.zf[2]);set(K.zl,0.01);doc.path([...pts(b.lo),...pts([...b.hi].reverse())],'F',true);
+ set(K.zl,0.45);doc.path(pts(b.lo),'S');doc.path(pts(b.hi),'S');
+ if(st.mode==='ais'&&R.iz!=null){const kS=cableK()*R.cur,i0=Math.max(kS/Math.sqrt(5),xa),i1=Math.min(kS/Math.sqrt(BOT),xb);if(i0<i1){set(K.cu,1.0);doc.line(X(i0),Y((kS/i0)**2),X(i1),Y((kS/i1)**2));}}
+ const vl=(v,c,lw,dash)=>{if(v>0&&v>=xa&&v<=xb){set(c,lw,dash);doc.line(X(v),PT,X(v),PB);doc.setLineDash(null);}};
+ vl(P.ib,K.blue,0.5,[1.2,0.9]);if(P.Iz){vl(P.Iz,K.cu,0.6);vl(1.45*P.Iz,K.cu,0.5,[1.2,0.9]);}if(C&&C.icc)vl(C.icc,K.cc,0.6);
+ if(PD.icc>0){vl(PD.v*1000,K.ink,0.9);vl(PD.icc*1000,K.du,0.6,[1.6,1]);}
+ set(K.line,0.3);doc.rect(PL,PT,PR-PL,PB-PT,'S');}
+
+/* ---------- pestaña Tabla Iz ---------- */
+function cellIz(m,s,withF){
+ const sv={met:st.met,nc:st.nc};st.met=m;st.nc=Math.min(sv.nc,maxNc());
+ const r=tabIz(s);let v=r.v;if(v!=null&&withF)v*=factors().reduce((p,x)=>p*x[2],1);
+ const star=r.nt.length>0;st.met=sv.met;st.nc=sv.nc;return {v,star};}
+function vTabla(){
+ const withF=st.tmode==='cond',secs=st.mat==='Al'?SAL:SCU;
+ let h=`<section class="panel"><div class="p-head"><h2>Tabla de I<sub>z</sub></h2><p class="hint">Toca una casilla para calcular con esa sección y ese método.</p></div>`;
+ h+=`<div class="fields" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr))">${blk('Conductor',seg('mat',[['Cu','Cobre'],['Al','Aluminio']]))}${blk('Aislamiento',seg('ins',[['PVC','PVC · 70 °C','',st.mat==='Al'],['XLPE','XLPE · 90 °C']]))}${blk('Cargados',seg('ph',[[2,'2',wires(2)],[3,'3',wires(3)]]))}${blk('Valores',seg('tmode',[['cond','Con tus condiciones'],['tab','De la tabla']]))}</div>`;
+ h+=`<div class="tablewrap"><table class="mx"><thead><tr><th class="corner" scope="col">mm²</th>${MET.map(m=>`<th scope="col" class="${m[0]===st.met?'hc':''}">${m[0]}<small>${m[1]}</small></th>`).join('')}</tr></thead><tbody>`;
+ let stars=false;
+ secs.forEach(s=>{const hr=st.mode==='ais'&&s===st.sec;h+=`<tr class="${hr?'hr':''}"><th scope="row">${nf(s)}</th>`;
+  MET.forEach(m=>{const c=cellIz(m[0],s,withF),on=hr&&m[0]===st.met,fit=withF&&c.v!=null&&P.okFor(c.v,P.In)&&duOk(s)&&neuOk(c.v)&&ccOk(s);if(c.star)stars=true;
+   h+=`<td class="${on?'on':m[0]===st.met?'hc':''}"><button type="button" class="${fit?'fit':''}" data-cell="${m[0]}|${s}"${c.v==null?' disabled':''}>${c.v==null?'–':nf(c.v,c.v<100?1:0)+(c.star?'*':'')}</button></td>`;});
+  h+='</tr>';});
+ h+=`</tbody></table></div>`;
+ const fx=withF?factors().filter(x=>x[2]!==1).map(x=>x[0]+' × '+nf2(x[2])):[];
+ h+=`<p class="hint">${withF?`Con tus condiciones${fx.length?' ('+fx.join(' · ')+'; cada método aplica sus propios factores y los enterrados usan la temperatura del terreno)':' (las de la tabla)'}. En verde, cumple con ${devShort(P)} e I<sub>B</sub> ${nf(P.ib)} A${duOn()?` y la caída del ${nf(st.dumax)} % en ${nf(st.L)} m`:''}.`:'Valores de la tabla, sin factores de corrección: aire a 40 °C, terreno a 25 °C y 2,5 K·m/W.'} En amperios.${stars?' * Valor complementario u orientativo: ver la pestaña Normas.':''}</p>`;
+ return h+`</section>`;}
+
+/* ---------- pestaña Normas ---------- */
+function vNormas(){
+ const c=(t,body)=>`<div class="dcard"><h3>${t}</h3>${body}</div>`;
+ return `<section class="panel"><div class="p-head"><h2>Normas y criterios</h2><p class="hint">De dónde sale cada número de la app.</p></div><div class="dgrid">
+ ${c('Cables aislados',`<ul><li>Cobre: UNE-HD 60364-5-52:2014, tabla C.52.1 bis (aire a 40 °C) y C.52.2 bis (enterrado a 25 °C, 2,5 K·m/W y 0,70 m).</li><li>Aluminio al aire: la misma tabla C.52.1 bis, filas de aluminio (16 a 240 mm²). Aluminio enterrado: C.52.2 bis.</li><li>Las casillas vacías («–») de la tabla y la sección de 300 mm² al aire salen con un valor orientativo de IEC 60364-5-52 y un aviso. Método F por debajo de 25 mm²: orientativo.</li></ul>`)}
+ ${c('Factores de corrección',`<ul><li>Temperatura: B.52.14 (aire) y B.52.15 (terreno), √((θmáx − θ)/(θmáx − θref)).</li><li>Resistividad del terreno: B.52.16. Sin factor por profundidad: la UNE-HD 60364-5-52 no lo aplica en instalaciones interiores.</li><li>Agrupamiento al aire: tabla C.52.3 (filas 1 a 5), la que acompaña a C.52.1 bis; con un número de circuitos que no sale en la tabla se toma la columna siguiente. Enterrados: B.52.18 (cables) y B.52.19 (tubos, un circuito por tubo según ITC-BT-07), con su separación.</li><li>Armónicos (E.52.1): del 15 al 33 % se aplica 0,86; del 33 al 45 %, 0,86 y la sección se elige por la corriente del neutro; por encima del 45 %, factor 1 y por el neutro. I<sub>N</sub> = 3 · %armónico · I<sub>B</sub>.</li></ul>`)}
+ ${c('Conductores desnudos',`<ul><li>Baja tensión: ITC-BT-06, tabla 10 (densidad de corriente).</li><li>Alta tensión: ITC-LAT 07, tabla 11, interpolando. Aluminio-acero con coeficiente 0,937 (6+1 y 26+7), 0,916 (30+7) y 0,95 (54+7).</li><li>Pletinas: DIN 43671, una por fase, corriente alterna, 35 °C ambiente y 65 °C en la pletina.</li></ul>`)}
+ ${c('Protección contra sobrecargas',`<p>ITC-BT-22 y UNE-HD 60364-4-43: I<sub>B</sub> ≤ In ≤ I<sub>z</sub> e I<sub>2</sub> ≤ 1,45·I<sub>z</sub>.</p><table class="dt"><tbody><tr><th>B, C, D</th><td>I₂ = 1,45·In · UNE-EN 60898-1</td></tr><tr><th>K, Z, regulable</th><td>I₂ = 1,30·In · UNE-EN 60947-2</td></tr><tr><th>gG, gS, gR</th><td>I₂ = 1,6·In (1,9 de 4 a 16 A; 2,1 hasta 4 A)</td></tr><tr><th>gPV</th><td>I₂ = 1,45·In · UNE-EN 60269-6</td></tr><tr><th>gTr</th><td>I₂ = 1,5·In en 2 h</td></tr><tr><th>aM, aR, MA</th><td>Sin protección contra sobrecargas</td></tr></tbody></table><p>Calibres: modulares de 0,5 a 125 A; caja moldeada de 16 a 1600 A con I<sub>r</sub> de 0,4 a 1·In; fusibles de 0,5 a 1250 A.</p>`)}
+ ${c('Poder de corte',`<ul><li>ITC-BT-22: el poder de corte de cada protección tiene que ser mayor que la I<sub>cc</sub> máxima prevista en su punto de instalación.</li><li>ITC-BT-17 y Guía-BT-22: el interruptor general automático, al menos 4,5 kA.</li><li>Modulares (UNE-EN 60898-1): I<sub>cn</sub> de 1,5 a 25 kA. La I<sub>cs</sub> de servicio es el 100 % hasta 6 kA, el 75 % hasta 10 kA (mínimo 6 kA) y el 50 % por encima (mínimo 7,5 kA).</li><li>Industriales y caja moldeada (UNE-EN 60947-2): la Guía-BT-22 admite comparar la I<sub>cu</sub> o la I<sub>cs</sub>; la I<sub>cs</sub> la da el fabricante en % de I<sub>cu</sub>.</li><li>Fusibles (UNE-EN 60269): los industriales cortan al menos 50 kA en alterna; cilíndricos y NH suelen llegar a 100–120 kA. gPV, en corriente continua.</li><li>Estimación con el transformador: I<sub>cc</sub> = In / u<sub>cc</sub> en bornes de baja, sin la red de alta ni el cable: el valor máximo.</li></ul>`)}
+ ${c('Curvas de disparo',`<ul><li>Disparo magnético: B 3–5 In, C 5–10 In y D 10–20 In (UNE-EN 60898-1); K 10–14 In, Z 2–3,6 In y MA 12 In ±20 % (UNE-EN 60947-2; el margen exacto de K y Z depende del fabricante y se toma el más amplio).</li><li>Automáticos: puntos convencionales, 2,55·In y disparo magnético. K, Z y regulables con la misma forma, orientativa.</li><li>Fusibles gG y aM: puertas de UNE-EN 60269-2. gG por debajo de 16 A y por encima de 800 A, orientativo. gS, gR, aR, gPV y gTr: curva del fabricante.</li><li>Límite del cable en cortocircuito: t = (k·S/I)², con k 115 Cu-PVC, 143 Cu-XLPE, 76 Al-PVC y 94 Al-XLPE, válido hasta 5 s.</li></ul>`)}
+ ${c('Caída de tensión',`<ul><li>Guía-BT anexo 2: ΔU = 2·L·I·(R·cos φ + X·sen φ) en monofásico y √3·L·I·(R·cos φ + X·sen φ) en trifásico, con R = 1/(γ·S).</li><li>Conductividad γ a la temperatura máxima: cobre 48 (PVC, 70 °C) y 44 (XLPE, 90 °C); aluminio 30 y 28 m/(Ω·mm²). Reactancia estimada 0,1 Ω/km.</li><li>Se calcula con I<sub>B</sub>, con todos los aparatos que pueden funcionar a la vez (ITC-BT-19).</li><li>Límites: 3 % en viviendas; 3 % alumbrado y 5 % otros usos en el resto (ITC-BT-19); 4,5 % y 6,5 % con transformador propio; derivación individual 1,5 % un usuario, 1 % contadores concentrados y 0,5 % centralización parcial (ITC-BT-15); línea general 0,5 % o 1 % (ITC-BT-14).</li><li>I<sub>ΔU</sub>: la corriente que da justo la caída máxima. La I<sub>máx</sub> del circuito es la menor entre I<sub>z</sub> e I<sub>ΔU</sub>.</li></ul>`)}
+ ${c('Cortocircuito',`<ul><li>Cálculo (Guía-BT anexo 3): I<sub>cc</sub> = 0,8 · U / R, con U = 230 V fase-neutro y R de fase y neutro hasta el punto, más la resistencia aguas arriba si se conoce. Para la I<sub>cc</sub> mínima se toma el cable a su temperatura máxima (γ 48/44 cobre, 30/28 aluminio); a 20 °C (ρ 0,018 cobre, 0,029 aluminio) sale la máxima.</li><li>Disparo seguro I<sub>a</sub>: magnético máximo del automático (B 5·In, C 10·In, D 20·In, K 14·In, Z 3,6·In, MA y regulable 1,2·Im) o la corriente que funde el fusible gG o aM antes de 5 s (puertas de UNE-EN 60269-2). Otros fusibles: catálogo.</li><li>Cumple si I<sub>cc</sub> ≥ I<sub>a</sub> (R del bucle ≤ 0,8·230/I<sub>a</sub>) y la protección corta antes de lo que aguanta el cable (k²S²/I²) y en menos de 5 s (UNE-HD 60364-4-43).</li><li>El poder de corte del aparato tiene que ser mayor que la I<sub>cc</sub> máxima en su punto de instalación (ITC-BT-22). Se comprueba en Protecciones con la I<sub>cc</sub> presunta que pongas o que estimes con el transformador.</li></ul>`)}
+ ${c('Lo que no calcula',`<ul><li>Cortocircuito con impedancias exactas de la red (transformador, acometida): usa la medida o la resistencia aguas arriba.</li><li>Selectividad y filiación entre protecciones: tablas del fabricante.</li><li>Cables especiales o secciones mayores: catálogo del fabricante.</li></ul>`)}
+ </div></section>`;}
+
+/* ---------- montaje ---------- */
+let R,P;
+let V=null;
+function calc(){fix();R=compute();P=prot(R);
+ if(duOn()){const sc=P.sc,ib=P.ib,In=P.In;P.minK=R.list.find(x=>x.iz!=null&&(sc?x.iz>=ib:P.okFor(x.iz,In)&&x.iz>=ib)&&duOk(x.k))||null;}
+ else if(P.sc)P.minK=null;
+ V=vdrop(R,P);
+ const h=h3();P.IN=null;P.nfail=false;
+ if(st.mode==='ais'&&h>33){P.IN=3*h/100*P.ib;const ok=R.iz!=null&&P.IN<=R.iz+1e-9;P.nfail=!ok;P.c.push({ok,t:`I<sub>N</sub> = 3 · ${nf(h)} % · I<sub>B</sub> = ${nf(P.IN)} A ≤ I<sub>z</sub> ${nf(R.iz)} A`});if(!ok)P.ok=false;
+  if(!P.sc){P.minK=R.list.find(x=>x.iz!=null&&P.okFor(x.iz,P.In)&&x.iz>=P.ib&&x.iz>=P.IN&&duOk(x.k))||null;}}
+ C=shortc(R,P);PD=pdcOf(P.D);
+ if(C&&!C.noL&&C.Ia){P.minK=R.list.find(x=>x.iz!=null&&(P.sc?x.iz>=P.ib:P.okFor(x.iz,P.In)&&x.iz>=P.ib)&&(P.IN==null||x.iz>=P.IN)&&duOk(x.k)&&ccOk(x.k))||null;}}
+function pillHTML(){
+ const c=verdict().c,v=V?V.imax:R.iz;
+ return `<small>${V?'I<sub>máx</sub>':'I<sub>z</sub>'} · <span style="text-transform:none">${R.label}</span></small>${v==null||R.F===0?'–':nf(v,v<100?1:0)} A<i class="pd ${c}"></i>`;}
+function viewCalc(){
+ const left=st.mode==='ais'?pCable()+pInst()+pCond()+pSecs(R,P)+pProt(R,P):pBare()+pSecs(R,P)+pProt(R,P);
+ return `<div class="split"><div class="col">${left}</div><div class="side" id="side"><div id="lcdbox">${lcdHTML(R,P)}</div>${st.mode==='ais'?pCC(R,P):''}<div id="coordbox">${coordHTML(R,P)}</div></div></div>
+ <div class="lower"><div id="tccwrap">${tccPanel(R,P)}</div><div id="databox">${dataHTML(R,P)}</div></div>`;}
+function render(){
+ calc();
+ if(st.tab==='ais'||st.tab==='bare')st.mode=st.tab;
+ calc();
+ document.querySelectorAll('.tabbar .tab').forEach(t=>t.setAttribute('aria-selected',String(t.dataset.tab===st.tab)));
+ {const t=document.querySelector('.tabbar .tab[aria-selected="true"]');if(t){const c=t.parentElement,cr=c.getBoundingClientRect(),tr=t.getBoundingClientRect();if(tr.left<cr.left)c.scrollLeft-=cr.left-tr.left+6;else if(tr.right>cr.right)c.scrollLeft+=tr.right-cr.right+6;}}
+ const v=$('#view');
+ v.innerHTML=st.tab==='tabla'?vTabla():st.tab==='normas'?vNormas():st.tab==='prot'?vProt():st.tab==='inf'?vInforme():viewCalc();
+ $('#pill').innerHTML=pillHTML();
+ drawTCC();clampL();save();}
+function refresh(){ /* al escribir: actualiza resultados sin tocar el campo que se está editando */
+ calc();
+ const set=(id,html)=>{const e=document.getElementById(id);if(e)e.innerHTML=html;};
+ set('secs',secsHTML(R,P));set('secsub',secSub(P));set('cal',P.D.ser?calHTML(R,P):'');set('thint',typeHint(P));set('ibh',ibHint(P));
+ set('lcdbox',lcdHTML(R,P));set('ccres',ccResult(R,P));set('coordbox',coordHTML(R,P));set('tccwrap',tccPanel(R,P));set('databox',dataHTML(R,P));
+ if(st.tab==='prot'){set('pcal',P.D.ser?calHTML(R,P):irHTML(R,P));set('pmc',mcHTML());set('pim',imHTML());set('ppdc',pdcHTML());set('ppdcs',pdcSub(PD));set('piccseg',iccSeg());set('ptr',trHTML());set('pficha',fichaHTML());}
+ $('#pill').innerHTML=pillHTML();drawTCC();clampL();save();}
+function clampL(){document.querySelectorAll('.trk').forEach(t=>{const tr=t.getBoundingClientRect();t.querySelectorAll('.mk span').forEach(sp=>{sp.style.transform='';const over=sp.getBoundingClientRect().right-tr.right;if(over>0)sp.style.transform='translateX('+(-over)+'px)';});});}
+
+/* ---------- eventos ---------- */
+const parse=v=>v==='true'?true:v==='false'?false:/^-?\d+(\.\d+)?$/.test(v)?+v:v;
+const STEP={ta:[1,-20,85],tg:[1,0,85],nc:[1,1,20]};
+function stepVal(k,d){
+ if(k==='res'){const i=Math.min(RES.length-1,Math.max(0,RES.indexOf(+st.res)+d));return RES[i];}
+ if(k==='prof'){const i=Math.min(PRO.length-1,Math.max(0,PRO.indexOf(+st.prof)+d));return PRO[i];}
+ const s=STEP[k];let v=+st[k]+d*s[0];if(k==='nc')return Math.min(maxNc(),Math.max(1,v));const tm=st.ins==='PVC'?70:90;return Math.min(tm-1,Math.max(s[1],v));}
+document.addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b||b.disabled)return;
+ if(b.dataset.tab){st.tab=b.dataset.tab;render();const y=$('#view').getBoundingClientRect().top+window.scrollY-84;if(window.scrollY>y)window.scrollTo({top:y});return;}
+ if(b.id==='pill'){if(st.tab!=='ais'&&st.tab!=='bare'){st.tab=st.mode;render();}const l=document.getElementById('lcdbox');if(l){const y=l.getBoundingClientRect().top+window.scrollY-74;window.scrollTo({top:y,behavior:'smooth'});}return;}
+ if(b.dataset.cell){const [m,s]=b.dataset.cell.split('|');st.met=m;st.sec=+s;st.mode='ais';st.tab='ais';render();const l=document.getElementById('lcdbox');if(l)window.scrollTo({top:l.getBoundingClientRect().top+window.scrollY-74,behavior:'smooth'});return;}
+ if(b.dataset.set){try{Object.assign(st,JSON.parse(b.dataset.set));}catch(e){}tcI=null;render();return;}
+ if(b.dataset.ok){okField(b.dataset.ok,b.parentElement.querySelector('input'));return;}
+ if(b.dataset.tread){tcI=+b.dataset.tread;setCross();return;}
+ if(b.dataset.pdc){st.pdcs=Object.assign({},st.pdcs,{[pgrp(devi())]:+b.dataset.pdc});render();return;}
+ if(b.dataset.tx){st.tx=!st.tx;render();return;}
+ if(b.dataset.inc){const k=b.dataset.inc;st.inc=Object.assign({},st.inc,{[k]:!st.inc[k]});render();return;}
+ if(b.dataset.pdf){makePdf();return;}
+ if(b.dataset.k){const k=b.dataset.k;st[k]=parse(b.dataset.v);if(k==='mat'&&st.mat==='Al')st.ins='XLPE';if(['fam','cur','fus','inn','ir','mcin','im'].includes(k))tcI=null;
+  if(k==='mcin')st.ir=Math.min(st.mcin,Math.max(Math.round(st.mcin*4)/10,+st.ir||st.mcin));
+  if(k==='icc')st.tkva=0;
+  if((k==='tkva'||k==='tucc')&&st.tkva>0)st.icc=Math.round(iccTr(st.tkva,st.tucc)*10)/10;
+  render();return;}
+ if(b.dataset.st){st[b.dataset.st]=stepVal(b.dataset.st,+b.dataset.d);render();return;}
+ if(b.dataset.more){st.more=!st.more;render();}});
+function okField(k,el){const i=el||document.querySelector(`input[data-n="${k}"]`);if(i){const v=parseFloat(String(i.value).replace(',','.'));if(isFinite(v)){st[k]=v;if(k==='icc')st.tkva=0;}i.blur();}render();}
+document.addEventListener('keydown',e=>{const k=e.target.dataset&&e.target.dataset.n;if(k&&e.key==='Enter'){e.preventDefault();okField(k,e.target);}});
+const repIn=e=>{const r=e.target.dataset&&e.target.dataset.r;if(!r)return;st.rep=Object.assign({},st.rep,{[r]:String(e.target.value).slice(0,r==='obs'?1500:200)});save();};
+document.addEventListener('input',repIn);document.addEventListener('change',repIn);
+document.addEventListener('input',e=>{const k=e.target.dataset&&e.target.dataset.n;if(!k)return;const v=parseFloat(String(e.target.value).replace(',','.'));if(!isFinite(v))return;st[k]=v;if(k==='icc')st.tkva=0;refresh();});
+if(typeof window!=='undefined')window.__iz={get st(){return st;},set st(v){st=v;},calc:()=>{calc();return {R,P,V,C};},render:()=>render()};
+render();
+let rq=0;window.addEventListener('resize',()=>{cancelAnimationFrame(rq);rq=requestAnimationFrame(()=>{const b=document.getElementById('tcbox');if(b&&Math.abs(b.clientWidth-lastW)>4)drawTCC();clampL();});});
+}
+</script>
+</body>
+</html>
