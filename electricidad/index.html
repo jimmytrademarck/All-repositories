@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Electricidad</title>
-<meta name="description" content="Las 7 apps de electricidad del taller en una sola: Boletín eléctrico, Pruebas MER, Presupuestos y facturas, Calculadora, Cables en tubo, Esquemas unifilares e Intensidad admisible. Funciona sin conexión.">
+<meta name="description" content="Las 7 apps de electricidad del taller en una sola: Presupuestos y facturas, Calculadora, Intensidad admisible, Cables en tubo, Pruebas MER, Esquemas unifilares y Boletín eléctrico. Funciona sin conexión.">
 <meta name="theme-color" content="#E2E5E1" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#131716" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,43 +16,26 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <style>
-/* Una sola app con las 7 herramientas de electricidad: barra de herramientas a la izquierda (abajo en pantallas estrechas)
-   y cada herramienta en su propio marco, que se queda abierto al cambiar para no perder lo que estabas haciendo. */
+/* Una sola app con las 7 herramientas de electricidad: barra de iconos abajo y cada herramienta en su propio marco,
+   que se queda abierto al cambiar para no perder lo que estabas haciendo. */
 :root{
-  --bg:#E2E5E1; --surface:#F7F8F5; --ink:#1A1F21; --muted:#56605B; --line:#C3C9C3;
+  --bg:#E2E5E1; --ink:#1A1F21; --muted:#56605B;
   --accent:#F2B705; --rail:#1C2120; --rail-ink:#C9D1CC; --rail-hl:rgba(242,183,5,.16);
   --f-display:"Avenir Next Condensed","Roboto Condensed","Arial Narrow",sans-serif-condensed,system-ui,sans-serif;
   --f-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
-  --railw:86px;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
-  :root{ --bg:#131716; --surface:#1C2120; --ink:#E4E8E4; --muted:#9BA59F; --line:#2F3734; --rail:#0B0D0C; color-scheme:dark; }
+  :root{ --bg:#131716; --ink:#E4E8E4; --muted:#9BA59F; --rail:#0B0D0C; color-scheme:dark; }
 }
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overflow:hidden}
 button{font:inherit;color:inherit;touch-action:manipulation}
-button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
 
-.app{position:fixed;inset:0;display:grid;grid-template-columns:calc(var(--railw) + env(safe-area-inset-left,0px)) 1fr;
-  padding-top:env(safe-area-inset-top,0px)}
-
-/* Barra de herramientas */
-.rail{background:var(--rail);display:flex;flex-direction:column;gap:2px;padding:10px 6px calc(10px + env(safe-area-inset-bottom,0px));
-  padding-left:calc(6px + env(safe-area-inset-left,0px));overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
-.rail::-webkit-scrollbar{display:none}
-.ri{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;min-height:72px;padding:8px 2px 7px;border:0;border-radius:12px;background:transparent;cursor:pointer;color:var(--rail-ink)}
-.ri img,.ri .gi{width:40px;height:40px;border-radius:10px;flex:none;display:block}
-.ri .gi{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:7px;background:#2B302D}
-.ri .gi i{background:var(--accent);border-radius:3px}
-.ri span{font-family:var(--f-display);font-weight:700;font-size:12.5px;line-height:1.05;text-align:center;letter-spacing:.01em;max-width:100%;overflow-wrap:anywhere}
-.ri:hover{background:rgba(255,255,255,.05)}
-.ri[aria-current="page"]{background:var(--rail-hl);color:var(--accent)}
-.ri[aria-current="page"]::before{content:"";position:absolute;left:-6px;top:12px;bottom:12px;width:4px;border-radius:0 4px 4px 0;background:var(--accent)}
-.ri.home{margin-bottom:6px}
-.ri.home::after{content:"";position:absolute;left:14px;right:14px;bottom:-5px;height:1px;background:rgba(255,255,255,.12)}
+.app{position:fixed;inset:0;display:grid;grid-template-rows:1fr auto;padding-top:env(safe-area-inset-top,0px)}
 
 /* Zona de trabajo */
 .stage{position:relative;min-width:0;min-height:0;background:var(--bg)}
@@ -62,39 +45,24 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-off
 @keyframes pulse{from{opacity:.45;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
 @media (prefers-reduced-motion: reduce){.loading img{animation:none}}
 
-/* Inicio */
-.home-view{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.wrap{max-width:980px;margin:0 auto;padding:26px max(20px,env(safe-area-inset-right,0px)) calc(40px + env(safe-area-inset-bottom,0px)) 20px;display:flex;flex-direction:column;gap:22px}
-.kicker{margin:0 0 4px;font-family:var(--f-display);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8A6400;font-size:13px}
-@media (prefers-color-scheme: dark){.kicker{color:var(--accent)}}
-h1{font-family:var(--f-display);font-weight:700;font-size:38px;line-height:1.05;margin:0}
-h2{font-family:var(--f-display);font-weight:700;font-size:22px;line-height:1.1;margin:0 0 8px}
-.lede{margin:8px 0 0;color:var(--muted);max-width:62ch;font-size:17px}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:12px}
-.card{display:flex;gap:14px;align-items:center;text-align:left;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;cursor:pointer}
-.card:hover{border-color:var(--muted)}
-.card img{width:58px;height:58px;border-radius:14px;flex:none}
-.card b{display:block;font-family:var(--f-display);font-size:20px;line-height:1.1}
-.card small{display:block;color:var(--muted);font-size:14.5px;line-height:1.35;margin-top:3px}
-.box{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:12px;padding:14px 16px;max-width:76ch}
-.box p{margin:0 0 8px}
-.box p:last-child{margin-bottom:0}
-.box ul{margin:6px 0 8px;padding-left:1.2em;display:grid;gap:3px}
-.box b{font-weight:650}
-
-/* Pantallas estrechas: la barra pasa abajo */
-@media (max-width: 600px){
-  .app{grid-template-columns:1fr;grid-template-rows:1fr auto}
-  .stage{grid-row:1}
-  .rail{grid-row:2;flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:6px max(6px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px));gap:2px}
-  .ri{width:auto;min-width:64px;min-height:62px;padding:6px 8px;flex:none}
-  .ri span{white-space:nowrap;overflow-wrap:normal;font-size:12px}
-  .ri img,.ri .gi{width:32px;height:32px;border-radius:8px}
-  .ri .gi{padding:5px;gap:3px}
-  .ri[aria-current="page"]::before{left:14px;right:14px;top:auto;bottom:-6px;width:auto;height:4px;border-radius:4px 4px 0 0}
-  .ri.home{margin:0 6px 0 0}
-  .ri.home::after{left:auto;right:-4px;top:14px;bottom:14px;width:1px;height:auto}
-  h1{font-size:32px}
+/* Barra de iconos abajo */
+.rail{background:var(--rail);display:flex;justify-content:center;gap:4px;
+  padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px));
+  overflow-x:auto;overflow-y:hidden;overscroll-behavior:contain;scrollbar-width:none}
+.rail::-webkit-scrollbar{display:none}
+.ri{position:relative;flex:1 1 0;max-width:150px;min-width:72px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  min-height:64px;padding:6px 8px;border:0;border-radius:12px;background:transparent;cursor:pointer;color:var(--rail-ink)}
+.ri img{width:34px;height:34px;border-radius:9px;flex:none;display:block}
+.ri span{font-family:var(--f-display);font-weight:700;font-size:13px;line-height:1.05;text-align:center;letter-spacing:.01em;white-space:nowrap}
+.ri:hover{background:rgba(255,255,255,.05)}
+.ri[aria-current="page"]{background:var(--rail-hl);color:var(--accent)}
+.ri[aria-current="page"]::before{content:"";position:absolute;left:18px;right:18px;top:-6px;height:4px;border-radius:0 0 4px 4px;background:var(--accent)}
+/* Pantallas estrechas: los iconos se deslizan de lado */
+@media (max-width: 640px){
+  .rail{justify-content:flex-start}
+  .ri{flex:none;min-width:66px;padding:6px 6px}
+  .ri img{width:30px;height:30px;border-radius:8px}
+  .ri span{font-size:12px}
 }
 </style>
 <script>
@@ -106,7 +74,7 @@ h2{font-family:var(--f-display);font-weight:700;font-size:22px;line-height:1.1;m
       var d = document.createElement('div');
       d.setAttribute('role', 'status');
       d.textContent = text;
-      d.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(' + (window.innerWidth <= 600 ? 92 : 18) + 'px + env(safe-area-inset-bottom,0px));z-index:2147483647;background:' + bg + ';color:#FFFFFF;font:600 16px/1.35 system-ui,-apple-system,sans-serif;padding:12px 18px;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;width:max-content;max-width:calc(100% - 32px);text-align:center';
+      d.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom,0px));z-index:2147483647;background:' + bg + ';color:#FFFFFF;font:600 16px/1.35 system-ui,-apple-system,sans-serif;padding:12px 18px;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;width:max-content;max-width:calc(100% - 32px);text-align:center';
       document.body.appendChild(d);
       setTimeout(function () { d.remove(); }, ms);
     }
@@ -131,81 +99,49 @@ h2{font-family:var(--f-display);font-weight:700;font-size:22px;line-height:1.1;m
 </head>
 <body>
 <div class="app">
-  <nav class="rail" id="rail" aria-label="Herramientas"></nav>
   <main class="stage" id="stage">
-    <section class="home-view" id="inicio" aria-label="Inicio">
-      <div class="wrap">
-        <header>
-          <p class="kicker">7 herramientas en una</p>
-          <h1>Electricidad</h1>
-          <p class="lede">Tus apps de electricidad juntas. Toca una a la izquierda o aquí. Al cambiar de una a otra, cada una se queda como la dejaste.</p>
-        </header>
-        <div class="cards" id="cards"></div>
-        <div class="box">
-          <h2>Tus datos</h2>
-          <p>Cada herramienta guarda sus datos dentro de esta app, en este iPad, igual que antes: boletines, viviendas probadas, presupuestos, facturas y esquemas.</p>
-          <p>El iPad guarda aparte los datos de cada icono. Si tenías datos en las apps sueltas, pásalos una vez con su copia de seguridad: en la app suelta, <b>Exportar copia</b>; aquí, en la misma herramienta, <b>Importar copia</b>.</p>
-          <ul>
-            <li><b>Boletín eléctrico:</b> Guardados › Exportar copia / Importar copia.</li>
-            <li><b>Pruebas MER:</b> Informes › Exportar copia / Importar copia.</li>
-            <li><b>Presupuestos y facturas:</b> Ajustes › Exportar copia / Importar copia.</li>
-            <li><b>Esquemas unifilares:</b> Mis esquemas › Copia de seguridad; aquí, Abrir archivo.</li>
-          </ul>
-          <p>Las apps sueltas siguen en «Apps del taller» por si alguna vez prefieres una por separado.</p>
-        </div>
-      </div>
-    </section>
     <div class="loading" id="loading" hidden><img id="loadingIcon" src="icon-192.png" alt=""><span id="loadingText">Abriendo…</span></div>
   </main>
+  <nav class="rail" id="rail" aria-label="Herramientas"></nav>
 </div>
 <script>
 (function () {
   'use strict';
+  /* El orden de la barra, de izquierda a derecha */
   var TOOLS = [
-    {id: 'boletin', name: 'Boletín eléctrico', short: 'Boletín', desc: 'Certificado de instalación por voz, revisado con el REBT y en PDF'},
-    {id: 'pruebas-mer', name: 'Pruebas MER', short: 'Pruebas', desc: 'Pruebas reglamentarias con pasa o no pasa e informe en PDF'},
-    {id: 'presupuestos', name: 'Presupuestos y facturas', short: 'Presupuestos', desc: 'Presupuestos y facturas con catálogo de materiales y PDF'},
-    {id: 'calculadora', name: 'Calculadora', short: 'Calculadora', desc: 'Fórmulas eléctricas: 28 leyes y teoremas con cambio de unidades'},
-    {id: 'cables-tubo', name: 'Cables en tubo', short: 'Cables en tubo', desc: 'Cuántos cables caben en cada tubo con el % libre que elijas'},
-    {id: 'unifilar', name: 'Esquemas unifilares', short: 'Unifilares', desc: 'Dibuja unifilares con símbolos y cables, simúlalos y sácalos en PDF'},
-    {id: 'iz-rebt', name: 'Intensidad admisible', short: 'Intensidad', desc: 'Iz de cables, protecciones con su curva y poder de corte, e informe en PDF'}
+    {id: 'presupuestos', name: 'Presupuestos y facturas', short: 'Presupuestos'},
+    {id: 'calculadora', name: 'Calculadora', short: 'Calculadora'},
+    {id: 'iz-rebt', name: 'Intensidad admisible', short: 'Intensidad'},
+    {id: 'cables-tubo', name: 'Cables en tubo', short: 'Cables en tubo'},
+    {id: 'pruebas-mer', name: 'Pruebas MER', short: 'Pruebas MER'},
+    {id: 'unifilar', name: 'Esquemas unifilares', short: 'Unifilares'},
+    {id: 'boletin', name: 'Boletín eléctrico', short: 'Boletín'}
   ];
   var LAST = 'electricidad:ultima';
   var rail = document.getElementById('rail');
   var stage = document.getElementById('stage');
-  var home = document.getElementById('inicio');
   var loading = document.getElementById('loading');
   var frames = {};
   var current = null;
 
-  function el(tag, attrs, html) {
-    var e = document.createElement(tag);
-    for (var k in attrs) if (Object.prototype.hasOwnProperty.call(attrs, k)) e.setAttribute(k, attrs[k]);
-    if (html != null) e.innerHTML = html;
-    return e;
-  }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
-
-  /* Barra: Inicio y las 7 herramientas */
-  var homeBtn = el('button', {type: 'button', class: 'ri home', 'data-go': 'inicio', title: 'Inicio'}, '<span class="gi" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Inicio</span>');
-  rail.appendChild(homeBtn);
-  TOOLS.forEach(function (t) {
-    rail.appendChild(el('button', {type: 'button', class: 'ri', 'data-go': t.id, title: t.name}, '<img src="../' + t.id + '/icon-192.png" alt=""><span>' + esc(t.short) + '</span>'));
-    var c = el('button', {type: 'button', class: 'card', 'data-go': t.id}, '<img src="../' + t.id + '/icon-192.png" alt=""><span><b>' + esc(t.name) + '</b><small>' + esc(t.desc) + '</small></span>');
-    document.getElementById('cards').appendChild(c);
-  });
-
   function byId(id) { for (var i = 0; i < TOOLS.length; i++) if (TOOLS[i].id === id) return TOOLS[i]; return null; }
+
+  TOOLS.forEach(function (t) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'ri'; b.setAttribute('data-go', t.id); b.title = t.name;
+    b.innerHTML = '<img src="../' + t.id + '/icon-192.png" alt=""><span>' + esc(t.short) + '</span>';
+    rail.appendChild(b);
+  });
 
   function frameFor(t) {
     if (frames[t.id]) return frames[t.id];
     /* El aviso verde «Lista para usar sin conexión» ya sale una vez en esta app: que no salga otra vez en cada herramienta. */
     try { localStorage.setItem('sin-conexion-lista:' + new URL('../' + t.id + '/', location.href).pathname, '1'); } catch (e) { /* sin almacenamiento */ }
-    var f = el('iframe', {
-      src: '../' + t.id + '/',
-      title: t.name,
-      allow: 'microphone; camera; geolocation; web-share; clipboard-read; clipboard-write; fullscreen; autoplay'
-    });
+    var f = document.createElement('iframe');
+    f.src = '../' + t.id + '/';
+    f.title = t.name;
+    f.setAttribute('allow', 'microphone; camera; geolocation; web-share; clipboard-read; clipboard-write; fullscreen; autoplay');
     f.hidden = true;
     f.dataset.loading = '1';
     f.addEventListener('load', function () {
@@ -218,44 +154,40 @@ h2{font-family:var(--f-display);font-weight:700;font-size:22px;line-height:1.1;m
   }
 
   function show(id, push) {
-    var t = byId(id);
-    if (!t) id = 'inicio';
-    if (id === current) return;
-    current = id;
-    Object.keys(frames).forEach(function (k) { frames[k].hidden = (k !== id); });
-    home.hidden = (id !== 'inicio');
-    loading.hidden = true;
-    if (t) {
-      var f = frameFor(t);
-      f.hidden = false;
-      if (f.dataset.loading) {
-        document.getElementById('loadingIcon').src = '../' + t.id + '/icon-192.png';
-        document.getElementById('loadingText').textContent = 'Abriendo ' + t.name + '…';
-        loading.hidden = false;
-      }
-      try { f.focus({preventScroll: true}); } catch (e) { /* opcional */ }
+    var t = byId(id) || TOOLS[0];
+    if (t.id === current) return;
+    current = t.id;
+    Object.keys(frames).forEach(function (k) { frames[k].hidden = (k !== t.id); });
+    var f = frameFor(t);
+    f.hidden = false;
+    loading.hidden = !f.dataset.loading;
+    if (f.dataset.loading) {
+      document.getElementById('loadingIcon').src = '../' + t.id + '/icon-192.png';
+      document.getElementById('loadingText').textContent = 'Abriendo ' + t.name + '…';
     }
+    try { f.focus({preventScroll: true}); } catch (e) { /* opcional */ }
     Array.prototype.forEach.call(rail.querySelectorAll('.ri'), function (b) {
-      if (b.getAttribute('data-go') === id) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+      if (b.getAttribute('data-go') === t.id) {
+        b.setAttribute('aria-current', 'page');
+        try { b.scrollIntoView({block: 'nearest', inline: 'nearest'}); } catch (e) { /* opcional */ }
+      } else b.removeAttribute('aria-current');
     });
-    document.title = t ? t.name + ' · Electricidad' : 'Electricidad';
-    try { localStorage.setItem(LAST, id); } catch (e) { /* sin almacenamiento */ }
-    var hash = id === 'inicio' ? '' : '#' + id;
-    if (location.hash !== hash) {
-      try { history[push ? 'pushState' : 'replaceState'](null, '', location.pathname + location.search + hash); } catch (e) { /* opcional */ }
+    document.title = t.name + ' · Electricidad';
+    try { localStorage.setItem(LAST, t.id); } catch (e) { /* sin almacenamiento */ }
+    if (location.hash !== '#' + t.id) {
+      try { history[push ? 'pushState' : 'replaceState'](null, '', location.pathname + location.search + '#' + t.id); } catch (e) { /* opcional */ }
     }
   }
 
-  document.addEventListener('click', function (e) {
+  rail.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-go]');
-    if (!b) return;
-    show(b.getAttribute('data-go'), true);
+    if (b) show(b.getAttribute('data-go'), true);
   });
-  window.addEventListener('popstate', function () { show(location.hash.slice(1) || 'inicio', false); });
+  window.addEventListener('popstate', function () { if (byId(location.hash.slice(1))) show(location.hash.slice(1), false); });
 
-  /* Al abrir: la herramienta del enlace, o la última que usaste, o Inicio */
+  /* Al abrir: la herramienta del enlace, o la última que usaste, o Presupuestos */
   var start = location.hash.slice(1);
-  if (!byId(start)) { try { start = localStorage.getItem(LAST) || 'inicio'; } catch (e) { start = 'inicio'; } }
+  if (!byId(start)) { try { start = localStorage.getItem(LAST); } catch (e) { start = null; } }
   show(start, false);
 })();
 </script>
