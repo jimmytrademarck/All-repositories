@@ -1563,7 +1563,7 @@ function pdfName(){
 /* guardar: con la capacidad de descargas de Claude si la vista la da; si no, menú Compartir del iPad o descarga */
 let DL=null;
 try{if(window.claude&&typeof window.claude.use==='function')Promise.resolve(window.claude.use('downloads')).then(d=>{DL=d||null;},()=>{});}catch(e){}
-const framed=(()=>{try{return window.self!==window.top;}catch(e){return true;}})();
+const framed=(()=>{try{return window.self!==window.top&&window.top.location.origin!==location.origin;}catch(e){return true;}})();
 function makePdf(){
  let blob;
  try{blob=buildPDF();}catch(e){setPdfMsg('No se ha podido generar el PDF.',true);if(window.console)console.error(e);return;}

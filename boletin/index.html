@@ -3334,7 +3334,7 @@ function vRev() {
 /* ================= PDF ================= */
 let DL = null;
 try { if (window.claude && typeof window.claude.use === 'function') Promise.resolve(window.claude.use('downloads')).then(d => { DL = d || null; }, () => {}); } catch (e) {}
-const framed = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+const framed = (() => { try { return window.self !== window.top && window.top.location.origin !== location.origin; } catch (e) { return true; } })();
 function vPdf() {
   const r = C.resumen(st.rev), R = C.derivar(st.b, st.inst), I = st.pdf.incl;
   const inc = (k, t, s, dis) => `<button type="button" data-act="incl" data-k="${k}" aria-pressed="${!!I[k] && !dis}"${dis ? ' disabled' : ''}><i aria-hidden="true">${I[k] && !dis ? '✓' : ''}</i><span><b>${t}</b><small>${s}</small></span></button>`;
