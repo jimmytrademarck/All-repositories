@@ -35,7 +35,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 button{font:inherit;color:inherit;touch-action:manipulation}
 button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
 
-.app{position:fixed;inset:0;display:grid;grid-template-rows:1fr;padding-top:env(safe-area-inset-top,0px)}
+.app{position:fixed;inset:0;display:grid;grid-template-rows:1fr auto;padding-top:env(safe-area-inset-top,0px)}
 
 /* Zona de trabajo */
 .stage{position:relative;min-width:0;min-height:0;background:var(--bg)}
@@ -45,36 +45,27 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
 @keyframes pulse{from{opacity:.45;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
 @media (prefers-reduced-motion: reduce){.loading img{animation:none}}
 
-/* Botón del desplegable: flota encima de la herramienta y se puede arrastrar a donde no moleste */
-.fab{position:fixed;z-index:60;left:-200px;top:-200px;width:52px;height:52px;border-radius:50%;border:2px solid var(--accent);background:rgba(28,33,32,.9);
-  display:grid;place-items:center;padding:0;cursor:pointer;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
-  box-shadow:0 4px 14px rgba(0,0,0,.32);opacity:.6;transition:opacity .25s ease,transform .15s ease}
-.fab .gi{width:22px;height:22px;display:grid;grid-template-columns:1fr 1fr;gap:4px;pointer-events:none}
-.fab .gi i{background:var(--accent);border-radius:3px}
-.fab:hover,.fab.activo,.fab[aria-expanded="true"]{opacity:1}
-.fab.arrastrando{transform:scale(1.1);opacity:1;transition:none}
-.fab.suave{transition:left .25s ease,top .25s ease,opacity .25s ease}
-.app.arrastrando iframe{pointer-events:none}
-.menu-fondo{position:fixed;inset:0;z-index:58;background:rgba(10,12,11,.22)}
-.menu{position:fixed;z-index:59;width:min(300px,calc(100vw - 24px));max-height:calc(100% - 24px);overflow-y:auto;overscroll-behavior:contain;
-  background:#1C2120;color:#E8ECE8;border:1px solid #2F3734;border-radius:18px;padding:8px;box-shadow:0 16px 44px rgba(0,0,0,.38);animation:abrir .16s ease-out}
-@keyframes abrir{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion: reduce){.menu{animation:none}.fab.suave{transition:none}}
-.menu h2{margin:6px 10px 6px;font-family:var(--f-display);font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
-.mi{display:flex;align-items:center;gap:12px;width:100%;min-height:54px;padding:8px 10px;border:0;border-radius:12px;background:transparent;color:inherit;text-align:left;cursor:pointer}
-.mi img,.mi .ic{width:36px;height:36px;border-radius:9px;flex:none}
-.mi .ic{display:grid;place-items:center;background:#2B302D;color:var(--accent)}
-.mi span{font-family:var(--f-display);font-weight:700;font-size:18px;line-height:1.1}
-.mi:hover{background:rgba(255,255,255,.06)}
-.mi[aria-current="page"]{background:rgba(242,183,5,.15);color:var(--accent);box-shadow:inset 4px 0 0 var(--accent)}
-.menu hr{border:0;border-top:1px solid #2F3734;margin:6px 4px}
-.mi.sec{min-height:46px;color:#9BA59F}
-.mi.sec span{font-family:var(--f-body);font-weight:600;font-size:15px}
-.pista{position:fixed;z-index:61;max-width:min(260px,calc(100vw - 90px));background:#1C2120;color:#E8ECE8;border:1px solid var(--accent);border-radius:14px;
-  padding:10px 14px;font-size:15px;line-height:1.35;box-shadow:0 8px 24px rgba(0,0,0,.3);pointer-events:none}
-.pista b{color:var(--accent)}
-/* Aviso de versión nueva */
-.nueva{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:50;max-width:calc(100% - 24px);
+/* Barra de iconos abajo */
+.rail{background:var(--rail);display:flex;justify-content:center;gap:4px;
+  padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px));
+  overflow-x:auto;overflow-y:hidden;overscroll-behavior:contain;scrollbar-width:none}
+.rail::-webkit-scrollbar{display:none}
+.ri{position:relative;flex:1 1 0;max-width:150px;min-width:72px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  min-height:64px;padding:6px 8px;border:0;border-radius:12px;background:transparent;cursor:pointer;color:var(--rail-ink)}
+.ri img{width:34px;height:34px;border-radius:9px;flex:none;display:block}
+.ri span{font-family:var(--f-display);font-weight:700;font-size:13px;line-height:1.05;text-align:center;letter-spacing:.01em;white-space:nowrap}
+.ri:hover{background:rgba(255,255,255,.05)}
+.ri[aria-current="page"]{background:var(--rail-hl);color:var(--accent)}
+.ri[aria-current="page"]::before{content:"";position:absolute;left:18px;right:18px;top:-6px;height:4px;border-radius:0 0 4px 4px;background:var(--accent)}
+/* Pantallas estrechas: los iconos se deslizan de lado */
+@media (max-width: 640px){
+  .rail{justify-content:flex-start}
+  .ri{flex:none;min-width:66px;padding:6px 6px}
+  .ri img{width:30px;height:30px;border-radius:8px}
+  .ri span{font-size:12px}
+}
+/* Aviso de versión nueva, encima de la barra */
+.nueva{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:50;max-width:calc(100% - 24px);
   background:#1C2120;color:#E8ECE8;border:1px solid #F2B705;border-radius:999px;padding:10px 18px;font-size:15px;line-height:1.3;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25)}
 .nueva b{color:#F2B705;font-weight:700}
 /* Salvapantallas */
@@ -91,7 +82,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
       var d = document.createElement('div');
       d.setAttribute('role', 'status');
       d.textContent = text;
-      d.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:2147483647;background:' + bg + ';color:#FFFFFF;font:600 16px/1.35 system-ui,-apple-system,sans-serif;padding:12px 18px;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;width:max-content;max-width:calc(100% - 32px);text-align:center';
+      d.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom,0px));z-index:2147483647;background:' + bg + ';color:#FFFFFF;font:600 16px/1.35 system-ui,-apple-system,sans-serif;padding:12px 18px;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;width:max-content;max-width:calc(100% - 32px);text-align:center';
       document.body.appendChild(d);
       setTimeout(function () { d.remove(); }, ms);
     }
@@ -119,13 +110,8 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
   <main class="stage" id="stage">
     <div class="loading" id="loading" hidden><img id="loadingIcon" src="icon-192.png" alt=""><span id="loadingText">Abriendo…</span></div>
   </main>
+  <nav class="rail" id="rail" aria-label="Herramientas"></nav>
 </div>
-<button type="button" class="fab" id="fab" aria-label="Cambiar de herramienta" aria-haspopup="true" aria-expanded="false" aria-controls="menu"><span class="gi" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button>
-<div class="menu-fondo" id="menuFondo" hidden></div>
-<nav class="menu" id="menu" aria-label="Herramientas" hidden><h2>Electricidad</h2><div id="menuLista"></div><hr>
-  <button type="button" class="mi sec" id="menuSs"><span class="ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12c2.5-6 5-6 7.5 0s5 6 7.5 0 3.5-4.5 5-2"/></svg></span><span>Poner el salvapantallas</span></button>
-</nav>
-<div class="pista" id="pista" hidden><b>Toca aquí</b> para cambiar de herramienta. Arrástralo para ponerlo donde no moleste.</div>
 <button type="button" class="nueva" id="nueva" hidden>Hay una versión nueva de la app · <b>Toca aquí para ponerla</b></button>
 <div class="ss" id="ss" hidden aria-hidden="true"><canvas></canvas></div>
 <script>
@@ -344,7 +330,7 @@ var Salvapantallas = (function () {
 <script>
 (function () {
   'use strict';
-  /* El orden del desplegable, de arriba abajo */
+  /* El orden de la barra, de izquierda a derecha */
   var TOOLS = [
     {id: 'presupuestos', name: 'Presupuestos y facturas', short: 'Presupuestos'},
     {id: 'calculadora', name: 'Calculadora', short: 'Calculadora'},
@@ -355,9 +341,7 @@ var Salvapantallas = (function () {
     {id: 'boletin', name: 'Boletín eléctrico', short: 'Boletín'}
   ];
   var LAST = 'electricidad:ultima';
-  var app = document.querySelector('.app');
-  var fab = document.getElementById('fab'), menu = document.getElementById('menu'), fondo = document.getElementById('menuFondo');
-  var lista = document.getElementById('menuLista'), pista = document.getElementById('pista');
+  var rail = document.getElementById('rail');
   var stage = document.getElementById('stage');
   var loading = document.getElementById('loading');
   var frames = {};
@@ -368,107 +352,10 @@ var Salvapantallas = (function () {
 
   TOOLS.forEach(function (t) {
     var b = document.createElement('button');
-    b.type = 'button'; b.className = 'mi'; b.setAttribute('data-go', t.id);
-    b.innerHTML = '<img src="../' + t.id + '/icon-192.png" alt=""><span>' + esc(t.name) + '</span>';
-    lista.appendChild(b);
+    b.type = 'button'; b.className = 'ri'; b.setAttribute('data-go', t.id); b.title = t.name;
+    b.innerHTML = '<img src="../' + t.id + '/icon-192.png" alt=""><span>' + esc(t.short) + '</span>';
+    rail.appendChild(b);
   });
-
-  /* ---- Botón flotante: posición guardada (lado izquierdo o derecho y altura) ---- */
-  var POS = 'electricidad:boton', SZ = 52, M = 10;
-  var pos = {lado: 'r', y: 0.5};
-  try { var g = JSON.parse(localStorage.getItem(POS) || 'null'); if (g && (g.lado === 'l' || g.lado === 'r') && g.y >= 0 && g.y <= 1) pos = g; } catch (e) { /* sin almacenamiento */ }
-  var sonda = document.createElement('div');
-  sonda.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;inset:0;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
-  document.body.appendChild(sonda);
-  function bordes() {
-    var cs = getComputedStyle(sonda);
-    return {t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0};
-  }
-  function limitesY() { var s = bordes(); return {min: s.t + M, max: window.innerHeight - s.b - M - SZ, s: s}; }
-  function colocar() {
-    var L = limitesY();
-    var y = L.min + pos.y * Math.max(0, L.max - L.min);
-    var x = pos.lado === 'l' ? L.s.l + M : window.innerWidth - L.s.r - M - SZ;
-    fab.style.left = Math.round(x) + 'px'; fab.style.top = Math.round(y) + 'px';
-  }
-  function guardar() { try { localStorage.setItem(POS, JSON.stringify(pos)); } catch (e) { /* sin almacenamiento */ } }
-
-  var arr = null;
-  fab.addEventListener('pointerdown', function (e) {
-    if (e.button) return;
-    arr = {id: e.pointerId, x0: e.clientX, y0: e.clientY, bx: fab.offsetLeft, by: fab.offsetTop, movido: false};
-    try { fab.setPointerCapture(e.pointerId); } catch (er) { /* opcional */ }
-    fab.classList.add('activo');
-  });
-  fab.addEventListener('pointermove', function (e) {
-    if (!arr || e.pointerId !== arr.id) return;
-    var dx = e.clientX - arr.x0, dy = e.clientY - arr.y0;
-    if (!arr.movido && Math.abs(dx) + Math.abs(dy) < 10) return;
-    if (!arr.movido) { arr.movido = true; fab.classList.add('arrastrando'); app.classList.add('arrastrando'); cerrar(); quitarPista(); }
-    fab.style.left = Math.max(0, Math.min(window.innerWidth - SZ, arr.bx + dx)) + 'px';
-    fab.style.top = Math.max(0, Math.min(window.innerHeight - SZ, arr.by + dy)) + 'px';
-    e.preventDefault();
-  });
-  function soltar(e) {
-    if (!arr || e.pointerId !== arr.id) return;
-    var a = arr; arr = null;
-    fab.classList.remove('arrastrando', 'activo'); app.classList.remove('arrastrando');
-    if (a.movido) {
-      /* Se pega al lado más cercano y se queda a esa altura */
-      var L = limitesY();
-      pos.lado = fab.offsetLeft + SZ / 2 < window.innerWidth / 2 ? 'l' : 'r';
-      pos.y = L.max > L.min ? Math.max(0, Math.min(1, (fab.offsetTop - L.min) / (L.max - L.min))) : 0.5;
-      guardar();
-      fab.classList.add('suave'); colocar(); setTimeout(function () { fab.classList.remove('suave'); }, 300);
-    } else if (e.type === 'pointerup') {
-      if (menu.hidden) abrir(); else cerrar();
-    }
-  }
-  fab.addEventListener('pointerup', soltar);
-  fab.addEventListener('pointercancel', soltar);
-  fab.addEventListener('click', function (e) { if (e.detail === 0) { if (menu.hidden) abrir(); else cerrar(); } });   /* con teclado */
-  fab.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-
-  /* ---- Desplegable ---- */
-  function abrir() {
-    quitarPista();
-    menu.hidden = false; fondo.hidden = false; fab.setAttribute('aria-expanded', 'true');
-    var W = window.innerWidth, H = window.innerHeight, mw = menu.offsetWidth, mh = menu.offsetHeight;
-    var left = pos.lado === 'r' ? fab.offsetLeft - mw - 10 : fab.offsetLeft + SZ + 10;
-    left = Math.max(8, Math.min(W - mw - 8, left));
-    var top = Math.max(8, Math.min(H - mh - 8, fab.offsetTop + SZ / 2 - mh / 2));
-    menu.style.left = left + 'px'; menu.style.top = top + 'px';
-    menu.style.transformOrigin = (pos.lado === 'r' ? 'right ' : 'left ') + Math.round(fab.offsetTop + SZ / 2 - top) + 'px';
-    var act = menu.querySelector('[aria-current="page"]');
-    try { (act || menu.querySelector('.mi')).focus({preventScroll: true}); } catch (e) { /* opcional */ }
-  }
-  function cerrar() {
-    if (menu.hidden) return;
-    menu.hidden = true; fondo.hidden = true; fab.setAttribute('aria-expanded', 'false');
-  }
-  fondo.addEventListener('click', cerrar);
-  menu.addEventListener('click', function (e) {
-    var b = e.target.closest && e.target.closest('[data-go]');
-    if (b) { cerrar(); show(b.getAttribute('data-go'), true); }
-  });
-  document.getElementById('menuSs').addEventListener('click', function () { cerrar(); Salvapantallas.start(); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) { cerrar(); fab.focus(); } });
-  window.addEventListener('resize', function () { cerrar(); colocar(); quitarPista(); });
-
-  /* ---- Pista la primera vez ---- */
-  var PISTA = 'electricidad:pista-boton', tPista = 0;
-  function quitarPista() { pista.hidden = true; clearTimeout(tPista); }
-  function ponerPista() {
-    var visto = null;
-    try { visto = localStorage.getItem(PISTA); localStorage.setItem(PISTA, '1'); } catch (e) { visto = '1'; }
-    if (visto) return;
-    pista.hidden = false;
-    var pw = pista.offsetWidth, ph = pista.offsetHeight;
-    var left = pos.lado === 'r' ? fab.offsetLeft - pw - 12 : fab.offsetLeft + SZ + 12;
-    pista.style.left = Math.max(8, Math.min(window.innerWidth - pw - 8, left)) + 'px';
-    pista.style.top = Math.max(8, Math.min(window.innerHeight - ph - 8, fab.offsetTop + SZ / 2 - ph / 2)) + 'px';
-    tPista = setTimeout(quitarPista, 8000);
-  }
 
   function frameFor(t) {
     if (frames[t.id]) return frames[t.id];
@@ -503,9 +390,12 @@ var Salvapantallas = (function () {
       document.getElementById('loadingIcon').src = '../' + t.id + '/icon-192.png';
       document.getElementById('loadingText').textContent = 'Abriendo ' + t.name + '…';
     }
-    if (menu.hidden) { try { f.focus({preventScroll: true}); } catch (e) { /* opcional */ } }
-    Array.prototype.forEach.call(lista.querySelectorAll('.mi'), function (b) {
-      if (b.getAttribute('data-go') === t.id) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    try { f.focus({preventScroll: true}); } catch (e) { /* opcional */ }
+    Array.prototype.forEach.call(rail.querySelectorAll('.ri'), function (b) {
+      if (b.getAttribute('data-go') === t.id) {
+        b.setAttribute('aria-current', 'page');
+        try { b.scrollIntoView({block: 'nearest', inline: 'nearest'}); } catch (e) { /* opcional */ }
+      } else b.removeAttribute('aria-current');
     });
     document.title = t.name + ' · Electricidad';
     try { localStorage.setItem(LAST, t.id); } catch (e) { /* sin almacenamiento */ }
@@ -514,6 +404,10 @@ var Salvapantallas = (function () {
     }
   }
 
+  rail.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-go]');
+    if (b) show(b.getAttribute('data-go'), true);
+  });
   window.addEventListener('popstate', function () { if (byId(location.hash.slice(1))) show(location.hash.slice(1), false); });
 
   Salvapantallas.config.pausa = function () {
@@ -539,8 +433,6 @@ var Salvapantallas = (function () {
   var start = location.hash.slice(1);
   if (!byId(start)) { try { start = localStorage.getItem(LAST); } catch (e) { start = null; } }
   show(start, false);
-  colocar();
-  setTimeout(ponerPista, 1200);
 })();
 </script>
 </body>
