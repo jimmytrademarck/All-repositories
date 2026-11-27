@@ -64,6 +64,10 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
   .ri img{width:30px;height:30px;border-radius:8px}
   .ri span{font-size:12px}
 }
+/* Salvapantallas */
+.ss{position:fixed;inset:0;z-index:2147483646;background:#0B0E0D;opacity:0;transition:opacity .7s ease;touch-action:none;-webkit-user-select:none;user-select:none}
+.ss.on{opacity:1}
+.ss canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 </style>
 <script>
 /* Deja la app guardada en la tableta para usarla sin conexión y avisa de si está lista o de qué lo impide. */
@@ -104,6 +108,212 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
   </main>
   <nav class="rail" id="rail" aria-label="Herramientas"></nav>
 </div>
+<div class="ss" id="ss" hidden aria-hidden="true"><canvas></canvas></div>
+<script>
+/* Salvapantallas: tras unos minutos sin tocar nada, la hora y las tres fases girando y dibujando sus ondas.
+   Se quita tocando la pantalla; ese toque no llega a la herramienta que hay debajo. */
+var Salvapantallas = (function () {
+  'use strict';
+  var config = {idle: 3 * 60 * 1000};
+  var ov = document.getElementById('ss'), cv = ov.querySelector('canvas'), ctx = cv.getContext('2d');
+  var last = Date.now(), on = false, raf = 0, t0 = 0, lastDraw = 0, W = 0, H = 0, dpr = 1;
+  var reduce = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : {matches: false};
+  var FONT = '"Avenir Next Condensed","Roboto Condensed","Arial Narrow",sans-serif';
+  var BODY = 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+  /* Fases con los colores de los cables: marrón, negro y gris; el neutro azul hace de eje. */
+  var PH = [
+    {n: 'L1', core: '#9A5B2A', glow: 'rgba(222,140,70,', label: '#D9935A'},
+    {n: 'L2', core: '#0A0C0B', glow: 'rgba(236,240,236,', label: '#E8ECE8'},
+    {n: 'L3', core: '#7E888C', glow: 'rgba(176,188,194,', label: '#AEB8BC'}
+  ];
+  var EVS = ['pointerdown', 'touchstart', 'keydown', 'wheel', 'scroll', 'input'];
+
+  function bump() { last = Date.now(); }
+  function vigilar(target) {
+    try { EVS.forEach(function (ev) { target.addEventListener(ev, bump, {capture: true, passive: true}); }); } catch (e) { /* opcional */ }
+  }
+  vigilar(window); vigilar(document);
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  }
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+  function line(pts, width, color) {
+    ctx.beginPath(); ctx.moveTo(pts[0], pts[1]);
+    for (var i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+    ctx.lineWidth = width; ctx.strokeStyle = color; ctx.stroke();
+  }
+
+  function draw(now) {
+    var t = (now - t0) / 1000;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#0B0E0D'; ctx.fillRect(0, 0, W, H);
+    var portrait = H > W * 1.05;
+    var pad = Math.max(28, Math.min(W, H) * 0.07);
+    /* Todo se mueve muy despacio unos píxeles para no marcar la pantalla */
+    ctx.translate(18 * Math.sin(t / 47), 12 * Math.sin(t / 61));
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    /* Hora y fecha */
+    var d = new Date();
+    var cs = portrait ? W * 0.24 : Math.min(H * 0.21, W * 0.14);
+    var base = pad + cs * 0.82;
+    ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    ctx.font = '700 ' + Math.round(cs) + 'px ' + FONT;
+    var hh = pad2(d.getHours()), mm = pad2(d.getMinutes());
+    var x = pad;
+    ctx.fillStyle = '#E8ECE8'; ctx.fillText(hh, x, base); x += ctx.measureText(hh).width;
+    var blink = reduce.matches ? 1 : 0.4 + 0.6 * Math.abs(Math.cos(Math.PI * d.getMilliseconds() / 1000));
+    ctx.globalAlpha = blink; ctx.fillStyle = '#F2B705'; ctx.fillText(':', x, base); ctx.globalAlpha = 1;
+    x += ctx.measureText(':').width;
+    ctx.fillStyle = '#E8ECE8'; ctx.fillText(mm, x, base);
+    var fs = Math.max(15, Math.round(cs * 0.17));
+    ctx.font = '600 ' + fs + 'px ' + BODY; ctx.fillStyle = '#9BA59F';
+    var fecha = d.toLocaleDateString('es-ES', {weekday: 'long', day: 'numeric', month: 'long'});
+    ctx.fillText(fecha.charAt(0).toUpperCase() + fecha.slice(1), pad + 2, base + fs * 1.7);
+    /* Franja con los colores de los cables */
+    var sy = base + fs * 2.6, sw = Math.min(W * 0.32, 340) / 5, sh = Math.max(4, fs * 0.28);
+    ['#8B5A2B', '#000000', '#8E979B', '#2F6FD0'].forEach(function (c, i) {
+      ctx.fillStyle = c; ctx.fillRect(pad + 2 + i * sw, sy, sw, sh);
+    });
+    ctx.fillStyle = '#E9C31C'; ctx.fillRect(pad + 2 + 4 * sw, sy, sw, sh);
+    ctx.fillStyle = '#1E8E3E';
+    for (var g = 0; g < 4; g++) ctx.fillRect(pad + 2 + 4 * sw + g * sw / 4, sy, sw / 8, sh);
+    ctx.fillStyle = 'rgba(255,255,255,.10)'; ctx.fillRect(pad + 2 + sw, sy, sw, 1);
+
+    /* Fasores y ondas: en horizontal las ondas corren a la derecha; en vertical, hacia abajo */
+    var R, cx, cy, span;
+    if (portrait) {
+      R = Math.min(W * 0.2, (H - sy) * 0.14);
+      cx = W / 2; cy = sy + 60 + R * 1.25;
+    } else {
+      R = Math.min(H * 0.17, W * 0.11);
+      cx = pad + R + 6; cy = Math.max(sy + R + 70, H * 0.66);
+      if (cy + R + 60 > H) cy = H - R - 60;
+    }
+    var o0 = R * 1.45;                                   /* donde empiezan las ondas, medido desde el centro */
+    span = portrait ? (H - pad - 70) - (cy + o0) : (W - pad) - (cx + o0);
+    var w = 2 * Math.PI / (reduce.matches ? 14 : 5);
+    var lam = Math.max(240, span / 1.5), k = 2 * Math.PI / lam;
+    /* s: distancia a lo largo de la onda; a: valor de -1 a 1 */
+    function P(sv, av) { return portrait ? [cx + R * av, cy + o0 + sv] : [cx + o0 + sv, cy - R * av]; }
+    function amp(th) { return portrait ? Math.cos(th) : Math.sin(th); }
+
+    var halo = ctx.createRadialGradient(cx, cy, R * 0.2, cx, cy, R * 3);
+    halo.addColorStop(0, 'rgba(242,183,5,.07)'); halo.addColorStop(1, 'rgba(242,183,5,0)');
+    ctx.fillStyle = halo; ctx.fillRect(cx - R * 3, cy - R * 3, R * 6, R * 6);
+
+    /* Retícula de osciloscopio */
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.beginPath();
+    for (var gs = 0; gs <= span + 1; gs += lam / 4) { var g1 = P(gs, -1.15), g2 = P(gs, 1.15); ctx.moveTo(g1[0], g1[1]); ctx.lineTo(g2[0], g2[1]); }
+    [-1, -0.5, 0.5, 1].forEach(function (f) { var g1 = P(0, f), g2 = P(span, f); ctx.moveTo(g1[0], g1[1]); ctx.lineTo(g2[0], g2[1]); });
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(255,255,255,.13)'; ctx.lineWidth = 1.5; ctx.stroke();
+    for (var a = 0; a < 12; a++) {
+      var aa = a * Math.PI / 6, r1 = R * (a % 3 ? 0.95 : 0.9);
+      line([cx + Math.cos(aa) * r1, cy + Math.sin(aa) * r1, cx + Math.cos(aa) * R, cy + Math.sin(aa) * R], 1.5, 'rgba(255,255,255,.18)');
+    }
+    /* Neutro: eje azul */
+    var nEnd = P(span, 0);
+    ctx.setLineDash([6, 7]); line(portrait ? [cx, cy - R, nEnd[0], nEnd[1]] : [cx - R, cy, nEnd[0], nEnd[1]], 2, 'rgba(47,111,208,.75)'); ctx.setLineDash([]);
+
+    var tips = [];
+    PH.forEach(function (ph, i) {
+      var th = w * t - i * 2 * Math.PI / 3;
+      var tx = cx + R * Math.cos(th), ty = cy - R * Math.sin(th);
+      tips.push([tx, ty, th]);
+      var pts = [];
+      for (var sv = 0; sv <= span; sv += 3) { var q = P(sv, amp(th - sv * k)); pts.push(q[0], q[1]); }
+      line(pts, 10, ph.glow + '.16)');
+      line(pts, 5, ph.glow + '.28)');
+      line(pts, 2.6, ph.core);
+      var st = P(0, amp(th));
+      ctx.setLineDash([3, 6]); line([tx, ty, st[0], st[1]], 1.5, ph.glow + '.35)'); ctx.setLineDash([]);
+    });
+    /* Chispas que corren por cada fase */
+    var v = span / 6;
+    PH.forEach(function (ph, i) {
+      var th = tips[i][2];
+      for (var j = 0; j < 3; j++) {
+        var sv = (t * v + j * span / 3 + i * span / 9) % span;
+        var q = P(sv, amp(th - sv * k)), sx = q[0], syy = q[1];
+        var fade = Math.max(0, Math.min(1, sv / 60, (span - sv) / 60));
+        var gr = ctx.createRadialGradient(sx, syy, 0, sx, syy, 14);
+        gr.addColorStop(0, 'rgba(255,240,190,' + (0.95 * fade) + ')');
+        gr.addColorStop(0.35, 'rgba(242,183,5,' + (0.45 * fade) + ')');
+        gr.addColorStop(1, 'rgba(242,183,5,0)');
+        ctx.fillStyle = gr; ctx.fillRect(sx - 14, syy - 14, 28, 28);
+      }
+    });
+    /* Vectores girando */
+    PH.forEach(function (ph, i) {
+      var tx = tips[i][0], ty = tips[i][1], th = tips[i][2];
+      line([cx, cy, tx, ty], 9, ph.glow + '.22)');
+      line([cx, cy, tx, ty], 3.5, ph.core);
+      var ah = Math.max(9, R * 0.1);
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(tx - ah * Math.cos(th - 0.4), ty + ah * Math.sin(th - 0.4));
+      ctx.lineTo(tx - ah * Math.cos(th + 0.4), ty + ah * Math.sin(th + 0.4));
+      ctx.closePath(); ctx.fillStyle = ph.core; ctx.fill();
+      ctx.lineWidth = 1.2; ctx.strokeStyle = ph.glow + '.6)'; ctx.stroke();
+      ctx.font = '700 ' + Math.max(13, Math.round(R * 0.13)) + 'px ' + FONT;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = ph.label;
+      ctx.fillText(ph.n, cx + R * 1.2 * Math.cos(th), cy - R * 1.2 * Math.sin(th));
+    });
+    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fillStyle = '#F2B705'; ctx.fill();
+
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = '600 ' + Math.max(13, Math.round(fs * 0.8)) + 'px ' + BODY; ctx.fillStyle = 'rgba(155,165,159,.8)';
+    if (portrait) { ctx.textAlign = 'center'; ctx.fillText('230/400 V · 50 Hz', cx, cy + o0 + span + 40); }
+    else { var cp = P(0, -1.15); ctx.textAlign = 'left'; ctx.fillText('230/400 V · 50 Hz', cp[0], cp[1] + 26); }
+    ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(155,165,159,.55)';
+    ctx.fillText('Toca la pantalla para volver', W / 2, H - Math.max(18, pad * 0.45));
+  }
+
+  function loop(now) {
+    if (!on) return;
+    raf = requestAnimationFrame(loop);
+    if (now - lastDraw < 32) return;   /* unas 30 imágenes por segundo: suficiente y gasta menos batería */
+    lastDraw = now;
+    try { draw(now); } catch (e) { /* si algo falla, que no bloquee la app */ }
+  }
+
+  function start() {
+    if (on) return;
+    on = true; ov.hidden = false; ov.classList.remove('leaving');
+    resize(); t0 = performance.now(); lastDraw = 0;
+    draw(t0);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { if (on) ov.classList.add('on'); }); });
+    raf = requestAnimationFrame(loop);
+  }
+  function stop() {
+    if (!on) return;
+    on = false; cancelAnimationFrame(raf); bump();
+    ov.classList.remove('on');
+    /* Sigue tapando medio segundo para que el toque no pulse nada de debajo */
+    setTimeout(function () { if (!on) ov.hidden = true; }, 600);
+  }
+
+  ov.addEventListener('pointerdown', function (e) { e.preventDefault(); stop(); });
+  ov.addEventListener('touchstart', function (e) { e.preventDefault(); stop(); }, {passive: false});
+  ov.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); });
+  window.addEventListener('keydown', function () { if (on) stop(); });
+  window.addEventListener('resize', function () { if (on) resize(); });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') bump();
+    else if (on) { stop(); ov.hidden = true; }
+  });
+  setInterval(function () {
+    if (!on && document.visibilityState === 'visible' && Date.now() - last >= config.idle) start();
+  }, 5000);
+
+  return {start: start, stop: stop, vigilar: vigilar, config: config, activo: function () { return on; }};
+})();
+</script>
 <script>
 (function () {
   'use strict';
@@ -146,6 +356,8 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
     f.dataset.loading = '1';
     f.addEventListener('load', function () {
       f.dataset.loading = '';
+      /* Lo que se toque dentro de la herramienta también cuenta para el salvapantallas */
+      try { Salvapantallas.vigilar(f.contentWindow); Salvapantallas.vigilar(f.contentWindow.document); } catch (e) { /* opcional */ }
       if (current === t.id) loading.hidden = true;
     });
     stage.appendChild(f);
