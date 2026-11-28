@@ -47,16 +47,20 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 #app{position:absolute;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px)}
 
 /* Barra superior */
-.bar{display:flex;align-items:center;gap:4px;padding:5px 6px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x}
-.bar::-webkit-scrollbar{display:none}
-.tb{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:50px;min-height:50px;padding:4px 6px;border:0;border-radius:10px;background:transparent;color:var(--ink);font-family:var(--f-display);font-weight:600;font-size:.76rem;line-height:1.05;white-space:nowrap;flex:none}
+.bar{display:flex;align-items:center;gap:6px;padding:5px 6px;background:var(--surface);border-bottom:1px solid var(--line);overflow:hidden}
+.bar-l,.bar-r{display:flex;align-items:center;gap:3px;flex:none}
+/* las herramientas se deslizan; los extremos (Planos, Deshacer, Exportar) se ven siempre */
+.bar-m{display:flex;align-items:center;gap:1px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x;--fl:0px;--fr:0px;-webkit-mask-image:linear-gradient(to right,transparent 0,#000 var(--fl),#000 calc(100% - var(--fr)),transparent 100%);mask-image:linear-gradient(to right,transparent 0,#000 var(--fl),#000 calc(100% - var(--fr)),transparent 100%)}
+.bar-m.fl{--fl:26px} .bar-m.fr{--fr:34px}
+.bar-m::-webkit-scrollbar{display:none}
+.tb{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:46px;min-height:50px;padding:4px 4px;border:0;border-radius:10px;background:transparent;color:var(--ink);font-family:var(--f-display);font-weight:600;font-size:.72rem;line-height:1.05;white-space:nowrap;flex:none}
 .tb[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
 .tb:disabled{opacity:.35;cursor:default}
-.tb.home{flex-direction:row;gap:6px;font-size:.95rem;padding:4px 10px;background:var(--sunk);border:1px solid var(--line)}
-.tb.exp{flex-direction:row;gap:6px;font-size:1rem;background:var(--accent);color:var(--accent-ink);font-weight:700;padding:4px 14px}
+.tb.home{flex-direction:row;gap:5px;font-size:.92rem;padding:4px 8px;background:var(--sunk);border:1px solid var(--line)}
+.tb.exp{flex-direction:row;gap:6px;font-size:.98rem;background:var(--accent);color:var(--accent-ink);font-weight:700;padding:4px 12px}
 .sep{width:1px;align-self:stretch;margin:6px 2px;background:var(--line);flex:none}
 .grow{flex:1 1 auto;min-width:4px}
-.docname{display:flex;flex-direction:column;justify-content:center;min-width:90px;max-width:220px;padding:2px 8px;border:0;background:transparent;text-align:left;flex:0 1 auto;overflow:hidden}
+.docname{display:flex;flex-direction:column;justify-content:center;min-width:80px;max-width:150px;padding:2px 8px;border:0;background:transparent;text-align:left;flex:0 1 auto;overflow:hidden}
 .docname b{font-family:var(--f-display);font-weight:700;font-size:1.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .docname small{color:var(--muted);font-size:.74rem;white-space:nowrap}
 
@@ -205,6 +209,7 @@ table.tk tfoot td{font-weight:700;border-bottom:0}
   .main > .lib{left:0}
   .main > .props{right:0}
 }
+@media (max-width:900px){ .bar-r .tb:not(.exp){font-size:0;gap:0;min-width:44px} .docname{max-width:110px} }
 @media (max-width:560px){ .tb{min-width:44px;font-size:0;gap:0} .tb.home{font-size:.9rem} .props{width:min(300px,92vw)} .coord{min-width:150px} }
 </style>
 <script>
@@ -241,36 +246,39 @@ table.tk tfoot td{font-weight:700;border-bottom:0}
 <body>
 <div id="app">
   <header class="bar" role="toolbar" aria-label="Herramientas">
-    <button class="tb home" id="b-home" type="button" data-ico="menu"><span>Planos</span></button>
-    <button class="docname" id="b-name" type="button" title="Cambiar nombre"><b id="docname">Plano</b><small id="docsave">Guardado</small></button>
-    <span class="sep"></span>
-    <button class="tb" id="b-lib" type="button" data-ico="grid" aria-pressed="true" title="Mostrar u ocultar los símbolos">Símbolos</button>
-    <span class="sep"></span>
-    <button class="tb" data-tool="sel" type="button" data-ico="sel" title="Seleccionar y mover (V)">Mover</button>
-    <button class="tb" data-tool="pan" type="button" data-ico="hand" title="Solo desplazar la vista (H)">Mano</button>
-    <button class="tb" data-tool="wall" type="button" data-ico="wall" title="Muro: toca punto a punto (W)">Muro</button>
-    <button class="tb" data-tool="wallrect" type="button" data-ico="room" title="Habitación con cuatro muros y su superficie (Q)">Habitación</button>
-    <button class="tb" data-tool="line" type="button" data-ico="line" title="Línea (L)">Línea</button>
-    <button class="tb" data-tool="pline" type="button" data-ico="pline" title="Polilínea (P)">Polilínea</button>
-    <button class="tb" data-tool="rect" type="button" data-ico="rect" title="Rectángulo (R)">Rectáng.</button>
-    <button class="tb" data-tool="circle" type="button" data-ico="circle" title="Círculo (C)">Círculo</button>
-    <button class="tb" data-tool="arc" type="button" data-ico="arc" title="Arco por 3 puntos (A)">Arco</button>
-    <button class="tb" data-tool="dim" type="button" data-ico="dim" title="Cota (D)">Cota</button>
-    <button class="tb" data-tool="text" type="button" data-ico="text" title="Texto (T)">Texto</button>
-    <button class="tb" data-tool="area" type="button" data-ico="area" title="Superficie en m² (S)">Superficie</button>
-    <button class="tb" data-tool="measure" type="button" data-ico="ruler" title="Medir distancia (M)">Medir</button>
-    <button class="tb" data-tool="free" type="button" data-ico="pen" title="Boceto a mano alzada (B)">Boceto</button>
-    <button class="tb" data-tool="erase" type="button" data-ico="erase" title="Goma: toca o pasa por encima (E)">Goma</button>
-    <span class="sep"></span>
-    <button class="tb" id="b-undo" type="button" data-ico="undo" title="Deshacer (⌘Z) · toque con dos dedos">Deshacer</button>
-    <button class="tb" id="b-redo" type="button" data-ico="redo" title="Rehacer (⇧⌘Z) · toque con tres dedos">Rehacer</button>
-    <span class="sep"></span>
-    <button class="tb" id="b-layers" type="button" data-ico="layers" title="Capas">Capas</button>
-    <button class="tb" id="b-sheet" type="button" data-ico="sheet" title="Lámina, escala y cajetín">Cajetín</button>
-    <button class="tb" id="b-take" type="button" data-ico="list" title="Medición y presupuesto">Medición</button>
-    <button class="tb" id="b-props" type="button" data-ico="props" aria-pressed="true" title="Mostrar u ocultar propiedades">Propiedades</button>
-    <span class="grow"></span>
-    <button class="tb exp" id="b-export" type="button" data-ico="share">Exportar</button>
+    <div class="bar-l">
+      <button class="tb home" id="b-home" type="button" data-ico="menu"><span>Planos</span></button>
+      <button class="docname" id="b-name" type="button" title="Cambiar nombre"><b id="docname">Plano</b><small id="docsave">Guardado</small></button>
+    </div>
+    <div class="bar-m" id="bar-m">
+      <button class="tb" id="b-lib" type="button" data-ico="grid" aria-pressed="true" title="Mostrar u ocultar los símbolos">Símbolos</button>
+      <span class="sep"></span>
+      <button class="tb" data-tool="sel" type="button" data-ico="sel" title="Seleccionar y mover (V)">Mover</button>
+      <button class="tb" data-tool="pan" type="button" data-ico="hand" title="Solo desplazar la vista (H)">Mano</button>
+      <button class="tb" data-tool="wall" type="button" data-ico="wall" title="Muro: toca punto a punto (W)">Muro</button>
+      <button class="tb" data-tool="wallrect" type="button" data-ico="room" title="Habitación con cuatro muros y su superficie (Q)">Habitación</button>
+      <button class="tb" data-tool="line" type="button" data-ico="line" title="Línea (L)">Línea</button>
+      <button class="tb" data-tool="pline" type="button" data-ico="pline" title="Polilínea (P)">Polilínea</button>
+      <button class="tb" data-tool="rect" type="button" data-ico="rect" title="Rectángulo (R)">Rectáng.</button>
+      <button class="tb" data-tool="circle" type="button" data-ico="circle" title="Círculo (C)">Círculo</button>
+      <button class="tb" data-tool="arc" type="button" data-ico="arc" title="Arco por 3 puntos (A)">Arco</button>
+      <button class="tb" data-tool="dim" type="button" data-ico="dim" title="Cota (D)">Cota</button>
+      <button class="tb" data-tool="text" type="button" data-ico="text" title="Texto (T)">Texto</button>
+      <button class="tb" data-tool="area" type="button" data-ico="area" title="Superficie en m² (S)">Superficie</button>
+      <button class="tb" data-tool="measure" type="button" data-ico="ruler" title="Medir distancia (M)">Medir</button>
+      <button class="tb" data-tool="free" type="button" data-ico="pen" title="Boceto a mano alzada (B)">Boceto</button>
+      <button class="tb" data-tool="erase" type="button" data-ico="erase" title="Goma: toca o pasa por encima (E)">Goma</button>
+      <span class="sep"></span>
+      <button class="tb" id="b-layers" type="button" data-ico="layers" title="Capas">Capas</button>
+      <button class="tb" id="b-sheet" type="button" data-ico="sheet" title="Lámina, escala y cajetín">Cajetín</button>
+      <button class="tb" id="b-take" type="button" data-ico="list" title="Medición y presupuesto">Medición</button>
+      <button class="tb" id="b-props" type="button" data-ico="props" aria-pressed="true" title="Mostrar u ocultar propiedades">Propied.</button>
+    </div>
+    <div class="bar-r">
+      <button class="tb" id="b-undo" type="button" data-ico="undo" title="Deshacer (⌘Z) · toque con dos dedos">Deshacer</button>
+      <button class="tb" id="b-redo" type="button" data-ico="redo" title="Rehacer (⇧⌘Z) · toque con tres dedos">Rehacer</button>
+      <button class="tb exp" id="b-export" type="button" data-ico="share">Exportar</button>
+    </div>
   </header>
 
   <div class="main">
@@ -2447,8 +2455,8 @@ function drawOverlay(c){
     else if (d.tool === 'free') { poly(c, d.pts, false); }
   }
   if (d && d.tool === 'place' && d.pl && SYMI[placeSym]) {
-    const e = {t:'sym', sym:placeSym, p:d.pl.p, rot:d.pl.rot, prm:d.pl.prm, mx:placeMir, L:layerFor('sym', SYMI[placeSym])};
-    c.globalAlpha = 0.75; colOverride = SELC; drawEnt(c, e); colOverride = null; c.globalAlpha = 1;
+    const e = {t:'sym', sym:placeSym, p:d.pl.p, rot:d.pl.rot, prm:d.pl.prm, mx:placeMir, L:layerFor('sym', SYMI[placeSym]), lw:0.6};
+    colOverride = SELC; drawEnt(c, e); colOverride = null;
     if (d.pl.wall) { const w = d.pl.wall; c.strokeStyle = SELC; c.lineWidth = 3 * px; c.globalAlpha = 0.4; line(c, w.a, w.b); c.globalAlpha = 1; }
   }
   if (measureRes && tool === 'measure') { c.strokeStyle = '#FFB020'; c.lineWidth = 2 * px; line(c, measureRes.a, measureRes.b); dot(c, measureRes.a, 3.5 * px); dot(c, measureRes.b, 3.5 * px); liveDim(c, measureRes.a, measureRes.b, '', '#FFB020'); }
@@ -2456,7 +2464,7 @@ function drawOverlay(c){
   if (lastSnap && lastSnap.k && hover) snapMark(c, lastSnap);
   /* cursor del Pencil o ratón */
   if (hover && (hover.type === 'pen' || hover.type === 'mouse') && tool !== 'sel' && tool !== 'pan' && !gesture) {
-    const w = draft && draft.cur ? draft.cur : (lastSnap ? lastSnap.w : toWorld(hover.s[0], hover.s[1]));
+    const w = draft && draft.pl ? draft.pl.p : draft && draft.cur ? draft.cur : (lastSnap ? lastSnap.w : toWorld(hover.s[0], hover.s[1]));
     c.strokeStyle = SELC; c.lineWidth = px; c.beginPath(); c.moveTo(w[0] - 12 * px, w[1]); c.lineTo(w[0] + 12 * px, w[1]); c.moveTo(w[0], w[1] - 12 * px); c.lineTo(w[0], w[1] + 12 * px); c.stroke();
   }
   /* caja de selección */
@@ -2522,6 +2530,11 @@ function updCoord(s){
 
 /* ===================== Interfaz: herramientas, biblioteca, propiedades, ventanas ===================== */
 $$('[data-ico]').forEach(b => { b.insertAdjacentHTML('afterbegin', icon(b.dataset.ico)); });
+/* Fila de herramientas deslizable: degradado en el borde si hay más, y la rueda del ratón la desplaza */
+const barM = $('#bar-m');
+const barFade = () => { barM.classList.toggle('fl', barM.scrollLeft > 2); barM.classList.toggle('fr', barM.scrollLeft + barM.clientWidth < barM.scrollWidth - 2); };
+barM.addEventListener('scroll', barFade, {passive:true}); window.addEventListener('resize', barFade); setTimeout(barFade, 0);
+barM.addEventListener('wheel', e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { barM.scrollLeft += e.deltaY; e.preventDefault(); } }, {passive:false});
 
 function setTool(t, sym){
   if (draft && TOOLS[draft.tool] && TOOLS[draft.tool].finish && draft.tool !== t) TOOLS[draft.tool].finish();
